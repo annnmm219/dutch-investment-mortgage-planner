@@ -22,19 +22,25 @@ test('flexible numeric clamp respects configured min and max',()=>{
   assert.equal(State.clampFlexibleValue('4,25',0,10),4.25);
 });
 
-test('user-testing UX simplifies phase repayment labels without removing frequency choice',()=>{
+test('phase UI is monthly-only and yearly saved values preserve the same annual amount',()=>{
   const js=read('app-state.js');
-  assert.match(js,/Investment \/ month/);
-  assert.match(js,/Extra mortgage repayment/);
-  assert.match(js,/Repayment frequency/);
-  assert.doesNotMatch(js,/mortgageFreq[^]*='monthly'[^]*user-testing/i);
+  assert.match(js,/Monthly investment/);
+  assert.match(js,/Monthly extra mortgage repayment/);
+  assert.match(js,/ux-phase-frequency-hidden/);
+  assert.equal(State.monthlyEquivalentExtra(3000,'yearly'),250);
+  assert.equal(State.monthlyEquivalentExtra(300,'monthly'),300);
 });
 
-test('Box 1 income guidance explicitly covers the expat 30 percent ruling',()=>{
+test('30 percent ruling checkbox estimates taxable income from gross employment income',()=>{
+  assert.equal(State.estimateTaxableIncome2026({grossIncome:84000,use30Ruling:false}),84000);
+  assert.equal(State.estimateTaxableIncome2026({grossIncome:84000,use30Ruling:true}),58800);
+  assert.equal(State.estimateTaxableIncome2026({grossIncome:300000,use30Ruling:true}),221400);
   const js=read('app-state.js');
-  assert.match(js,/Taxable annual Box 1 income/);
-  assert.match(js,/expat \(30%\) ruling/);
-  assert.match(js,/jaaropgaaf/);
+  assert.match(js,/Gross annual employment income/);
+  assert.match(js,/I use the 30% ruling \/ expat scheme/);
+  assert.match(js,/€78,600 in 2026/);
+  assert.match(js,/jaaropgaaf remains authoritative/);
+  assert.match(js,/HRA income estimate only, not Box 3 residency treatment/);
 });
 
 test('automatic deduction mode freezes the displayed rate field',()=>{
@@ -44,11 +50,17 @@ test('automatic deduction mode freezes the displayed rate field',()=>{
   assert.match(js,/Switch Deduction rate to Manual to edit it/);
 });
 
-test('mortgage summary explains the exact phase-based period',()=>{
+test('mortgage reporting horizon supports investment end, mortgage end and a specific year',()=>{
+  assert.equal(State.mortgageReportingMonths({mode:'investment',investmentMonths:204,mortgageTermMonths:300}),204);
+  assert.equal(State.mortgageReportingMonths({mode:'mortgage',investmentMonths:204,mortgageTermMonths:300}),300);
+  assert.equal(State.mortgageReportingMonths({mode:'year',startYear:2026,startMonth:5,specificYear:2030,mortgageTermMonths:300}),56);
+  assert.equal(State.mortgageReportingMonths({mode:'year',startYear:2026,startMonth:5,specificYear:2090,mortgageTermMonths:300}),300);
   const js=read('app-state.js');
-  assert.match(js,/Mortgage summary period:/);
-  assert.match(js,/stop at the end of your Investment phases/);
-  assert.match(js,/Mortgage status at/);
+  assert.match(js,/Mortgage totals: report until/);
+  assert.match(js,/End of investment plan/);
+  assert.match(js,/End of mortgage term/);
+  assert.match(js,/A specific year/);
+  assert.match(js,/Investment phases and Scenario comparison horizons stay independent/);
 });
 
 test('Next Euro is reframed as part of the repay-vs-invest decision',()=>{
