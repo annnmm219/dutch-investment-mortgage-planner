@@ -11,7 +11,7 @@ const COLORS=['#2a78d6','#1baf7a','#a576d4','#d48a54','#5c8eaa','#b16b86'];
 const DEFAULT=[
  {years:5,monthlyInvest:500,mortgageExtra:0,mortgageFreq:'monthly',annualBonus:0,bonusDest:'invest'},
  {years:5,monthlyInvest:750,mortgageExtra:200,mortgageFreq:'monthly',annualBonus:2000,bonusDest:'split'},
- {years:10,monthlyInvest:1000,mortgageExtra:3000,mortgageFreq:'yearly',annualBonus:4000,bonusDest:'invest'},
+ {years:10,monthlyInvest:1000,mortgageExtra:250,mortgageFreq:'monthly',annualBonus:4000,bonusDest:'invest'},
  {years:5,monthlyInvest:750,mortgageExtra:500,mortgageFreq:'monthly',annualBonus:3000,bonusDest:'mortgage'},
  {years:5,monthlyInvest:500,mortgageExtra:0,mortgageFreq:'monthly',annualBonus:0,bonusDest:'invest'},
  {years:5,monthlyInvest:500,mortgageExtra:0,mortgageFreq:'monthly',annualBonus:0,bonusDest:'invest'}
@@ -64,6 +64,13 @@ function plan(){
 function deductionRate(){
   return FC.deductionRate2026({mode:$('deductionMode').value,manualRatePct:num('manualDeduction',37.56),grossIncome:num('grossIncome',0)});
 }
+function hraContext(){
+  const fromAdapter=window.LogicIntegrityUI?.mortgageTaxContext?.();
+  return fromAdapter||{
+    hraRemainingMonths:Math.max(0,Math.round(num('hraRemainingYears',30)*12+num('hraRemainingMonths',0))),
+    qualifyingInterestFraction:clamp(num('qualifyingBox1DebtPct',100)/100,0,1)
+  };
+}
 
 function purchaseValues(){
   const price=Math.max(0,num('housePrice',0)),savings=Math.max(0,num('ownSavings',0)),costs=Math.max(0,num('purchaseCosts',0));
@@ -72,11 +79,12 @@ function purchaseValues(){
 }
 
 function inputs(retOverride,mortTypeOverride){
-  const mortgageMode=$('mortgageMode').value==='purchase'?'purchase':'existing',pv=purchaseValues();
+  const mortgageMode=$('mortgageMode').value==='purchase'?'purchase':'existing',pv=purchaseValues(),hra=hraContext();
   return{
-    p:plan(),startMonth:clamp(num('startMonth',1),1,12),startYear:clamp(num('startYear',2026),2020,2100),startPortfolio:Math.max(0,num('startPortfolio',0)),annualReturn:retOverride??num('annualReturn',7),bonusMonth:clamp(num('bonusMonth',12),1,12),
+    p:plan(),startMonth:clamp(num('startMonth',1),1,12),startYear:clamp(num('startYear',2026),2020,2100),startPortfolio:Math.max(0,num('startPortfolio',0)),annualReturn:retOverride??num('annualReturn',5),bonusMonth:clamp(num('bonusMonth',12),1,12),
     mortgageMode,mortBalance:mortgageMode==='purchase'?pv.requiredLoan:Math.max(0,num('mortBalance',0)),mortRate:mortgageMode==='purchase'?clamp(num('purchaseRate',0),0,20):clamp(num('mortRate',0),0,20),mortYears:mortgageMode==='purchase'?clamp(num('purchaseYears',30),1,40):clamp(num('mortYears',1),1,40),mortType:mortTypeOverride||mortTypeState,
-    mortTaxEnabled:$('mortTaxEnabled').checked,deductRate:deductionRate(),wozValue:Math.max(0,num('wozValue',0)),
+    mortTaxEnabled:$('mortTaxEnabled').checked,deductRate:deductionRate(),wozValue:Math.max(0,num('wozValue',0)),hraRemainingMonths:hra.hraRemainingMonths,qualifyingInterestFraction:hra.qualifyingInterestFraction,
+    unusedMortgageDestination:['invest','savings','consume'].includes($('unusedMortgageDestination')?.value)?$('unusedMortgageDestination').value:'invest',
     box3Mode:$('box3Mode').value,taxPartners:clamp(num('taxPartners',1),1,2),box3PaySource:$('box3PaySource').value,currentTaxRate:clamp(num('currentTaxRate',36),0,100)/100,currentAllowance:Math.max(0,num('currentAllowance',59357)),currentNotional:clamp(num('currentNotional',6),0,30)/100,firstJan1Portfolio:Math.max(0,num('firstJan1Portfolio',0)),futureStart:clamp(num('futureStart',2028),2027,2100),futureTaxRate:clamp(num('futureTaxRate',36),0,100)/100,futureExempt:Math.max(0,num('futureExempt',1800)),futureLossThreshold:Math.max(0,num('futureLossThreshold',500))
   };
 }
@@ -86,7 +94,7 @@ function simulate(retOverride,forceNoBox3=false,mortTypeOverride=null){
   if(forceNoBox3)I.box3Mode='none';
   const result=FC.simulatePlan({
     phases:I.p,startMonth:I.startMonth,startYear:I.startYear,startPortfolio:I.startPortfolio,annualReturnPct:I.annualReturn,bonusMonth:I.bonusMonth,
-    mortBalance:I.mortBalance,mortRatePct:I.mortRate,mortYears:I.mortYears,mortType:I.mortType,mortTaxEnabled:I.mortTaxEnabled,deductRate:I.deductRate,wozValue:I.wozValue,
+    mortBalance:I.mortBalance,mortRatePct:I.mortRate,mortYears:I.mortYears,mortType:I.mortType,mortTaxEnabled:I.mortTaxEnabled,deductRate:I.deductRate,wozValue:I.wozValue,hraRemainingMonths:I.hraRemainingMonths,qualifyingInterestFraction:I.qualifyingInterestFraction,unusedMortgageDestination:I.unusedMortgageDestination,
     box3Mode:I.box3Mode,taxPartners:I.taxPartners,box3PaySource:I.box3PaySource,currentTaxRate:I.currentTaxRate,currentAllowance:I.currentAllowance,currentNotional:I.currentNotional,firstJan1Portfolio:I.firstJan1Portfolio,futureStart:I.futureStart,futureTaxRate:I.futureTaxRate,futureExempt:I.futureExempt,futureLossThreshold:I.futureLossThreshold
   });
   return{...I,...result};
@@ -104,45 +112,54 @@ function updatePurchaseSummary(){
 }
 function updateMortgageMode(){const purchase=$('mortgageMode').value==='purchase';$('existingMortgageFields').classList.toggle('hidden',purchase);$('purchaseMortgageFields').classList.toggle('hidden',!purchase);updatePurchaseSummary()}
 function planEndDate(s){const start=new Date(Date.UTC(s.startYear,s.startMonth-1,1));return new Date(Date.UTC(start.getUTCFullYear(),start.getUTCMonth()+Math.max(0,s.horizonMonths-1),1))}
-function regimeShortLabel(regime){if(regime==='current')return'2026 rules';if(regime==='future')return'Proposed regime';return'No Box 3'}
+function regimeShortLabel(b){
+  const regime=b?.regime;
+  const base=regime==='current'?'2026 rules':regime==='future'?'Proposed regime':'No Box 3';
+  return b?.settled===false?base+' · unsettled':base;
+}
 
 function updateBox3YearTable(s){
   const body=$('box3YearBody');if(!body)return;body.innerHTML='';
-  Object.values(s.yearBuckets).sort((a,b)=>a.year-b.year).forEach(b=>{const tr=document.createElement('tr');tr.innerHTML=`<td>${b.year}</td><td>${regimeShortLabel(b.regime)}</td><td>${fmt(b.endBeforeTax)}</td><td>${fmt(b.box3Tax)}</td><td>${fmt(b.endAfterTax ?? b.endBeforeTax)}</td>`;body.appendChild(tr)});
+  Object.values(s.yearBuckets).sort((a,b)=>a.year-b.year).forEach(b=>{const tr=document.createElement('tr'),tax=b.settled===false?`~${fmt(b.unsettledTax||0)}`:fmt(b.box3Tax);tr.innerHTML=`<td>${b.year}</td><td>${regimeShortLabel(b)}</td><td>${fmt(b.endBeforeTax)}</td><td>${tax}</td><td>${fmt(b.endAfterTax ?? b.endBeforeTax)}</td>`;body.appendChild(tr)});
 }
 
 function updateMortgage(s){
   $('deductionDisplay').textContent=(s.deductRate*100).toLocaleString('nl-NL',{minimumFractionDigits:2,maximumFractionDigits:2})+'%';
   $('deductionWhy').textContent=$('deductionMode').value==='manual'?'Manual planning rate.':(num('grossIncome',0)>78426?'2026 maximum deduction-rate proxy.':num('grossIncome',0)>38883?'2026 second-bracket proxy.':'2026 first-bracket proxy.');
   const ewf=FC.ewf2026(s.wozValue);
-  if($('wozImpact'))$('wozImpact').innerHTML=s.wozValue>0?`<strong>WOZ effect:</strong> ${fmt(s.wozValue)} gives an estimated 2026 eigenwoningforfait of <strong>${fmt(ewf)}/year</strong>. In this planner that amount offsets deductible mortgage interest before the deduction rate is applied, so a higher WOZ generally means a smaller mortgage-interest tax benefit. It does not change the mortgage payment, principal balance, or Box 3 calculation.`:'<strong>WOZ effect:</strong> Enter a WOZ value to include eigenwoningforfait in the mortgage-interest tax estimate. It does not change the mortgage payment, principal balance, or Box 3 calculation.';
+  if($('wozImpact'))$('wozImpact').innerHTML=s.wozValue>0?`<strong>WOZ effect:</strong> ${fmt(s.wozValue)} gives an estimated 2026 eigenwoningforfait of <strong>${fmt(ewf)}/year</strong>. EWF continues for modeled owner-occupied months even after the mortgage is repaid. The Hillen relief percentage declines by calendar year.`:'<strong>WOZ effect:</strong> Enter a WOZ value to include eigenwoningforfait in the mortgage-interest tax estimate.';
   $('mGrossInterest').textContent=fmt(s.grossInterest);$('mTaxBenefit').textContent=fmtSigned(s.mortTax);$('mNetInterest').textContent=fmt(s.netInterest);
-  $('mPayoff').textContent=s.payoffDate?MONTHS[s.payoffDate.month-1].slice(0,3)+' '+s.payoffDate.year:'Not yet';$('mPayoffSub').textContent=s.payoffDate?'with selected extra repayments':'remaining '+fmt(s.mort);updatePurchaseSummary();
+  $('mPayoff').textContent=s.payoffDate?MONTHS[s.payoffDate.month-1].slice(0,3)+' '+s.payoffDate.year:'Not yet';$('mPayoffSub').textContent=s.payoffDate?'planned mortgage amounts after payoff follow your selected redirect rule':'remaining '+fmt(s.mort);updatePurchaseSummary();
 }
 
 function updateMortgageCompare(s){
   const linear=simulate(s.annualReturn,false,'linear'),annuity=simulate(s.annualReturn,false,'annuity');
-  function card(el,x,label,type){const active=mortTypeState===type;el.className='compare-card selectable'+(active?' active':'');el.setAttribute('aria-pressed',active?'true':'false');el.innerHTML=`<h3>${label}</h3><p class="tag ${active?'selected-tag':''}">${active?'Used in combined plan & schedule':'Click to use this method'}</p><div class="metric"><span>First scheduled payment</span><strong>${fmt(x.firstScheduled)}</strong></div><div class="metric"><span>Gross scheduled paid</span><strong>${fmt(x.grossScheduledTotal)}</strong></div><div class="metric"><span>Gross interest</span><strong>${fmt(x.grossInterest)}</strong></div><div class="metric"><span>Estimated tax benefit</span><strong>${fmtSigned(x.mortTax)}</strong></div><div class="metric"><span>Extra repayments</span><strong>${fmt(x.extraPaid)}</strong></div><div class="metric"><span>End balance</span><strong>${fmt(x.mort)}</strong></div>`}
+  function card(el,x,label,type){const active=mortTypeState===type;el.className='compare-card selectable'+(active?' active':'');el.setAttribute('aria-pressed',active?'true':'false');el.innerHTML=`<h3>${label}</h3><p class="tag ${active?'selected-tag':''}">${active?'Used in combined plan & schedule':'Click to use this method'}</p><div class="metric"><span>First scheduled payment</span><strong>${fmt(x.firstScheduled)}</strong></div><div class="metric"><span>Gross scheduled paid</span><strong>${fmt(x.grossScheduledTotal)}</strong></div><div class="metric"><span>Gross interest</span><strong>${fmt(x.grossInterest)}</strong></div><div class="metric"><span>Estimated tax benefit</span><strong>${fmtSigned(x.mortTax)}</strong></div><div class="metric"><span>Extra repayments applied</span><strong>${fmt(x.extraPaid)}</strong></div><div class="metric"><span>Redirected after payoff / overpayment</span><strong>${fmt(x.unusedMortgageCash)}</strong></div><div class="metric"><span>End balance</span><strong>${fmt(x.mort)}</strong></div>`}
   card($('linearCompare'),linear,'Linear mortgage','linear');card($('annuityCompare'),annuity,'Annuity mortgage','annuity');
 }
 
 function regimeCopy(mode){
   if(mode==='none')return{text:'Ignores Box 3 entirely. Use this to see the portfolio before any modeled Dutch investment tax.',future:false};
-  if(mode==='current')return{text:'Applies the editable 2026 current-rules parameters to every year in the plan. This is a sensitivity baseline, not a claim that 2026 rules will remain unchanged in future years.',future:false};
-  if(mode==='future')return{text:'Applies the proposed actual-return / unrealized-gain method from the first year of the plan. This is a stress test only for years before any future law actually starts.',future:true};
-  return{text:'Uses the current-rules model before the proposed transition year, then switches to the proposed actual-return / unrealized-gain model from that year onward. This is the most realistic transition scenario available in the planner, but the future law is not enacted.',future:true};
+  if(mode==='current')return{text:'Applies the editable 2026 current-rules parameters to every year in the plan. Complete calendar years may use the actual-return rebuttal; an incomplete first year uses the deemed method and an incomplete final year remains unsettled.',future:false};
+  if(mode==='future')return{text:'Applies the proposed actual-return method. Incomplete calendar years are shown as unsettled estimates, and this remains a legislative scenario rather than enacted law.',future:true};
+  return{text:'Uses the current-rules model before the proposed transition year, then the proposed actual-return model. Incomplete calendar years are handled conservatively and the future law is not enacted.',future:true};
 }
 
 function updateBox3(s){
   const noTax=simulate(s.annualReturn,true),info=regimeCopy(s.box3Mode),end=planEndDate(s),endLabel=`${MONTHS[end.getUTCMonth()].slice(0,3)} ${end.getUTCFullYear()}`,startLabel=`${MONTHS[s.startMonth-1].slice(0,3)} ${s.startYear}`;
   $('regimeExplanation').textContent=info.text;$('futureLawWarning').classList.toggle('hidden',!info.future);
-  $('taxSummaryPeriod').textContent=`End of plan: ${endLabel} · tax accumulated from ${startLabel} to ${endLabel}`;$('bBeforeTaxLabel').textContent=`Portfolio before Box 3 · ${endLabel}`;$('sBox3Label').textContent=`Cumulative Box 3 tax · ${s.startYear}–${end.getUTCFullYear()}`;$('bAfterTaxLabel').textContent=`Portfolio after Box 3 · ${endLabel}`;
-  $('bBeforeTax').textContent=fmt(noTax.portfolio);$('sBox3').textContent=fmt(s.box3Tax);$('sBox3Sub').textContent=s.box3Mode==='none'?'Box 3 ignored':s.box3PaySource==='portfolio'?'total modeled tax withdrawn over the plan':'total modeled tax paid from external cash';$('bAfterTax').textContent=fmt(s.portfolio);$('bAfterTaxSub').textContent=s.box3PaySource==='portfolio'?'includes the lost future compounding caused by earlier tax withdrawals':'portfolio is not reduced because modeled tax is paid from external cash';$('bLoss').textContent=fmt(s.lossCarry);updateBox3YearTable(s);
+  $('taxSummaryPeriod').textContent=`End of plan: ${endLabel} · settled tax from ${startLabel} to ${endLabel}`;$('bBeforeTaxLabel').textContent=`Portfolio before Box 3 · ${endLabel}`;$('sBox3Label').textContent=`Settled Box 3 tax · ${s.startYear}–${end.getUTCFullYear()}`;$('bAfterTaxLabel').textContent=`Portfolio after settled Box 3 · ${endLabel}`;
+  $('bBeforeTax').textContent=fmt(noTax.portfolio);$('sBox3').textContent=fmt(s.box3Tax);
+  const unsettled=s.unsettledTaxEstimate>0?` · ${fmt(s.unsettledTaxEstimate)} final-year estimate remains unsettled`:'';
+  $('sBox3Sub').textContent=s.box3Mode==='none'?'Box 3 ignored':s.box3PaySource==='portfolio'?'withdrawn from the investment portfolio'+unsettled:s.box3PaySource==='savings'?'paid from savings / cash'+unsettled:'paid from external cash flow'+unsettled;
+  $('bAfterTax').textContent=fmt(s.portfolio);
+  $('bAfterTaxSub').textContent=s.box3PaySource==='portfolio'?'includes lower future compounding after settled tax withdrawals':s.box3PaySource==='savings'?'portfolio is unchanged; settled tax reduces savings / cash':'portfolio and savings are unchanged; settled tax is an external cash requirement';
+  $('bLoss').textContent=fmt(s.lossCarry);updateBox3YearTable(s);
 }
 
 function updateScenarios(){
   const rates=[clamp(num('scenarioRate1',4),-30,30),clamp(num('scenarioRate2',7),-30,30),clamp(num('scenarioRate3',10),-30,30)],colors=['#9a9a96','#2a78d6','#1baf7a'],root=$('scenarioCards');root.innerHTML='';
-  rates.forEach((r,i)=>{const s=simulate(r),d=document.createElement('div');d.className='scenario';d.style.borderTopColor=colors[i];d.innerHTML=`<p class="lab">Scenario ${i+1} · ${pct(r)}</p><p class="val">${fmt(s.portfolio)}</p><p class="sub">${fmt(s.box3Tax)} Box 3 tax · mortgage ${fmt(s.mort)}</p>`;root.appendChild(d)});
+  rates.forEach((r,i)=>{const s=simulate(r),d=document.createElement('div');d.className='scenario';d.style.borderTopColor=colors[i];d.innerHTML=`<p class="lab">Scenario ${i+1} · ${pct(r)}</p><p class="val">${fmt(s.portfolio)}</p><p class="sub">${fmt(s.box3Tax)} settled Box 3${s.unsettledTaxEstimate>0?' + '+fmt(s.unsettledTaxEstimate)+' unsettled':''} · mortgage ${fmt(s.mort)}</p>`;root.appendChild(d)});
 }
 
 function updateSchedule(s){
@@ -159,7 +176,16 @@ function updateChart(s){
 }
 
 function validate(s){
-  const a=[];if(s.mortTaxEnabled&&s.wozValue===0)a.push('WOZ is €0, so eigenwoningforfait is not offsetting the mortgage deduction.');if(s.mortgageMode==='purchase'&&purchaseValues().shortfall>0)a.push('Savings do not fully cover the entered purchase costs; the mortgage calculation does not finance that cash shortfall.');if(s.box3Mode==='transition')a.push('The transition scenario holds the editable 2026 current-rule parameters constant until the proposed transition year.');if(s.box3Mode==='future'||s.box3Mode==='transition')a.push('The proposed actual-return regime is not enacted law as of 1 September 2026.');const el=$('validation');el.textContent=a.join(' ');el.classList.toggle('show',a.length>0);
+  const a=[];
+  if(s.mortTaxEnabled&&s.wozValue===0)a.push('WOZ is €0, so eigenwoningforfait is not included.');
+  if(s.mortgageMode==='purchase'&&purchaseValues().shortfall>0)a.push('Savings do not fully cover the entered purchase costs; purchase scenarios will be marked invalid until the shortfall is funded.');
+  if(s.mortTaxEnabled&&s.mortYears>30)a.push('The mortgage term exceeds 30 years. The automatic HRA eligibility input is capped at 30 years and should be checked for your contract.');
+  if(s.box3Mode!=='none'&&s.startMonth>1)a.push('The first partial calendar year uses the deemed Box 3 method only; the actual-return rebuttal is not compared without full-year data.');
+  if(s.box3Mode!=='none'&&planEndDate(s).getUTCMonth()!==11)a.push('The final partial calendar year is shown as an unsettled Box 3 estimate and is not charged as a completed year.');
+  if(s.box3Mode==='transition')a.push('The transition scenario holds the editable 2026 current-rule parameters constant until the proposed transition year.');
+  if(s.box3Mode==='future'||s.box3Mode==='transition')a.push('The proposed actual-return regime is not enacted law as of 1 September 2026.');
+  if(Math.abs(s.cashConservationDifference)>0.01)a.push('Internal warning: planned mortgage allocations do not reconcile.');
+  const el=$('validation');el.textContent=a.join(' ');el.classList.toggle('show',a.length>0);
 }
 function update(){updateMortgageMode();const s=simulate();updateStats(s);updateMortgage(s);updateMortgageCompare(s);updateBox3(s);updateScenarios();updateSchedule(s);updateChart(s);validate(s)}
 
