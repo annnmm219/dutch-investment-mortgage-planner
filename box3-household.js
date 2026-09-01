@@ -90,12 +90,12 @@ function injectBrowserUI(){
   context.id='box3HouseholdContext';
   context.innerHTML=`
     <p class="subsection-title">Household Box 3 context</p>
-    <p class="subsection-copy">Add bank deposits and Box 3 debt that sit outside the investment portfolio. These balances are held constant as Jan 1 planning values across the plan. They affect Box 3 tax, not the investment contribution schedule.</p>
+    <p class="subsection-copy">Add bank deposits and Box 3 debt that sit outside the investment portfolio. These are static Jan 1 planning balances: they affect the tax calculation but are not added to portfolio wealth and do not automatically fall when scenario cash is used for a purchase or down payment.</p>
     <div class="grid4 advanced-grid">
-      <div class="field"><label for="box3Savings">Savings / bank deposits · Jan 1</label><input id="box3Savings" type="number" min="0" step="100" value="0"><p class="inline">2026 deemed-return category: bank deposits.</p></div>
+      <div class="field"><label for="box3Savings">Savings / bank deposits · Jan 1</label><input id="box3Savings" type="number" min="0" step="100" value="0"><p class="inline">Use other Box 3 savings that should influence tax. Avoid double-counting scenario cash that is spent immediately.</p></div>
       <div class="field"><label for="box3Debt">Box 3 debt · Jan 1</label><input id="box3Debt" type="number" min="0" step="100" value="0"><p class="inline">Only debts that belong in Box 3. The 2026 debt threshold is applied in the deemed-return calculation.</p></div>
-      <div class="field"><label for="box3SavingsReturn">Actual savings interest %</label><input id="box3SavingsReturn" type="number" min="-10" max="30" step="0.01" value="1.28"><p class="inline">Planning assumption for the actual-return rebuttal / proposed actual-return regime.</p></div>
-      <div class="field"><label for="box3DebtInterest">Actual Box 3 debt interest %</label><input id="box3DebtInterest" type="number" min="0" max="30" step="0.01" value="2.70"><p class="inline">Planning assumption for interest paid on Box 3 debt. The actual-return route uses the full modeled debt interest, without the deemed-method debt threshold.</p></div>
+      <div class="field"><label for="box3SavingsReturn">Actual savings interest %</label><input id="box3SavingsReturn" type="number" min="-10" max="30" step="0.01" value="1.28"><p class="inline">Planning assumption for the actual-return rebuttal and proposed actual-return regime. The starting value is illustrative.</p></div>
+      <div class="field"><label for="box3DebtInterest">Actual Box 3 debt interest %</label><input id="box3DebtInterest" type="number" min="0" max="30" step="0.01" value="2.70"><p class="inline">Planning assumption for interest paid on Box 3 debt. The actual-return route uses full modeled debt interest, without the deemed-method debt threshold.</p></div>
     </div>`;
   card.insertBefore(context,explanation);
 
@@ -113,6 +113,23 @@ function injectBrowserUI(){
 
   const investmentLabel=document.querySelector('label[for="currentNotional"]');
   if(investmentLabel)investmentLabel.textContent='Deemed return on investments / other assets %';
+
+  const foldBody=currentGrid?.closest('.fold-body');
+  if(foldBody){
+    const currentTitle=foldBody.querySelector('.subsection-title');
+    const currentCopy=foldBody.querySelector('.subsection-copy');
+    if(currentTitle)currentTitle.textContent='2026 current rules, mixed-asset estimate';
+    if(currentCopy)currentCopy.textContent='Models the investment portfolio together with entered bank deposits and Box 3 debt. The deemed method uses separate 2026 percentages and the debt threshold; the actual-return rebuttal uses modeled investment growth + savings interest − Box 3 debt interest and no tax-free wealth allowance.';
+    const futureTitle=foldBody.querySelector('.future-title');
+    const futureCopy=futureTitle?.nextElementSibling;
+    if(futureCopy?.classList.contains('subsection-copy'))futureCopy.textContent='For the proposed actual-return scenario, investment growth, modeled savings interest and modeled Box 3 debt interest are combined before the proposed exemption and loss rules. This remains a planning scenario, not enacted law.';
+  }
+
+  const sourceList=document.querySelector('.source-list');
+  if(sourceList)sourceList.innerHTML=sourceList.innerHTML.replace(
+    'Current Box 3: Belastingdienst 2026 parameters for ordinary investments; the actual-return rebuttal includes value changes and does not use the tax-free wealth allowance.',
+    'Current Box 3: Belastingdienst 2026 mixed-asset structure for bank deposits, investments / other assets and Box 3 debts; the actual-return rebuttal includes actual income / value changes and modeled debt interest and does not use the tax-free wealth allowance.'
+  );
 
   const trigger=()=>{
     const el=document.getElementById('currentNotional')||document.getElementById('box3Mode');
