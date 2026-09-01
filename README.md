@@ -8,24 +8,44 @@ A browser-based planning tool for comparing multi-stage investment contributions
 - Monthly or yearly recurring extra mortgage repayments
 - Annual bonus / lump-sum allocation to investments, mortgage repayment, or a 50/50 split
 - Existing-mortgage mode and home-purchase planning mode
-- Editable home-purchase cost breakdown, including transfer tax, notary, valuation, mortgage advice, inspection, bank guarantee, NHG, purchase agent, and other costs
-- Home-purchase summary with savings after costs, required mortgage, loan-to-price ratio, and purchase-cost shortfall
-- Side-by-side Linear vs Annuity comparison; click either method to use it in the combined plan and schedule
+- Editable home-purchase cost breakdown
+- Side-by-side Linear vs Annuity comparison
 - Monthly or yearly mortgage payment schedule
-- Dutch mortgage-interest deduction estimate, including an eigenwoningforfait approximation
-- Current 2026 Box 3 investment-only estimate
+- Dutch mortgage-interest deduction estimate with eigenwoningforfait / Hillen approximation
+- Current 2026 Box 3 investment-only estimate, including the modeled actual-return rebuttal
 - Transition scenario from current rules to a proposed future actual-return / unrealized-gain regime
-- Clear Portfolio before Box 3 / cumulative Box 3 tax / Portfolio after Box 3 flow with a year-by-year breakdown
+- Portfolio before Box 3 / cumulative Box 3 tax / portfolio after Box 3 flow with year-by-year breakdown
 - Scenario decision engine for Buy vs Rent, larger vs smaller down payment, mortgage repayment vs investing, Linear vs Annuity, and Keep vs Sell + Rent
-- Explicit monthly housing + investing budget check in Scenarios; the comparison flags strategies that exceed the entered cash-flow capacity
-- Return sensitivity and approximate crossover analysis, including optional high-return stress cases such as 12–14%
-- Combined investment / mortgage timeline
+- Monthly housing + investing affordability check in Scenarios
+- Return sensitivity and approximate crossover analysis
 
-## Cash-flow treatment
+## Calculation architecture
 
-The main Investment plan uses the contribution and mortgage-overpayment amounts exactly as entered. It does not ask for a separate monthly-surplus figure.
+`finance-core.js` is the single source of truth for shared financial calculations. It contains pure calculation functions for:
 
-In Scenarios, the **Monthly housing + investing budget** is an affordability constraint used only to check whether the compared strategies fit the entered cash-flow capacity. Strategy comparisons still isolate the financial effect of the decision itself: any surplus that is common to both strategies is excluded rather than giving both sides an identical extra investment stream.
+- Linear and annuity mortgage amortisation
+- recurring extra mortgage repayment
+- 2026 eigenwoningforfait
+- mortgage-interest tax-benefit / Hillen approximation
+- current and proposed Box 3 yearly tax calculations
+- the mid-year first-Jan-1 portfolio override
+- investment growth with annual Box 3 charges
+- equalised monthly cash flows between two strategies
+- the main combined Investment + Mortgage simulation
+
+`app.js` is responsible for the main planner UI and delegates financial calculations to `finance-core.js`.
+
+`scenario-engine.js` is responsible for strategy-comparison UI and orchestration. It uses the same mortgage, tax, investment, and cash-flow functions from `finance-core.js` rather than maintaining a separate tax engine.
+
+`purchase-costs.js` is UI-only. It builds the editable purchase-cost breakdown and synchronises the total purchase-cost input; it contains no mortgage, Box 3, or HRA calculation logic.
+
+This separation is intentional so the Investment, Mortgage, and Scenario views cannot silently drift onto different versions of the same tax formula.
+
+## Scenario cash-flow treatment
+
+Scenario comparisons use the same starting wealth and equalise monthly cash-flow capacity. The lower-cash-outflow strategy invests the difference.
+
+The **Monthly housing + investing budget** is an affordability warning only. It does not alter Box 3 or create extra investment returns common to both strategies.
 
 ## Default values
 
@@ -37,7 +57,7 @@ Tax parameters are separate from those example inputs. This version contains Dut
 
 No installation is required.
 
-1. Download `index.html`, `styles.css`, `app.js`, `purchase-costs.js`, and `scenario-engine.js` into the same folder.
+1. Download `index.html`, `styles.css`, `finance-core.js`, `app.js`, `purchase-costs.js`, and `scenario-engine.js` into the same folder.
 2. Open `index.html` in a modern browser.
 3. Change the inputs to your own assumptions.
 
@@ -50,7 +70,7 @@ The calculator is a static front-end page. It does not contain a backend or acco
 3. In the repository, open **Settings → Pages**.
 4. Under **Build and deployment**, choose **Deploy from a branch**.
 5. Select the default branch (normally `main`) and the `/ (root)` folder.
-6. Save. GitHub will provide the public site address after deployment.
+6. Save.
 
 ## Model notes
 
@@ -59,8 +79,7 @@ The app is intended for scenario planning, not tax filing, mortgage underwriting
 Important limitations include:
 
 - Investment returns are assumptions, not forecasts.
-- The Scenario cash-flow check validates entered planning capacity; it does not calculate disposable income from salary, Box 1 tax, benefits, or living expenses.
-- Box 3 treatment depends on the user's full tax position and this version remains focused on ordinary investments rather than a complete mixed-asset Box 3 return.
+- Box 3 treatment depends on the user's complete tax position and this version remains focused on ordinary investments rather than a complete mixed-asset Box 3 return.
 - Future Box 3 rules may change before implementation.
 - The “2026 rules for the whole plan” option intentionally holds editable 2026 parameters constant as a sensitivity case; it is not a forecast of future Dutch tax law.
 - The proposed future Box 3 regime is a scenario, not enacted law.
@@ -68,7 +87,11 @@ Important limitations include:
 - Purchase costs are editable because they vary by buyer and transaction.
 - The planner does not determine official mortgage affordability, Nibud LTI limits, lender acceptance, or final NHG eligibility.
 - Extra mortgage repayments can be treated differently by individual lenders.
-- The annuity simulation assumes the scheduled annuity payment remains unchanged after an extra repayment, which generally shortens the payoff period rather than automatically lowering the contractual payment.
+- The annuity simulation assumes the scheduled annuity payment remains unchanged after an extra repayment, generally shortening the payoff period rather than automatically lowering the contractual payment.
+
+## Next engineering step
+
+The next priority is regression testing of `finance-core.js` with hand-checked mortgage, HRA/EWF, Box 3, mid-year-start, and scenario-equalisation cases before adding further financial features.
 
 ## Sources referenced in the calculator
 
