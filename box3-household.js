@@ -10,12 +10,17 @@ const DEFAULTS={
   debt:0,
   savingsReturnPct:1.28,
   debtInterestPct:2.70,
+  debtMonthlyRepayment:0,
+  debtRepaymentSource:'external',
   currentSavingsNotional:.0128,
   currentDebtNotional:.027,
-  currentDebtThreshold:3800
+  currentDebtThreshold:3800,
+  firstJan1Savings:null,
+  firstJan1Debt:null
 };
 
 function nonNegative(v){return Math.max(0,Number(v)||0)}
+function optionalNonNegative(v){return v==null||v===''?null:nonNegative(v)}
 
 function normalizeContext(context={}){
   return{
@@ -23,9 +28,13 @@ function normalizeContext(context={}){
     box3Debt:nonNegative(context.box3Debt??context.debt??DEFAULTS.debt),
     savingsReturnPct:Number(context.savingsReturnPct??DEFAULTS.savingsReturnPct)||0,
     debtInterestPct:Number(context.debtInterestPct??DEFAULTS.debtInterestPct)||0,
+    box3DebtMonthlyRepayment:nonNegative(context.box3DebtMonthlyRepayment??context.debtMonthlyRepayment??DEFAULTS.debtMonthlyRepayment),
+    debtRepaymentSource:context.debtRepaymentSource==='savings'?'savings':'external',
     currentSavingsNotional:Number(context.currentSavingsNotional??DEFAULTS.currentSavingsNotional),
     currentDebtNotional:Number(context.currentDebtNotional??DEFAULTS.currentDebtNotional),
-    currentDebtThreshold:nonNegative(context.currentDebtThreshold??DEFAULTS.currentDebtThreshold)
+    currentDebtThreshold:nonNegative(context.currentDebtThreshold??DEFAULTS.currentDebtThreshold),
+    firstJan1Savings:optionalNonNegative(context.firstJan1Savings),
+    firstJan1Debt:optionalNonNegative(context.firstJan1Debt)
   };
 }
 
@@ -35,32 +44,24 @@ function decorateCore(FC,getContext){
   const originalPlan=FC.simulatePlan.bind(FC);
   const originalFlows=FC.simulateInvestmentFlows.bind(FC);
 
-  FC.simulatePlan=function(config={}){
+  function merge(config={}){
     const c=normalizeContext(read());
-    return originalPlan({...config,
+    return{...config,
       box3Savings:config.box3Savings??c.box3Savings,
       box3Debt:config.box3Debt??c.box3Debt,
       savingsReturnPct:config.savingsReturnPct??c.savingsReturnPct,
       debtInterestPct:config.debtInterestPct??c.debtInterestPct,
+      box3DebtMonthlyRepayment:config.box3DebtMonthlyRepayment??c.box3DebtMonthlyRepayment,
+      debtRepaymentSource:config.debtRepaymentSource??c.debtRepaymentSource,
       currentSavingsNotional:config.currentSavingsNotional??c.currentSavingsNotional,
       currentDebtNotional:config.currentDebtNotional??c.currentDebtNotional,
-      currentDebtThreshold:config.currentDebtThreshold??c.currentDebtThreshold
-    });
-  };
-
-  FC.simulateInvestmentFlows=function(config={}){
-    const c=normalizeContext(read());
-    return originalFlows({...config,
-      box3Savings:config.box3Savings??c.box3Savings,
-      box3Debt:config.box3Debt??c.box3Debt,
-      savingsReturnPct:config.savingsReturnPct??c.savingsReturnPct,
-      debtInterestPct:config.debtInterestPct??c.debtInterestPct,
-      currentSavingsNotional:config.currentSavingsNotional??c.currentSavingsNotional,
-      currentDebtNotional:config.currentDebtNotional??c.currentDebtNotional,
-      currentDebtThreshold:config.currentDebtThreshold??c.currentDebtThreshold
-    });
-  };
-
+      currentDebtThreshold:config.currentDebtThreshold??c.currentDebtThreshold,
+      firstJan1Savings:config.firstJan1Savings??c.firstJan1Savings,
+      firstJan1Debt:config.firstJan1Debt??c.firstJan1Debt
+    };
+  }
+  FC.simulatePlan=function(config={}){return originalPlan(merge(config));};
+  FC.simulateInvestmentFlows=function(config={}){return originalFlows(merge(config));};
   Object.defineProperty(FC,'__box3HouseholdDecorated',{value:true,enumerable:false});
   return FC;
 }
@@ -68,80 +69,77 @@ function decorateCore(FC,getContext){
 function browserContext(){
   const $=id=>document.getElementById(id);
   const val=(id,d=0)=>{const el=$(id);const n=el?Number(el.value):NaN;return Number.isFinite(n)?n:d};
+  const optional=id=>{const el=$(id);if(!el||el.value==='')return null;const n=Number(el.value);return Number.isFinite(n)?n:null};
   return normalizeContext({
     box3Savings:val('box3Savings',0),
     box3Debt:val('box3Debt',0),
     savingsReturnPct:val('box3SavingsReturn',DEFAULTS.savingsReturnPct),
     debtInterestPct:val('box3DebtInterest',DEFAULTS.debtInterestPct),
+    box3DebtMonthlyRepayment:val('box3DebtMonthlyRepayment',0),
+    debtRepaymentSource:$('box3DebtRepaymentSource')?.value||'external',
     currentSavingsNotional:val('currentSavingsNotional',DEFAULTS.currentSavingsNotional*100)/100,
     currentDebtNotional:val('currentDebtNotional',DEFAULTS.currentDebtNotional*100)/100,
-    currentDebtThreshold:val('currentDebtThreshold',DEFAULTS.currentDebtThreshold)
+    currentDebtThreshold:val('currentDebtThreshold',DEFAULTS.currentDebtThreshold),
+    firstJan1Savings:optional('firstJan1Savings'),
+    firstJan1Debt:optional('firstJan1Debt')
   });
+}
+
+function configureTaxSource(){
+  const select=document.getElementById('box3PaySource');
+  if(!select)return;
+  if(!select.querySelector('option[value="savings"]')){
+    const option=document.createElement('option');option.value='savings';option.textContent='Savings / cash';select.insertBefore(option,select.firstChild);
+  }
+  const external=select.querySelector('option[value="external"]');if(external)external.textContent='External cash flow';
+  if(!select.dataset.r3DefaultApplied){select.value='savings';select.dataset.r3DefaultApplied='1';}
 }
 
 function injectBrowserUI(){
   if(typeof document==='undefined'||document.getElementById('box3HouseholdContext'))return;
-  const box3Mode=document.getElementById('box3Mode');
-  const card=box3Mode?.closest('.card');
-  const explanation=document.getElementById('regimeExplanation');
+  const box3Mode=document.getElementById('box3Mode'),card=box3Mode?.closest('.card'),explanation=document.getElementById('regimeExplanation');
   if(!card||!explanation)return;
+  configureTaxSource();
 
   const context=document.createElement('div');
   context.id='box3HouseholdContext';
   context.innerHTML=`
-    <p class="subsection-title">Household Box 3 context</p>
-    <p class="subsection-copy">Add bank deposits and Box 3 debt that sit outside the investment portfolio. These are static Jan 1 planning balances: they affect the tax calculation but are not added to portfolio wealth and do not automatically fall when scenario cash is used for a purchase or down payment.</p>
-    <div class="grid4 advanced-grid">
-      <div class="field"><label for="box3Savings">Savings / bank deposits · Jan 1</label><input id="box3Savings" type="number" min="0" step="100" value="0"><p class="inline">Use other Box 3 savings that should influence tax. Avoid double-counting scenario cash that is spent immediately.</p></div>
-      <div class="field"><label for="box3Debt">Box 3 debt · Jan 1</label><input id="box3Debt" type="number" min="0" step="100" value="0"><p class="inline">Only debts that belong in Box 3. The 2026 debt threshold is applied in the deemed-return calculation.</p></div>
-      <div class="field"><label for="box3SavingsReturn">Actual savings interest %</label><input id="box3SavingsReturn" type="number" min="-10" max="30" step="0.01" value="1.28"><p class="inline">Planning assumption for the actual-return rebuttal and proposed actual-return regime. The starting value is illustrative.</p></div>
-      <div class="field"><label for="box3DebtInterest">Actual Box 3 debt interest %</label><input id="box3DebtInterest" type="number" min="0" max="30" step="0.01" value="2.70"><p class="inline">Planning assumption for interest paid on Box 3 debt. The actual-return route uses full modeled debt interest, without the deemed-method debt threshold.</p></div>
-    </div>`;
+    <p class="subsection-title">Household financial balances</p>
+    <p class="subsection-copy">Savings and Box 3 debt now evolve through the plan. Savings earns the entered interest rate, Box 3 debt can be repaid, and the next calendar year's Box 3 calculation uses the resulting Jan 1 balances.</p>
+    <div class="grid3 advanced-grid">
+      <div class="field"><label for="box3Savings">Starting savings / bank deposits</label><input id="box3Savings" type="number" min="0" step="100" value="0"><p class="inline">A real balance in the household ledger, not just a tax input.</p></div>
+      <div class="field"><label for="box3Debt">Starting Box 3 debt</label><input id="box3Debt" type="number" min="0" step="100" value="0"><p class="inline">Only debt that belongs in Box 3. Keep the owner-occupied home mortgage separate.</p></div>
+      <div class="field"><label for="box3SavingsReturn">Savings interest % / year</label><input id="box3SavingsReturn" type="number" min="-10" max="30" step="0.01" value="1.28"><p class="inline">Savings interest is credited to the modeled cash balance and included in actual-return Box 3.</p></div>
+      <div class="field"><label for="box3DebtInterest">Box 3 debt interest % / year</label><input id="box3DebtInterest" type="number" min="0" max="30" step="0.01" value="2.70"><p class="inline">Interest is modeled for Box 3 actual return. The payment itself is treated as external household cash flow.</p></div>
+      <div class="field"><label for="box3DebtMonthlyRepayment">Monthly Box 3 debt repayment</label><input id="box3DebtMonthlyRepayment" type="number" min="0" step="50" value="0"><p class="inline">Optional. This reduces the debt balance each month.</p></div>
+      <div class="field"><label for="box3DebtRepaymentSource">Debt repayment comes from</label><select id="box3DebtRepaymentSource"><option value="external" selected>External cash flow</option><option value="savings">Savings / cash balance</option></select><p class="inline">Savings-funded repayment reduces cash and debt together. External repayment is tracked separately.</p></div>
+    </div>
+    <div class="callout"><strong>R3 balance-sheet behavior:</strong> Box 3 tax paid from savings reduces savings; tax paid from investments reduces the portfolio; external tax is tracked separately. If a selected balance cannot cover the full tax charge, the unpaid remainder becomes external cash flow rather than disappearing.</div>`;
   card.insertBefore(context,explanation);
 
-  const currentNotional=document.getElementById('currentNotional');
-  const currentGrid=currentNotional?.closest('.grid4');
+  const currentNotional=document.getElementById('currentNotional'),currentGrid=currentNotional?.closest('.grid4');
   if(currentGrid&&!document.getElementById('currentSavingsNotional')){
-    const advanced=document.createElement('div');
-    advanced.className='grid3 advanced-grid';
+    const advanced=document.createElement('div');advanced.className='grid3 advanced-grid';
     advanced.innerHTML=`
       <div class="field"><label for="currentSavingsNotional">Deemed return on bank deposits %</label><input id="currentSavingsNotional" type="number" min="0" max="30" step="0.01" value="1.28"><p class="inline">2026 provisional bank-deposit percentage.</p></div>
       <div class="field"><label for="currentDebtNotional">Deemed return on Box 3 debt %</label><input id="currentDebtNotional" type="number" min="0" max="30" step="0.01" value="2.70"><p class="inline">2026 provisional debt percentage.</p></div>
-      <div class="field"><label for="currentDebtThreshold">Debt threshold / person</label><input id="currentDebtThreshold" type="number" min="0" step="100" value="3800"><p class="inline">€3,800 per person in 2026; €7,600 for two fiscal partners.</p></div>`;
+      <div class="field"><label for="currentDebtThreshold">Debt threshold / person</label><input id="currentDebtThreshold" type="number" min="0" step="100" value="3800"><p class="inline">€3,800 per person in 2026; €7,600 for two fiscal partners.</p></div>
+      <div class="field"><label for="firstJan1Savings">Jan 1 savings · first plan year</label><input id="firstJan1Savings" type="number" min="0" step="100" placeholder="Use starting savings"><p class="inline">Optional override when the plan starts after January.</p></div>
+      <div class="field"><label for="firstJan1Debt">Jan 1 Box 3 debt · first plan year</label><input id="firstJan1Debt" type="number" min="0" step="100" placeholder="Use starting debt"><p class="inline">Optional override when the plan starts after January.</p></div>`;
     currentGrid.insertAdjacentElement('afterend',advanced);
   }
 
-  const investmentLabel=document.querySelector('label[for="currentNotional"]');
-  if(investmentLabel)investmentLabel.textContent='Deemed return on investments / other assets %';
-
+  const investmentLabel=document.querySelector('label[for="currentNotional"]');if(investmentLabel)investmentLabel.textContent='Deemed return on investments / other assets %';
   const foldBody=currentGrid?.closest('.fold-body');
   if(foldBody){
-    const currentTitle=foldBody.querySelector('.subsection-title');
-    const currentCopy=foldBody.querySelector('.subsection-copy');
-    if(currentTitle)currentTitle.textContent='2026 current rules, mixed-asset estimate';
-    if(currentCopy)currentCopy.textContent='Models the investment portfolio together with entered bank deposits and Box 3 debt. The deemed method uses separate 2026 percentages and the debt threshold; the actual-return rebuttal uses modeled investment growth + savings interest − Box 3 debt interest and no tax-free wealth allowance.';
-    const futureTitle=foldBody.querySelector('.future-title');
-    const futureCopy=futureTitle?.nextElementSibling;
-    if(futureCopy?.classList.contains('subsection-copy'))futureCopy.textContent='For the proposed actual-return scenario, investment growth, modeled savings interest and modeled Box 3 debt interest are combined before the proposed exemption and loss rules. This remains a planning scenario, not enacted law.';
+    const currentTitle=foldBody.querySelector('.subsection-title'),currentCopy=foldBody.querySelector('.subsection-copy');
+    if(currentTitle)currentTitle.textContent='2026 current rules, dynamic mixed-asset estimate';
+    if(currentCopy)currentCopy.textContent='Uses the investment portfolio plus the household savings and Box 3 debt ledgers. Each calendar year takes the modeled Jan 1 balances, then compares the deemed-return method with the modeled actual-return rebuttal.';
   }
 
-  const sourceList=document.querySelector('.source-list');
-  if(sourceList)sourceList.innerHTML=sourceList.innerHTML.replace(
-    'Current Box 3: Belastingdienst 2026 parameters for ordinary investments; the actual-return rebuttal includes value changes and does not use the tax-free wealth allowance.',
-    'Current Box 3: Belastingdienst 2026 mixed-asset structure for bank deposits, investments / other assets and Box 3 debts; the actual-return rebuttal includes actual income / value changes and modeled debt interest and does not use the tax-free wealth allowance.'
-  );
-
-  const trigger=()=>{
-    const el=document.getElementById('currentNotional')||document.getElementById('box3Mode');
-    if(el)el.dispatchEvent(new Event('input',{bubbles:true}));
-  };
-  context.addEventListener('input',trigger);
-  context.addEventListener('change',trigger);
-  ['currentSavingsNotional','currentDebtNotional','currentDebtThreshold'].forEach(id=>{
-    const el=document.getElementById(id);
-    el?.addEventListener('input',trigger);
-    el?.addEventListener('change',trigger);
-  });
+  const trigger=()=>{const el=document.getElementById('currentNotional')||document.getElementById('box3Mode');if(el)el.dispatchEvent(new Event('input',{bubbles:true}));};
+  context.addEventListener('input',trigger);context.addEventListener('change',trigger);
+  ['currentSavingsNotional','currentDebtNotional','currentDebtThreshold','firstJan1Savings','firstJan1Debt'].forEach(id=>{const el=document.getElementById(id);el?.addEventListener('input',trigger);el?.addEventListener('change',trigger);});
 }
 
 function bootBrowser(){
@@ -151,9 +149,7 @@ function bootBrowser(){
   decorateCore(window.FinanceCore,browserContext);
 }
 
-return{DEFAULTS,normalizeContext,decorateCore,browserContext,injectBrowserUI,bootBrowser};
+return{DEFAULTS,normalizeContext,decorateCore,browserContext,configureTaxSource,injectBrowserUI,bootBrowser};
 });
 
-if(typeof window!=='undefined'){
-  window.Box3Household.bootBrowser();
-}
+if(typeof window!=='undefined')window.Box3Household.bootBrowser();
