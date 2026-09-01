@@ -139,4 +139,11 @@ else{
   script.onerror=()=>{throw new Error('Could not load purchase-rules.js')};
   document.head.appendChild(script);
 }
+
+if(!window.Box3Household){
+  const box3Script=document.createElement('script');
+  box3Script.src='box3-household.js';
+  box3Script.onerror=()=>{throw new Error('Could not load box3-household.js')};
+  document.head.appendChild(box3Script);
+}
 })();
