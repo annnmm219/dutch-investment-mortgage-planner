@@ -10,80 +10,266 @@
 <link rel="stylesheet" href="styles.css">
 </head>
 <body><div class="container">
-<header><h1>Dutch investment & mortgage planner</h1><p>Illustrative multi-stage investing, mortgage amortisation, Dutch mortgage-interest relief and Box 3 tax scenarios. Default inputs are examples, not recommendations.</p></header>
+<header>
+  <h1>Dutch investment & mortgage planner</h1>
+  <p>Multi-stage investing, mortgage planning, Dutch mortgage-interest relief and Box 3 scenarios. Default inputs are illustrative examples.</p>
+</header>
+
 <div class="tabs" role="tablist" aria-label="Planner sections">
- <button class="tab active" data-tab="investment">Investment</button>
- <button class="tab" data-tab="mortgage">Mortgage</button>
- <button class="tab" data-tab="scenarios">Scenarios</button>
+  <button class="tab active" data-tab="investment">Investment</button>
+  <button class="tab" data-tab="mortgage">Mortgage</button>
+  <button class="tab" data-tab="scenarios">Scenarios</button>
 </div>
 
 <section class="panel active" id="tab-investment">
- <div class="section-divider"><h2>Investment plan</h2><p>Build contributions around different stages of your life, then apply Dutch Box 3 assumptions to the same portfolio.</p></div>
- <div class="card"><div class="section-head"><div><p class="section-label">Planning timeline</p><p class="section-note">Choose a real start month so annual bonuses and tax-regime changes fall in the correct calendar year.</p></div></div>
-  <div class="grid4">
-   <div class="field"><label for="startMonth">Plan start month</label><select id="startMonth"></select></div>
-   <div class="field"><label for="startYear">Plan start year</label><input id="startYear" type="number" min="2020" max="2100" step="1" value="2026"><p class="inline">Example year aligned with the current tax assumptions in this version.</p></div>
-   <div class="field"><label for="startPortfolio">Starting investment portfolio</label><input id="startPortfolio" type="number" min="0" step="100" value="0"></div>
-   <div class="field"><label for="bonusMonth">Annual lump-sum month</label><select id="bonusMonth"></select></div>
+  <div class="section-divider">
+    <h2>Investment plan</h2>
+    <p>Build contributions around different stages of life, then apply the selected Dutch Box 3 assumptions.</p>
   </div>
- </div>
- <div class="card"><div class="section-head"><div><p class="section-label">Life phases</p><p class="section-note">Each phase can represent salary growth, children, career changes, lower expenses, or a later mortgage-paydown period. A planned extra mortgage repayment is a recurring overpayment and is separate from any annual bonus.</p></div></div>
-  <div class="phase-toolbar"><div class="field phase-count"><label for="phaseCount">Number of phases</label><select id="phaseCount"><option>1</option><option>2</option><option selected>3</option><option>4</option><option>5</option><option>6</option></select></div></div><div id="phaseList" class="phase-list"></div>
- </div>
- <div class="card"><div class="section-head"><div><p class="section-label">Investment return</p><p class="section-note">Nominal annual return before Box 3 tax. For an accumulating fund or ETF, the model treats reinvested distributions as part of portfolio value growth.</p></div></div><div class="field" style="max-width:300px"><label for="annualReturn">Expected annual return %</label><input id="annualReturn" type="number" min="-30" max="30" step="0.5" value="7"><p class="inline">Illustrative assumption. Use your own planning rate.</p></div></div>
 
- <div class="section-divider"><h2>Box 3 tax</h2><p>Investment-tax assumptions belong to the investment model, not the main navigation.</p></div>
- <div class="card"><div class="section-head"><div><p class="section-label">Tax model</p><p class="section-note">Choose whether to ignore Box 3, use the current-rules proxy, or model the proposed actual-return regime.</p></div></div>
-  <div class="grid3"><div class="field"><label for="box3Mode">Tax regime</label><select id="box3Mode"><option value="none">Ignore Box 3 tax</option><option value="current">2026 current rules (investment-only estimate)</option><option value="transition" selected>2026 rules → proposed 2028 regime</option><option value="future">Proposed 2028 regime from plan start</option></select></div><div class="field"><label for="taxPartners">Taxpayers / fiscal partners</label><select id="taxPartners"><option value="1" selected>1 person</option><option value="2">2 fiscal partners</option></select></div><div class="field"><label for="box3PaySource">Pay Box 3 tax from</label><select id="box3PaySource"><option value="portfolio" selected>Investment portfolio</option><option value="external">External cash</option></select></div></div>
-  <div class="summary"><div class="summary-item"><p class="k">Box 3 tax paid</p><p class="v" id="sBox3">—</p><p class="s" id="sBox3Sub">—</p></div><div class="summary-item"><p class="k">Current-regime tax</p><p class="v" id="bCurrent">—</p><p class="s">modeled years before transition</p></div><div class="summary-item"><p class="k">Proposed-regime tax</p><p class="v" id="bFuture">—</p><p class="s">actual/unrealized return tax</p></div><div class="summary-item"><p class="k">Portfolio drag</p><p class="v" id="bDrag">—</p><p class="s">difference vs no Box 3 tax</p></div></div>
-  <div class="callout warn"><strong>Proposed 2028 regime, not enacted law.</strong> The calculator treats the proposed regime as a scenario and keeps its parameters editable.</div>
- </div>
- <details class="fold">
-  <summary>Box 3 assumptions and advanced settings</summary>
-  <div class="fold-body">
-   <p class="subsection-title">2026 current rules, investment-only estimate</p><p class="subsection-copy">For a portfolio consisting only of ordinary investments. The statutory calculation uses the 2026 tax-free wealth allowance and deemed investment return. The calculator also models the actual-return rebuttal and uses the lower modeled tax. Under the actual-return route, the tax-free wealth allowance does not apply.</p>
-   <div class="grid4" style="margin-top:14px"><div class="field"><label for="currentTaxRate">Box 3 tax rate %</label><input id="currentTaxRate" type="number" min="0" max="100" step="0.1" value="36"></div><div class="field"><label for="currentAllowance">Tax-free wealth per person, 2026</label><input id="currentAllowance" type="number" min="0" step="100" value="59357"><p class="inline">Official 2026 amount: €59,357 per person, or €118,714 for two fiscal partners.</p></div><div class="field"><label for="currentNotional">Deemed return on investments %</label><input id="currentNotional" type="number" min="0" max="30" step="0.01" value="6"><p class="inline">2026 investments and other assets: 6.00%.</p></div><div class="field"><label for="firstJan1Portfolio">Jan 1 portfolio, first plan year</label><input id="firstJan1Portfolio" type="number" min="0" step="100" value="0"><p class="inline">Needed when the plan starts after January.</p></div></div>
-   <p class="foot">The 2026 proxy is held constant for 2027 because final 2027 parameters are not yet available in this planning model.</p>
-   <p class="subsection-title" style="margin-top:20px">Proposed actual-return regime</p><p class="subsection-copy">For ordinary listed shares and ETFs, annual value growth is modeled as taxable even when no sale occurs.</p>
-   <div class="grid4" style="margin-top:14px"><div class="field"><label for="futureStart">Proposed start year</label><input id="futureStart" type="number" min="2027" max="2100" step="1" value="2028"></div><div class="field"><label for="futureTaxRate">Tax rate %</label><input id="futureTaxRate" type="number" min="0" max="100" step="0.1" value="36"></div><div class="field"><label for="futureExempt">Tax-free result / person</label><input id="futureExempt" type="number" min="0" step="100" value="1800"></div><div class="field"><label for="futureLossThreshold">Loss threshold</label><input id="futureLossThreshold" type="number" min="0" step="100" value="500"></div></div>
-   <div class="summary"><div class="summary-item"><p class="k">Loss carryforward</p><p class="v" id="bLoss">—</p><p class="s">remaining modeled loss</p></div></div>
+  <div class="card">
+    <div class="section-head"><div>
+      <p class="section-label">Planning timeline</p>
+      <p class="section-note">A real start date keeps annual bonuses and tax-regime changes in the correct calendar year.</p>
+    </div></div>
+    <div class="grid4">
+      <div class="field"><label for="startMonth">Plan start month</label><select id="startMonth"></select></div>
+      <div class="field"><label for="startYear">Plan start year</label><input id="startYear" type="number" min="2020" max="2100" step="1" value="2026"></div>
+      <div class="field"><label for="startPortfolio">Starting investment portfolio</label><input id="startPortfolio" type="number" min="0" step="100" value="0"></div>
+      <div class="field"><label for="bonusMonth">Annual lump-sum month</label><select id="bonusMonth"></select></div>
+    </div>
   </div>
- </details>
+
+  <div class="card">
+    <div class="section-head"><div>
+      <p class="section-label">Life phases</p>
+      <p class="section-note">Monthly investment and recurring mortgage overpayments can change by phase. The annual bonus is a separate one-off amount each year.</p>
+    </div></div>
+    <div class="phase-toolbar">
+      <div class="field phase-count"><label for="phaseCount">Number of phases</label>
+        <select id="phaseCount"><option>1</option><option>2</option><option selected>3</option><option>4</option><option>5</option><option>6</option></select>
+      </div>
+    </div>
+    <div id="phaseList" class="phase-list"></div>
+    <p class="foot"><strong>Extra mortgage repayment</strong> = recurring overpayment from normal cash flow. <strong>Annual bonus / lump sum</strong> = one payment per year that can be invested, paid to the mortgage, or split.</p>
+  </div>
+
+  <div class="card">
+    <div class="section-head"><div>
+      <p class="section-label">Investment return</p>
+      <p class="section-note">Nominal annual return before Box 3 tax. Use your own planning assumption.</p>
+    </div></div>
+    <div class="field compact-field"><label for="annualReturn">Expected annual return %</label>
+      <input id="annualReturn" type="number" min="-30" max="30" step="0.5" value="7">
+    </div>
+  </div>
+
+  <div class="section-divider"><h2>Box 3 tax</h2><p>Tax treatment stays inside the investment model.</p></div>
+  <div class="card">
+    <div class="section-head"><div>
+      <p class="section-label">Tax model</p>
+      <p class="section-note">Choose one regime for the calculation. The explanation below changes with your selection.</p>
+    </div></div>
+    <div class="grid3">
+      <div class="field"><label for="box3Mode">Tax regime</label>
+        <select id="box3Mode">
+          <option value="none">Ignore Box 3 tax</option>
+          <option value="current">2026 rules for the whole plan</option>
+          <option value="transition" selected>2026 rules → proposed 2028 regime</option>
+          <option value="future">Proposed 2028 regime for the whole plan</option>
+        </select>
+      </div>
+      <div class="field"><label for="taxPartners">Taxpayers / fiscal partners</label>
+        <select id="taxPartners"><option value="1" selected>1 person</option><option value="2">2 fiscal partners</option></select>
+      </div>
+      <div class="field"><label for="box3PaySource">Pay Box 3 tax from</label>
+        <select id="box3PaySource"><option value="portfolio" selected>Investment portfolio</option><option value="external">External cash</option></select>
+      </div>
+    </div>
+
+    <div id="regimeExplanation" class="callout"></div>
+
+    <div class="summary tax-summary">
+      <div class="summary-item"><p class="k">Portfolio before Box 3</p><p class="v" id="bBeforeTax">—</p><p class="s">same plan with Box 3 switched off</p></div>
+      <div class="summary-item"><p class="k">Box 3 tax to pay</p><p class="v" id="sBox3">—</p><p class="s" id="sBox3Sub">—</p></div>
+      <div class="summary-item"><p class="k">Portfolio after Box 3</p><p class="v" id="bAfterTax">—</p><p class="s" id="bAfterTaxSub">—</p></div>
+    </div>
+
+    <div id="futureLawWarning" class="callout warn"><strong>Proposed 2028 regime, not enacted law.</strong> It is modeled only as a planning scenario and its parameters remain editable.</div>
+  </div>
+
+  <details class="fold">
+    <summary>Box 3 assumptions and advanced settings</summary>
+    <div class="fold-body">
+      <p class="subsection-title">2026 current rules, investment-only estimate</p>
+      <p class="subsection-copy">For ordinary investments only. The model compares the statutory deemed-return method with the actual-return rebuttal and uses the lower modeled tax. Under the actual-return route, the tax-free wealth allowance does not apply.</p>
+      <div class="grid4 advanced-grid">
+        <div class="field"><label for="currentTaxRate">Box 3 tax rate %</label><input id="currentTaxRate" type="number" min="0" max="100" step="0.1" value="36"></div>
+        <div class="field"><label for="currentAllowance">Tax-free wealth / person, 2026</label><input id="currentAllowance" type="number" min="0" step="100" value="59357"><p class="inline">€59,357 per person; €118,714 for two fiscal partners.</p></div>
+        <div class="field"><label for="currentNotional">Deemed return on investments %</label><input id="currentNotional" type="number" min="0" max="30" step="0.01" value="6"><p class="inline">2026 investments and other assets: 6.00%.</p></div>
+        <div class="field"><label for="firstJan1Portfolio">Jan 1 portfolio, first plan year</label><input id="firstJan1Portfolio" type="number" min="0" step="100" value="0"><p class="inline">Needed when the plan starts after January.</p></div>
+      </div>
+      <p class="foot">If the 2026-rules option is used beyond 2026, those parameters are deliberately held constant as a sensitivity case, not presented as future law.</p>
+
+      <p class="subsection-title future-title">Proposed actual-return regime</p>
+      <p class="subsection-copy">For ordinary listed shares and ETFs, annual value growth is modeled as taxable even when no sale occurs.</p>
+      <div class="grid4 advanced-grid">
+        <div class="field"><label for="futureStart">Proposed transition year</label><input id="futureStart" type="number" min="2027" max="2100" step="1" value="2028"></div>
+        <div class="field"><label for="futureTaxRate">Tax rate %</label><input id="futureTaxRate" type="number" min="0" max="100" step="0.1" value="36"></div>
+        <div class="field"><label for="futureExempt">Tax-free result / person</label><input id="futureExempt" type="number" min="0" step="100" value="1800"></div>
+        <div class="field"><label for="futureLossThreshold">Loss threshold</label><input id="futureLossThreshold" type="number" min="0" step="100" value="500"></div>
+      </div>
+      <div class="summary"><div class="summary-item"><p class="k">Loss carryforward</p><p class="v" id="bLoss">—</p><p class="s">remaining modeled loss</p></div></div>
+    </div>
+  </details>
 </section>
 
 <section class="panel" id="tab-mortgage">
- <div class="section-divider"><h2>Mortgage plan</h2><p>Model repayment structure, extra contributions and the Dutch mortgage-interest deduction in one place.</p></div>
- <div class="card"><div class="section-head"><div><p class="section-label">Mortgage details</p><p class="section-note">Monthly amortisation is calculated explicitly. Extra repayments and bonus repayments reduce the outstanding loan immediately.</p></div></div>
-  <div class="grid4">
-   <div class="field"><label for="mortBalance">Current balance</label><input id="mortBalance" type="number" min="0" step="100" value="300000"><p class="inline">Illustrative example.</p></div>
-   <div class="field"><label for="mortRate">Interest rate %</label><input id="mortRate" type="number" min="0" max="20" step="0.01" value="4.00"></div>
-   <div class="field"><label for="mortYears">Remaining term, years</label><input id="mortYears" type="number" min="1" max="40" step="1" value="25"></div>
-   <div class="field"><label for="mortType">Repayment assumption</label><select id="mortType"><option value="linear">Linear mortgage</option><option value="annuity" selected>Annuity mortgage</option></select></div>
+  <div class="section-divider"><h2>Mortgage plan</h2><p>Use the same section whether you already have a mortgage or are planning a home purchase.</p></div>
+
+  <div class="card">
+    <div class="section-head"><div>
+      <p class="section-label">Mortgage setup</p>
+      <p class="section-note">Purchase mode follows the useful WhatTheMortgage structure, but the calculation here is independently implemented.</p>
+    </div></div>
+
+    <div class="field compact-field"><label for="mortgageMode">I am...</label>
+      <select id="mortgageMode"><option value="existing" selected>Managing an existing mortgage</option><option value="purchase">Planning to buy a home</option></select>
+    </div>
+
+    <div id="existingMortgageFields">
+      <div class="grid3">
+        <div class="field"><label for="mortBalance">Current mortgage balance</label><input id="mortBalance" type="number" min="0" step="100" value="300000"></div>
+        <div class="field"><label for="mortRate">Interest rate %</label><input id="mortRate" type="number" min="0" max="20" step="0.01" value="4.00"></div>
+        <div class="field"><label for="mortYears">Remaining term, years</label><input id="mortYears" type="number" min="1" max="40" step="1" value="25"></div>
+      </div>
+    </div>
+
+    <div id="purchaseMortgageFields" class="hidden">
+      <div class="grid3">
+        <div class="field"><label for="housePrice">House price</label><input id="housePrice" type="number" min="0" step="1000" value="350000"></div>
+        <div class="field"><label for="ownSavings">Own savings</label><input id="ownSavings" type="number" min="0" step="1000" value="40000"></div>
+        <div class="field"><label for="purchaseCosts">Estimated purchase costs</label><input id="purchaseCosts" type="number" min="0" step="500" value="15000"><p class="inline">Enter your own estimate; purchase costs depend on the buyer and transaction.</p></div>
+      </div>
+      <div class="grid2">
+        <div class="field"><label for="purchaseRate">Mortgage interest rate %</label><input id="purchaseRate" type="number" min="0" max="20" step="0.01" value="4.00"></div>
+        <div class="field"><label for="purchaseYears">Mortgage term, years</label><input id="purchaseYears" type="number" min="1" max="40" step="1" value="30"></div>
+      </div>
+      <div class="summary">
+        <div class="summary-item"><p class="k">Savings after purchase costs</p><p class="v" id="purchaseSavingsAfterCosts">—</p></div>
+        <div class="summary-item"><p class="k">Required mortgage</p><p class="v" id="purchaseLoan">—</p></div>
+        <div class="summary-item"><p class="k">Loan / price</p><p class="v" id="purchaseLtv">—</p></div>
+        <div class="summary-item"><p class="k">Cash shortfall for costs</p><p class="v" id="purchaseShortfall">—</p></div>
+      </div>
+    </div>
   </div>
-  <div class="mort-method"><div class="mort-option"><strong>Linear</strong><span>Constant principal repayment. Gross payment falls as interest declines.</span></div><div class="mort-option"><strong>Annuity</strong><span>Approximately constant scheduled gross payment at a fixed rate. Principal rises over time.</span></div></div>
- </div>
- <div class="card"><div class="section-head"><div><p class="section-label">Linear vs annuity comparison</p><p class="section-note">Same balance, rate, remaining term, life phases and extra repayments.</p></div></div><div class="compare-grid"><div class="compare-card" id="linearCompare"></div><div class="compare-card" id="annuityCompare"></div></div></div>
 
- <div class="card"><div class="section-head"><div><p class="section-label">Mortgage-interest deduction</p><p class="section-note">Dutch Box 1 estimate, kept inside the mortgage section because it changes the effective cost of borrowing.</p></div></div>
-  <div class="grid4"><div class="field"><label for="grossIncome">Gross annual Box 1 income</label><input id="grossIncome" type="number" min="0" step="1000" value="60000"><p class="inline">Illustrative example.</p></div><div class="field"><label for="wozValue">WOZ value</label><input id="wozValue" type="number" min="0" step="1000" value="400000"><p class="inline">Illustrative example, used for eigenwoningforfait.</p></div><div class="field"><label for="deductionMode">Deduction rate</label><select id="deductionMode"><option value="auto" selected>Automatic 2026 estimate</option><option value="manual">Manual rate</option></select></div><div class="field"><label for="manualDeduction">Manual deduction %</label><input id="manualDeduction" type="number" min="0" max="60" step="0.01" value="37.56"></div></div>
-  <div class="grid2"><div class="toggle"><input id="mortTaxEnabled" type="checkbox" checked><label for="mortTaxEnabled">Include mortgage-interest tax relief</label></div><div class="callout"><strong id="deductionDisplay">37.56%</strong><br><span id="deductionWhy">2026 estimate.</span></div></div>
-  <div class="summary"><div class="summary-item"><p class="k">Gross mortgage interest</p><p class="v" id="mGrossInterest">—</p><p class="s">planning horizon</p></div><div class="summary-item"><p class="k">Estimated tax benefit</p><p class="v" id="mTaxBenefit">—</p><p class="s">after EWF/Hillen approximation</p></div><div class="summary-item"><p class="k">Net interest</p><p class="v" id="mNetInterest">—</p><p class="s">gross interest minus tax benefit</p></div><div class="summary-item"><p class="k">Mortgage payoff</p><p class="v" id="mPayoff">—</p><p class="s" id="mPayoffSub">—</p></div></div>
-  <div class="summary"><div class="summary-item"><p class="k">Mortgage tax benefit</p><p class="v" id="sMortTax">—</p><p class="s" id="sMortTaxSub">—</p></div></div>
- </div>
+  <div class="card">
+    <div class="section-head"><div>
+      <p class="section-label">Linear vs annuity</p>
+      <p class="section-note">Both are always calculated. Click a card to choose which one drives the combined plan and detailed mortgage schedule.</p>
+    </div></div>
+    <div class="compare-grid">
+      <button type="button" class="compare-card selectable" id="linearCompare" data-mort-type="linear"></button>
+      <button type="button" class="compare-card selectable" id="annuityCompare" data-mort-type="annuity"></button>
+    </div>
+  </div>
 
- <details class="fold">
-  <summary>Mortgage payment schedule</summary>
-  <div class="fold-body"><p class="subsection-copy">Detailed Balance / Gross / Principal / Interest / Tax Return / Net breakdown for the selected Linear or Annuity assumption.</p><div class="schedule-toolbar" style="margin-top:14px"><div class="field"><label for="scheduleView">View</label><select id="scheduleView"><option value="monthly" selected>Monthly</option><option value="yearly">Yearly</option></select></div></div><div class="table-wrap"><table><thead><tr><th>Date</th><th>Balance</th><th>Gross scheduled</th><th>Principal</th><th>Interest</th><th>Tax return</th><th>Net scheduled</th><th>Extra</th></tr></thead><tbody id="scheduleBody"></tbody></table></div></div>
- </details>
+  <div class="card">
+    <div class="section-head"><div>
+      <p class="section-label">Mortgage-interest deduction</p>
+      <p class="section-note">Dutch Box 1 planning estimate. For a planned purchase, use an estimated WOZ only as a rough planning input.</p>
+    </div></div>
+    <div class="grid4">
+      <div class="field"><label for="grossIncome">Gross annual Box 1 income</label><input id="grossIncome" type="number" min="0" step="1000" value="60000"></div>
+      <div class="field"><label for="wozValue">WOZ value</label><input id="wozValue" type="number" min="0" step="1000" value="400000"></div>
+      <div class="field"><label for="deductionMode">Deduction rate</label><select id="deductionMode"><option value="auto" selected>Automatic 2026 estimate</option><option value="manual">Manual rate</option></select></div>
+      <div class="field"><label for="manualDeduction">Manual deduction %</label><input id="manualDeduction" type="number" min="0" max="60" step="0.01" value="37.56"></div>
+    </div>
+    <div class="grid2">
+      <div class="toggle"><input id="mortTaxEnabled" type="checkbox" checked><label for="mortTaxEnabled">Include mortgage-interest tax relief</label></div>
+      <div class="callout"><strong id="deductionDisplay">37.56%</strong><br><span id="deductionWhy">2026 estimate.</span></div>
+    </div>
+    <div class="summary">
+      <div class="summary-item"><p class="k">Gross mortgage interest</p><p class="v" id="mGrossInterest">—</p><p class="s">planning horizon</p></div>
+      <div class="summary-item"><p class="k">Estimated tax benefit</p><p class="v" id="mTaxBenefit">—</p><p class="s">after EWF/Hillen approximation</p></div>
+      <div class="summary-item"><p class="k">Net interest</p><p class="v" id="mNetInterest">—</p><p class="s">gross interest minus tax benefit</p></div>
+      <div class="summary-item"><p class="k">Mortgage payoff</p><p class="v" id="mPayoff">—</p><p class="s" id="mPayoffSub">—</p></div>
+    </div>
+  </div>
+
+  <details class="fold">
+    <summary>Mortgage payment schedule</summary>
+    <div class="fold-body">
+      <p class="subsection-copy">Detailed Balance / Gross / Principal / Interest / Tax Return / Net breakdown for the Linear or Annuity method selected above.</p>
+      <div class="schedule-toolbar">
+        <div class="field"><label for="scheduleView">View</label><select id="scheduleView"><option value="monthly" selected>Monthly</option><option value="yearly">Yearly</option></select></div>
+      </div>
+      <div class="table-wrap"><table><thead><tr><th>Date</th><th>Balance</th><th>Gross scheduled</th><th>Principal</th><th>Interest</th><th>Tax return</th><th>Net scheduled</th><th>Extra</th></tr></thead><tbody id="scheduleBody"></tbody></table></div>
+    </div>
+  </details>
 </section>
 
 <section class="panel" id="tab-scenarios">
- <div class="section-divider"><h2>Scenarios</h2><p>Compare investment-return outcomes while keeping your chosen mortgage and tax assumptions unchanged.</p></div>
- <div class="card"><div class="section-head"><div><p class="section-label">Investment return scenarios</p><p class="section-note">All mortgage and tax assumptions stay the same. Only nominal investment return changes.</p></div></div><div id="scenarioCards" class="scenarios"></div></div>
- <div class="card"><div class="section-head"><div><p class="section-label">Combined timeline</p><p class="section-note">Portfolio after modeled Box 3 tax, remaining mortgage balance, and total invested.</p></div></div><div class="chart-wrap"><canvas id="mainChart" role="img" aria-label="Investment portfolio and mortgage balance over time"></canvas></div><div class="legend"><span><i class="line" style="background:#2a78d6"></i>Portfolio after Box 3</span><span><i class="line" style="background:#1baf7a"></i>Mortgage balance</span><span><i class="line" style="border-top:2px dashed #9a9a96"></i>Total invested</span></div><div id="validation" class="validation"></div></div>
- <details class="fold"><summary>Final results summary</summary><div class="fold-body"><p class="subsection-copy">Hidden by default for privacy. Open this only when you want to review the final headline numbers.</p><div class="stats" style="margin-top:14px;margin-bottom:0"><div class="stat accent"><p class="stat-label">Portfolio after Box 3 tax</p><p class="stat-value" id="sPortfolio">—</p><p class="stat-sub" id="sPortfolioSub">—</p></div><div class="stat"><p class="stat-label">Total invested</p><p class="stat-value" id="sInvested">—</p><p class="stat-sub" id="sInvestedSub">—</p></div><div class="stat green"><p class="stat-label">Mortgage remaining</p><p class="stat-value" id="sMortgage">—</p><p class="stat-sub" id="sMortgageSub">—</p></div></div></div></details>
- <details class="fold"><summary>Model status and sources</summary><div class="fold-body"><div class="source-list">Mortgage structure reference: WhatTheMortgage.com for its annuity/linear comparator and monthly Balance / Gross / Capital / Interest / Tax Return / Net breakdown. Calculations here are independently implemented for an existing mortgage and life-phase planning.<br>Mortgage deduction: Belastingdienst 2026 mortgage-interest deduction limitation and eigenwoningforfait rules.<br>Current Box 3: Belastingdienst 2026 rate, €59,357 tax-free wealth per person, and 6.00% deemed return for investments/other assets; the actual-return rebuttal includes value changes and does not use the tax-free wealth allowance.<br>Proposed Box 3: Rijksoverheid / parliamentary bill Wet werkelijk rendement box 3. Ordinary listed shares and funds/ETFs are modeled using annual wealth accretion; current bill parameters remain editable in the Investment section.<br><a href="https://whathemortgage.com/" target="_blank" rel="noopener">WhatTheMortgage reference</a> · <a href="https://www.belastingdienst.nl/wps/wcm/connect/nl/koopwoning/content/tariefsaanpassing-eigen-woning" target="_blank" rel="noopener">Belastingdienst mortgage deduction</a> · <a href="https://www.belastingdienst.nl/wps/wcm/connect/nl/box-3/content/berekening-box-3-inkomen-2026" target="_blank" rel="noopener">Belastingdienst Box 3 2026</a> · <a href="https://www.rijksoverheid.nl/themas/werk/inkomstenbelasting/plannen-werkelijk-rendement-box-3" target="_blank" rel="noopener">Rijksoverheid proposed Box 3</a></div><div class="callout warn" style="margin-top:14px"><strong>Planning tool, not tax or financial advice.</strong> Future tax treatment depends on legislation and your complete tax position.</div></div></details>
+  <div class="section-divider"><h2>Scenarios</h2><p>Choose your own return assumptions. Mortgage and tax settings remain unchanged.</p></div>
+
+  <div class="card">
+    <div class="section-head"><div>
+      <p class="section-label">Investment return scenarios</p>
+      <p class="section-note">Edit any rate, including strong-market assumptions such as 12–14%. These scenarios do not overwrite the main expected return in Investment.</p>
+    </div></div>
+    <div class="grid3 scenario-inputs">
+      <div class="field"><label for="scenarioRate1">Scenario 1 return %</label><input id="scenarioRate1" type="number" min="-30" max="30" step="0.5" value="4"></div>
+      <div class="field"><label for="scenarioRate2">Scenario 2 return %</label><input id="scenarioRate2" type="number" min="-30" max="30" step="0.5" value="7"></div>
+      <div class="field"><label for="scenarioRate3">Scenario 3 return %</label><input id="scenarioRate3" type="number" min="-30" max="30" step="0.5" value="10"></div>
+    </div>
+    <div id="scenarioCards" class="scenarios"></div>
+  </div>
+
+  <div class="card">
+    <div class="section-head"><div>
+      <p class="section-label">Combined timeline</p>
+      <p class="section-note">Uses the main Expected annual return from Investment and the mortgage method selected in the Linear vs Annuity comparison.</p>
+    </div></div>
+    <div class="chart-wrap"><canvas id="mainChart" role="img" aria-label="Investment portfolio and mortgage balance over time"></canvas></div>
+    <div class="legend">
+      <span><i class="line" style="background:#2a78d6"></i>Portfolio after Box 3</span>
+      <span><i class="line" style="background:#1baf7a"></i>Mortgage balance</span>
+      <span><i class="line dashed"></i>Total invested</span>
+    </div>
+    <div id="validation" class="validation"></div>
+  </div>
+
+  <details class="fold">
+    <summary>Final results summary</summary>
+    <div class="fold-body">
+      <p class="subsection-copy">Hidden by default for privacy. Open only when you want to review the headline results.</p>
+      <div class="stats result-stats">
+        <div class="stat accent"><p class="stat-label">Portfolio after Box 3</p><p class="stat-value" id="sPortfolio">—</p><p class="stat-sub" id="sPortfolioSub">—</p></div>
+        <div class="stat"><p class="stat-label">Total invested</p><p class="stat-value" id="sInvested">—</p><p class="stat-sub" id="sInvestedSub">—</p></div>
+        <div class="stat green"><p class="stat-label">Mortgage remaining</p><p class="stat-value" id="sMortgage">—</p><p class="stat-sub" id="sMortgageSub">—</p></div>
+      </div>
+    </div>
+  </details>
+
+  <details class="fold">
+    <summary>Model status and sources</summary>
+    <div class="fold-body">
+      <div class="source-list">
+        Mortgage presentation reference: WhatTheMortgage.com for purchase inputs, annuity/linear comparison and its monthly Balance / Gross / Capital / Interest / Tax Return / Net structure. This planner uses its own calculation engine.<br>
+        Mortgage deduction: Belastingdienst 2026 mortgage-interest deduction limitation and eigenwoningforfait assumptions.<br>
+        Current Box 3: Belastingdienst 2026 parameters for ordinary investments; the actual-return rebuttal includes value changes and does not use the tax-free wealth allowance.<br>
+        Proposed Box 3: Rijksoverheid / parliamentary proposal for actual-return taxation. Future parameters remain editable.<br>
+        <a href="https://whathemortgage.com/" target="_blank" rel="noopener">WhatTheMortgage reference</a> ·
+        <a href="https://www.belastingdienst.nl/wps/wcm/connect/nl/koopwoning/content/tariefsaanpassing-eigen-woning" target="_blank" rel="noopener">Belastingdienst mortgage deduction</a> ·
+        <a href="https://www.belastingdienst.nl/wps/wcm/connect/nl/box-3/content/berekening-box-3-inkomen-2026" target="_blank" rel="noopener">Belastingdienst Box 3 2026</a> ·
+        <a href="https://www.rijksoverheid.nl/themas/werk/inkomstenbelasting/plannen-werkelijk-rendement-box-3" target="_blank" rel="noopener">Rijksoverheid proposed Box 3</a>
+      </div>
+      <div class="callout warn model-warning"><strong>Planning tool, not tax or financial advice.</strong> Future tax treatment depends on legislation and the user's complete tax position.</div>
+    </div>
+  </details>
 </section>
 </div>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.js"></script>
-<script src="app.js"></script></body></html>
+<script src="app.js"></script>
+</body></html>
