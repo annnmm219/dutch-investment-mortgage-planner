@@ -51,7 +51,13 @@ test('browser modules fail fast when required dependencies are missing',()=>{
 test('public page exposes a calculation build marker and mixed-asset Box 3 copy',()=>{
   const html=read('index.html');
   assert.match(html,/id="modelVersion"/);
-  assert.match(html,/Calculation build R1/);
+  assert.match(html,/Calculation build R\d+/);
   assert.match(html,/2026 current rules, mixed-asset estimate/);
   assert.doesNotMatch(html,/2026 current rules, investment-only estimate/);
+});
+
+test('R2 labels monthly mortgage tax values as allocations from the annual calculation',()=>{
+  const html=read('index.html');
+  assert.match(html,/annual HRA\/EWF\/Hillen estimate is authoritative/i);
+  assert.match(html,/Allocated tax benefit/);
 });
