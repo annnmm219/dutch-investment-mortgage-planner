@@ -7,7 +7,6 @@ A browser-based planning tool for comparing multi-stage investment contributions
 - 1 to 6 life phases with different investment contributions
 - Monthly or yearly recurring extra mortgage repayments
 - Annual bonus / lump-sum allocation to investments, mortgage repayment, or a 50/50 split
-- Per-phase available-monthly-surplus check so planned investing and recurring mortgage overpayments can be tested for affordability
 - Existing-mortgage mode and home-purchase planning mode
 - Editable home-purchase cost breakdown, including transfer tax, notary, valuation, mortgage advice, inspection, bank guarantee, NHG, purchase agent, and other costs
 - Home-purchase summary with savings after costs, required mortgage, loan-to-price ratio, and purchase-cost shortfall
@@ -24,16 +23,9 @@ A browser-based planning tool for comparing multi-stage investment contributions
 
 ## Cash-flow treatment
 
-The main Investment plan and the Scenario engine treat affordability separately from pure mathematical outcomes.
+The main Investment plan uses the contribution and mortgage-overpayment amounts exactly as entered. It does not ask for a separate monthly-surplus figure.
 
-For each life phase, **Available monthly surplus** is compared with:
-
-- monthly investment contribution; plus
-- the monthly-equivalent reserve for recurring extra mortgage repayment.
-
-Annual bonuses / lump sums are treated as separate one-off cash sources.
-
-In Scenarios, the **Monthly housing + investing budget** is an affordability constraint. Strategy comparisons still isolate the financial effect of the decision itself: any surplus that is common to both strategies is excluded rather than giving both sides an identical extra investment stream.
+In Scenarios, the **Monthly housing + investing budget** is an affordability constraint used only to check whether the compared strategies fit the entered cash-flow capacity. Strategy comparisons still isolate the financial effect of the decision itself: any surplus that is common to both strategies is excluded rather than giving both sides an identical extra investment stream.
 
 ## Default values
 
@@ -67,7 +59,7 @@ The app is intended for scenario planning, not tax filing, mortgage underwriting
 Important limitations include:
 
 - Investment returns are assumptions, not forecasts.
-- The cash-flow checks validate entered planning capacity; they do not calculate disposable income from salary, Box 1 tax, benefits, or living expenses.
+- The Scenario cash-flow check validates entered planning capacity; it does not calculate disposable income from salary, Box 1 tax, benefits, or living expenses.
 - Box 3 treatment depends on the user's full tax position and this version remains focused on ordinary investments rather than a complete mixed-asset Box 3 return.
 - Future Box 3 rules may change before implementation.
 - The “2026 rules for the whole plan” option intentionally holds editable 2026 parameters constant as a sensitivity case; it is not a forecast of future Dutch tax law.
