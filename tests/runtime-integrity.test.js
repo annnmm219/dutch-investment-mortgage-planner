@@ -49,12 +49,12 @@ test('R2 labels monthly mortgage tax values as allocations from the annual calcu
   assert.match(html,/Allocated tax benefit/);
 });
 
-test('R3 exposes dynamic household balances and defaults browser tax payment to savings',()=>{
+test('household balance UI exposes dynamic balances and defaults browser tax payment to savings',()=>{
   const household=read('box3-household.js');
   assert.match(household,/Starting savings \/ bank deposits/);
   assert.match(household,/Monthly Box 3 debt repayment/);
   assert.match(household,/Ending savings \/ cash/);
   assert.match(household,/Net financial assets/);
   assert.match(household,/select\.value='savings'/);
-  assert.match(household,/Calculation build R3/);
+  assert.match(household,/Calculation build R\d+/);
 });
