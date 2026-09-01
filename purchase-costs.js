@@ -1,8 +1,9 @@
 (()=>{
 'use strict';
 
+function boot(){
 const PR=window.PurchaseRules;
-if(!PR)throw new Error('PurchaseRules must load before purchase-costs.js');
+if(!PR)throw new Error('PurchaseRules failed to load before purchase-cost initialization');
 const totalInput=document.getElementById('purchaseCosts');
 if(!totalInput||document.getElementById('purchaseCostDetails'))return;
 const field=totalInput.closest('.field');
@@ -76,9 +77,7 @@ const nhgMode=document.getElementById('purchaseNhgMode');
 const transferInput=document.getElementById('purchaseTransferTax');
 const nhgInput=document.getElementById('purchaseNhgFee');
 
-function baseCosts(){
-  return editableItems.reduce((sum,[id])=>sum+Math.max(0,Number(document.getElementById(id)?.value)||0),0);
-}
+function baseCosts(){return editableItems.reduce((sum,[id])=>sum+Math.max(0,Number(document.getElementById(id)?.value)||0),0)}
 
 function sync(){
   const price=Math.max(0,Number(housePrice?.value)||0);
@@ -116,7 +115,6 @@ function sync(){
   }
   status.classList.toggle('warn',Boolean(result.ltv.warning||result.transferTax.warning||(result.nhg.enabled&&!result.nhg.eligible)));
   status.innerHTML=`<strong>2026 purchase-rule check</strong><br>${transferLabel}<br>${ltvText}<br>${nhgText}<br><span>This is a planning screen, not an affordability or lender-acceptance decision. NHG also depends on the actual valuation, loan purpose and full NHG conditions.</span>`;
-
   totalInput.dispatchEvent(new Event('input',{bubbles:true}));
 }
 
@@ -124,11 +122,21 @@ costGrid.addEventListener('input',sync);
 costGrid.addEventListener('change',sync);
 transferMode.addEventListener('change',sync);
 nhgMode.addEventListener('change',sync);
-appraisal.addEventListener('input',()=>{appraisalTouched=true;sync();});
-appraisal.addEventListener('change',()=>{appraisalTouched=true;sync();});
+appraisal.addEventListener('input',()=>{appraisalTouched=true;sync()});
+appraisal.addEventListener('change',()=>{appraisalTouched=true;sync()});
 housePrice?.addEventListener('input',sync);
 housePrice?.addEventListener('change',sync);
 ownSavings?.addEventListener('input',sync);
 ownSavings?.addEventListener('change',sync);
 sync();
+}
+
+if(window.PurchaseRules)boot();
+else{
+  const script=document.createElement('script');
+  script.src='purchase-rules.js';
+  script.onload=boot;
+  script.onerror=()=>{throw new Error('Could not load purchase-rules.js')};
+  document.head.appendChild(script);
+}
 })();
