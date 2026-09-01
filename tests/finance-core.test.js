@@ -52,6 +52,74 @@ test('annuity mortgage with €500 monthly extra repayment reduces balance by th
   approx(m.totalInterest,11792.60989903193,1e-6,'interest after extra repayments');
 });
 
+test('annual HRA is authoritative and monthly allocations reconcile exactly',()=>{
+  const m=FC.mortgageSchedule({
+    balance:300000,
+    annualRatePct:4,
+    termYears:30,
+    type:'annuity',
+    months:24,
+    startYear:2026,
+    startMonth:1,
+    tax:{enabled:true,deductionRate:.3756,wozValue:400000}
+  });
+  const rowTotal=m.rows.reduce((sum,row)=>sum+row.taxReturn,0);
+  approx(rowTotal,m.totalTaxBenefit,1e-9,'all monthly allocations');
+
+  Object.values(m.annualTaxBuckets).forEach(bucket=>{
+    const monthly=m.rows.filter(row=>row.year===bucket.year).reduce((sum,row)=>sum+row.taxReturn,0);
+    const authoritative=FC.mortgageTaxBenefit({interest:bucket.interest,months:bucket.months,deductionRate:.3756,wozValue:400000,enabled:true});
+    approx(bucket.taxBenefit,authoritative,1e-9,`${bucket.year} annual benefit`);
+    approx(monthly,bucket.taxBenefit,1e-9,`${bucket.year} monthly allocation`);
+  });
+  m.rows.forEach(row=>{
+    approx(row.net,row.gross-row.taxReturn,1e-9,'row net');
+    approx(row.cash,row.net+row.extra,1e-9,'row cash');
+  });
+});
+
+test('Hillen cost on a zero-interest active mortgage is reconciled through the annual allocation',()=>{
+  const m=FC.mortgageSchedule({
+    balance:120000,
+    annualRatePct:0,
+    termYears:10,
+    type:'annuity',
+    months:12,
+    tax:{enabled:true,deductionRate:.3756,wozValue:400000}
+  });
+  const expected=FC.mortgageTaxBenefit({interest:0,months:12,deductionRate:.3756,wozValue:400000,enabled:true});
+  approx(m.totalTaxBenefit,expected,1e-9,'annual Hillen result');
+  approx(m.rows.reduce((sum,row)=>sum+row.taxReturn,0),expected,1e-9,'allocated Hillen result');
+  assert.ok(m.totalTaxBenefit<0,'Hillen/EWF result should be a small tax cost when interest is zero');
+});
+
+test('simulatePlan schedule allocations reconcile to annual and headline HRA totals',()=>{
+  const plan=FC.simulatePlan({
+    phases:[{years:1.5,monthlyInvest:0,mortgageExtra:0,mortgageFreq:'monthly',annualBonus:0,bonusDest:'invest'}],
+    startPortfolio:0,
+    annualReturnPct:0,
+    startYear:2026,
+    startMonth:7,
+    bonusMonth:12,
+    mortBalance:180000,
+    mortRatePct:3.5,
+    mortYears:20,
+    mortType:'annuity',
+    mortTaxEnabled:true,
+    deductRate:.3756,
+    wozValue:400000,
+    box3Mode:'none',
+    taxPartners:1,
+    box3PaySource:'portfolio'
+  });
+
+  approx(plan.schedule.reduce((sum,row)=>sum+row.taxReturn,0),plan.mortTax,1e-9,'headline vs schedule');
+  Object.values(plan.yearBuckets).forEach(bucket=>{
+    const monthly=plan.schedule.filter(row=>row.year===bucket.year).reduce((sum,row)=>sum+row.taxReturn,0);
+    approx(monthly,bucket.mortTax,1e-9,`${bucket.year} schedule vs annual bucket`);
+  });
+});
+
 test('current Box 3 returns zero below the allowance',()=>{
   const x=FC.box3TaxForYear({regime:'current',jan1Portfolio:50000,marketGain:5000,taxPartners:1,currentAllowance:59357,currentNotional:0.06,currentTaxRate:0.36});
   approx(x.tax,0,1e-12);
