@@ -38,12 +38,11 @@ test('0% mortgage produces a 0% invest-vs-repay break-even',()=>{
   approx(x.breakEvenReturnPct,0,.01,'zero-rate break-even');
 });
 
-test('4% mortgage without HRA or Box 3 breaks even at the equivalent effective annual rate',()=>{
+test('4% nominal mortgage without HRA or Box 3 breaks even at 4% nominal investment return',()=>{
   const c=base();
   const x=NE.findBreakEven(c,{extraMonthly:500,minReturnPct:0,maxReturnPct:10,scanStepPct:.1,wealthTolerance:.05});
   assert.equal(x.status,'found');
-  const expected=(Math.pow(1+.04/12,12)-1)*100;
-  approx(x.breakEvenReturnPct,expected,.02,'nominal mortgage/effective investment equivalence');
+  approx(x.breakEvenReturnPct,4,.02,'nominal mortgage/investment equivalence');
 });
 
 test('mortgage-interest tax relief lowers the investment return required to beat repayment',()=>{
