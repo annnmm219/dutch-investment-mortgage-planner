@@ -21,15 +21,15 @@ The planner is a static browser app with a shared calculation kernel. It is inte
 
 ## Architecture
 
-`finance-core.js` is the single source of truth for shared financial calculations. It contains mortgage amortisation, annual HRA allocation, Box 3 calculations, household savings / Box 3 debt ledgers, investment growth, cash-flow equalisation, and the combined plan simulation.
+`finance-core.js` is the single source of truth for mortgage amortisation, annual HRA allocation, Box 3 calculations, household savings / Box 3 debt ledgers, investment growth, cash-flow equalisation, and the combined plan simulation.
 
-`box3-household.js` is a browser adapter. It supplies household balance inputs to the shared core and renders the ending household financial balances. It does not contain a second Box 3 formula.
+`box3-household.js` is the browser adapter for the dynamic household balances and R4 default framing. It does not contain a second Box 3 formula.
 
 `purchase-rules.js` contains pure 2026 Dutch purchase-rule calculations for transfer tax, simplified NHG checks/fees, and LTV.
 
-`app.js` owns the main planner UI. `scenario-engine.js` owns the five decision comparisons but delegates mortgage and investment/tax calculations to `finance-core.js`. `purchase-costs.js` owns the purchase-cost UI.
+`scenario-engine.js` contains the pure five-way scenario engine plus its browser UI. R4 passes the household savings / Box 3 debt settings explicitly into the shared finance core so purchase decisions and Box 3 cannot drift apart.
 
-The deterministic browser load order is:
+The deterministic browser load order remains:
 
 1. `finance-core.js`
 2. `box3-household.js`
@@ -38,66 +38,90 @@ The deterministic browser load order is:
 5. `purchase-costs.js`
 6. `scenario-engine.js`
 
+## R4 scenario realism
+
+R4 connects the scenario decisions to the R3 household balance sheet.
+
+### Purchase cash
+
+Buy vs Rent and Down Payment no longer have a separate standalone cash pot in the browser.
+
+They use **Investment → Household financial balances → Starting savings / bank deposits** as their starting cash balance.
+
+For Buy vs Rent:
+
+- the buyer spends down payment + purchase costs from that starting savings
+- the renter does not spend that purchase cash
+- any uncovered buyer amount is recorded as external upfront cash
+- unused cash can either be **invested** or **kept in savings**
+- the resulting financial balances feed the same Box 3 engine as the main plan
+
+For Down Payment:
+
+- both strategies start with the same household savings
+- each strategy draws its own purchase costs + down payment
+- the remaining cash is invested or kept in savings according to the same selector
+- the resulting Box 3 exposure therefore changes with the chosen down payment
+
+The pure scenario API retains an optional `cash` input for backwards-compatible tests and programmatic use. In the browser, the common household savings balance is the source of truth.
+
+### Household balances in all five scenarios
+
+Mortgage-vs-Invest, Linear-vs-Annuity and Keep-vs-Sell also carry:
+
+- investment portfolio
+- savings / cash
+- Box 3 debt
+- Box 3 tax-payment source
+- Box 3 debt repayment
+- external Box 3 tax / debt cash flows
+
+Comparable wealth for mortgage-structure decisions is based on household financial wealth minus the remaining Box 1 mortgage, with the common home value excluded.
+
+### Owner-only costs
+
+Scenario assumptions now include:
+
+- VVE / service charges
+- maintenance
+- OZB / owner municipal taxes
+- homeowner building insurance
+- ground lease / erfpacht
+
+These costs are included in owner cash flows and the monthly affordability check. They remain editable planning inputs; the new categories default to €0 rather than pretending one amount fits every property.
+
+### Return framing
+
+R4 changes the untouched illustrative browser default from **7% to 5%**.
+
+The normal Scenario sensitivity range now defaults to **2–10%**. Users can still enter 12–14%, but the UI labels those levels as optimistic stress cases rather than a base planning assumption.
+
+The untouched Box 3 browser default is now **2026 current rules** rather than the proposed-transition path. The proposed future regime remains available as a legislative scenario.
+
 ## R3 household balance sheet
 
-R3 changes savings and Box 3 debt from frozen tax-context numbers into evolving balances.
+Savings and Box 3 debt are real evolving balances:
 
-### Savings
+- savings compounds at the entered rate
+- savings can fund Box 3 tax
+- Box 3 debt can be repaid
+- debt repayment can come from savings or external cash flow
+- next-year Jan 1 Box 3 values use the evolved balances
+- mid-year first-Jan-1 overrides are available for portfolio, savings and debt
 
-Starting savings now:
-
-- earn the entered savings-interest rate monthly
-- carry forward into the next calendar year's Jan 1 Box 3 balance
-- fall when Box 3 tax is paid from savings
-- fall when Box 3 debt repayment is explicitly funded from savings
-
-### Box 3 debt
-
-Starting Box 3 debt now:
-
-- incurs the entered modeled interest for the actual-return calculation
-- can be reduced by an optional monthly repayment
-- carries the resulting balance into the next calendar year's Jan 1 Box 3 calculation
-
-Debt repayment can be funded from **Savings / cash** or treated as **External cash flow**. External repayment is tracked rather than silently creating wealth in the calculation output.
-
-The owner-occupied home mortgage remains separate. It is not automatically classified as Box 3 debt.
-
-### Box 3 tax payment source
-
-The browser now defaults Box 3 payment to **Savings / cash** and supports:
-
-- Savings / cash
-- Investment portfolio
-- External cash flow
-
-If the selected modeled balance cannot cover the full tax charge, the remainder is recorded as external cash flow rather than disappearing.
-
-The planner reports:
-
-- ending investment portfolio
-- ending savings / cash
-- ending Box 3 debt
-- net financial assets = portfolio + savings - Box 3 debt
-- Box 3 tax paid externally
-
-For a plan starting after January, the existing first-Jan-1 investment override remains available, and R3 adds optional first-Jan-1 savings and Box 3 debt overrides.
-
-## Important R3 boundary
-
-R3 fixes the household balance ledger, but the five decision scenarios still treat their decision-specific upfront cash using the existing scenario structure. Fully coupling Buy-vs-Rent / down-payment purchase cash events to the common household ledger is deliberately reserved for **R4**, where those scenarios will be revalidated together rather than partially changing their accounting in this release.
-
-This keeps R3 focused and prevents a purchase-scenario change from being mixed into the balance-sheet refactor.
+The owner-occupied mortgage remains separate from Box 3 debt.
 
 ## HRA treatment
 
-R2 made the annual HRA/EWF/Hillen estimate authoritative. Interest is aggregated by calendar year over active mortgage months, one annual estimate is calculated, and that exact amount is allocated back to schedule rows. Monthly values are therefore **allocated tax benefit**, not predictions of monthly Belastingdienst payments.
+The annual HRA/EWF/Hillen estimate is authoritative. Interest is aggregated by calendar year over active mortgage months, one annual estimate is calculated, and that exact amount is allocated back to schedule rows.
+
+Monthly values are **allocated tax benefit**, not predictions of monthly Belastingdienst payments.
 
 The deduction rate remains a planning approximation rather than a complete Box 1 income-tax engine.
 
 ## Box 3 notes
 
-The current-rules model uses separate deemed-return percentages for bank deposits, investments / other assets, and Box 3 debt. The deemed method applies the per-person debt threshold and tax-free wealth allowance. The modeled actual-return rebuttal uses investment gain + savings interest - Box 3 debt interest and does not apply the ordinary tax-free wealth allowance.
+The current-rules model uses separate deemed-return percentages for bank deposits, investments / other assets, and Box 3 debt.
 
 The proposed future actual-return regime remains a planning scenario only. It is not presented as enacted law.
 
@@ -123,32 +147,18 @@ Run all tests with Node 20+:
 npm test
 ```
 
-The suite covers:
+The suite covers mortgage identities, HRA reconciliation, mixed-asset Box 3, dynamic household balances, Dutch purchase rules, five hand-worked strategy comparisons, R4 purchase-cash / Box 3 coupling, owner-cost cash flows, browser bootstrap integrity, and external mortgage sanity references.
 
-- mortgage amortisation identities
-- HRA/EWF/Hillen and annual/monthly reconciliation
-- current and proposed Box 3 calculations
-- mixed-asset Box 3
-- dynamic savings compounding
-- dynamic Box 3 debt repayment
-- Jan 1 balance carry-forward
-- savings-funded Box 3 tax
-- tax-payment shortfalls
-- mid-year Jan 1 overrides for investments, savings, and debt
-- purchase rules / NHG / LTV
-- five hand-worked strategy comparisons
-- browser dependency/bootstrap integrity
-- external mortgage sanity references
-
-GitHub Actions runs the same suite automatically on pushes to `main` and pull requests.
+GitHub Actions runs the suite automatically on pushes to `main` and pull requests.
 
 ## Main limitations
 
 - Investment and property returns are assumptions, not forecasts.
 - HRA is a planning approximation, not an aangifte calculation.
 - Box 3 is not a complete tax-return engine and does not model every asset category, exemption, or fiscal-partner allocation choice.
-- Box 3 debt interest is modeled as an external household cash expense; R3 does not build a full salary/disposable-income budget.
-- Scenario-specific house-purchase cash events are not yet fully coupled to the common savings ledger. That is R4.
+- Box 3 debt interest is modeled as an external household cash expense; there is no full salary/disposable-income budget.
+- Scenario purchase events occur at the scenario start. For plans starting after January, use the Jan 1 overrides when first-year Box 3 needs a different reference balance.
+- Owner-cost inputs are planning assumptions, not automatically sourced municipal or insurance quotes.
 - Proposed future Box 3 legislation may change.
 - The planner does not calculate Nibud/LTI borrowing capacity or lender acceptance.
 - Extra mortgage repayment rules can vary by lender.
@@ -161,12 +171,14 @@ Those sites are sanity references, not legal authorities. Dutch rule parameters 
 
 ## Revision sequence
 
-- **R1 Runtime integrity — complete:** deterministic module order, no runtime dependency injection, visible calculation-build marker, bootstrap regression tests.
-- **R2 HRA reconciliation — complete:** annual HRA/EWF/Hillen is authoritative and reconciles exactly to monthly schedule allocations.
-- **R3 Household balance sheet — complete:** dynamic savings and Box 3 debt balances, explicit debt-repayment source, explicit Box 3 tax-payment accounting, and Jan 1 carry-forward.
-- **R4 Scenario realism — next:** couple household cash events to Buy/Rent and down-payment decisions, improve owner-cost inputs and assumption framing, then revalidate all five comparisons.
-- **R5 Next € optimizer:** calculate the investment return required to beat extra mortgage repayment for a marginal monthly amount.
-- **R6 Product hardening:** persistence, reset, methodology/version visibility, and broader golden-case/UI tests before external user testing.
+- **R1 Runtime integrity — complete**
+- **R2 HRA reconciliation — complete**
+- **R3 Household balance sheet — complete**
+- **R4 Scenario realism — complete**
+- **R5 Next € optimizer — next**
+- **R6 Product hardening — after R5**
+
+After R6, the intended next step is real-user testing before adding broader functionality.
 
 ## Run locally
 
