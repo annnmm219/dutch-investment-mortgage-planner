@@ -27,7 +27,7 @@ A browser-based planning tool for comparing multi-stage investment contributions
 
 `finance-core.js` is the single source of truth for shared financial calculations. It contains pure calculation functions for mortgage amortisation, extra repayments, 2026 eigenwoningforfait, mortgage-interest tax benefit / Hillen approximation, current and proposed Box 3, the mid-year first-Jan-1 portfolio override, investment growth, cash-flow equalisation, and the combined Investment + Mortgage simulation.
 
-The current Box 3 function now accepts three household categories: the modeled investment portfolio, bank deposits, and Box 3 debt. For the 2026 deemed method it applies separate category percentages, the Box 3 debt threshold and the tax-free wealth allowance. For the actual-return rebuttal it combines modeled investment growth, savings interest and Box 3 debt interest and compares that result with the deemed calculation.
+The current Box 3 function accepts three household categories: the modeled investment portfolio, bank deposits, and Box 3 debt. For the 2026 deemed method it applies separate category percentages, the Box 3 debt threshold and the tax-free wealth allowance. For the actual-return rebuttal it combines modeled investment growth, savings interest and Box 3 debt interest and compares that result with the deemed calculation.
 
 `box3-household.js` is the browser context adapter. It renders the additional savings/debt inputs and injects those values into the same `finance-core.js` methods used by the main plan and Scenario engine. It does not contain a second tax formula.
 
@@ -37,11 +37,24 @@ The current Box 3 function now accepts three household categories: the modeled i
 
 `scenario-engine.js` has a pure, Node-testable scenario layer plus the browser UI. The five scenario types all assemble their outcomes from the shared functions in `finance-core.js`, so the same production path can be exercised in automated tests.
 
-`purchase-costs.js` renders the purchase-rule controls and editable fee lines, delegates rule calculations to `purchase-rules.js`, and loads the Box 3 household context adapter.
+`purchase-costs.js` renders the purchase-rule controls and editable fee lines and delegates rule calculations to `purchase-rules.js`. It no longer loads dependency scripts at runtime.
+
+### Deterministic browser bootstrap
+
+R1 makes the browser dependency order explicit in `index.html`:
+
+1. `finance-core.js`
+2. `box3-household.js`
+3. `purchase-rules.js`
+4. `app.js`
+5. `purchase-costs.js`
+6. `scenario-engine.js`
+
+No application module dynamically injects another dependency script. Required dependencies fail fast when the declared order is broken. The public page also shows a small calculation-build marker so a downloaded archive and the deployed Pages build can be compared visibly.
 
 ## Regression and scenario validation tests
 
-The dependency-free Node test suite covers low-level financial formulas, end-to-end strategy assembly, 2026 purchase rules, mixed-asset Box 3, and external sanity checks.
+The dependency-free Node test suite covers low-level financial formulas, end-to-end strategy assembly, 2026 purchase rules, mixed-asset Box 3, browser bootstrap integrity, and external sanity checks.
 
 `tests/finance-core.test.js` covers mortgage, HRA/EWF/Hillen, investment-only Box 3 parity, mid-year starts, and cash-flow equalisation.
 
@@ -66,6 +79,8 @@ The dependency-free Node test suite covers low-level financial formulas, end-to-
 - NHG fee / mortgage circularity
 - mortgage amortisation against the displayed mortgagecalc.nl 2026 example
 - WhatTheMortgage-style Gross = Principal + Interest and Net = Gross - Tax Return schedule identities
+
+`tests/runtime-integrity.test.js` validates the declared browser script order, required local modules, absence of dynamic dependency injection/polling, fail-fast dependency checks, the visible R1 build marker, and static mixed-asset Box 3 copy.
 
 Run all tests locally with Node 20+:
 
@@ -126,9 +141,14 @@ The mortgage presentation and schedule structure was cross-checked against WhatT
 
 These sites are sanity references, not legal authorities. 2026 Dutch rule parameters are taken from Belastingdienst, Rijksoverheid and NHG sources.
 
-## Next product step
+## Revision sequence
 
-With mixed-asset Box 3 context in place, the next highest-value decision feature is the marginal **“next euro” invest-versus-repay comparison**: given an additional monthly amount, compare the effective after-tax return from mortgage repayment with the modeled after-Box-3 investment return and show the break-even investment return.
+- **R1 Runtime integrity — complete:** deterministic module order, no runtime dependency injection, visible calculation-build marker, bootstrap regression tests.
+- **R2 HRA reconciliation — next:** make annual HRA authoritative and allocate it consistently back to schedule rows.
+- **R3 Household balance sheet:** dynamic savings and Box 3 debt balances plus explicit tax-payment accounting.
+- **R4 Scenario realism:** connect household cash events to scenarios, improve owner-cost inputs and assumption framing, then revalidate all five comparisons.
+- **R5 Next € optimizer:** calculate the investment return required to beat extra mortgage repayment for a marginal monthly amount.
+- **R6 Product hardening:** persistence, reset, methodology/version visibility, and broader golden-case/UI tests before external user testing.
 
 ## Sources referenced in the calculator
 
