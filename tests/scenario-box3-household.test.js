@@ -2,27 +2,39 @@
 
 const test=require('node:test');
 const assert=require('node:assert/strict');
+const SC=require('../scenario-engine.js');
 const FC=require('../finance-core.js');
-const BH=require('../box3-household.js');
 
 function approx(actual,expected,tolerance=1e-6,message=''){
   assert.ok(Number.isFinite(actual),`${message} actual value is not finite: ${actual}`);
   assert.ok(Math.abs(actual-expected)<=tolerance,`${message} expected ${expected}, got ${actual}`);
 }
 
-test('Scenario engine receives the same household Box 3 context through the shared core',()=>{
-  const context={
-    box3Savings:100000,
-    box3Debt:20000,
-    savingsReturnPct:2,
-    debtInterestPct:4,
+test('Scenario engine passes the explicit household Box 3 ledger through the shared core',()=>{
+  const box3={
+    mode:'current',
+    taxPartners:1,
+    paySource:'external',
+    currentTaxRate:.36,
+    currentAllowance:59357,
+    currentNotional:.06,
     currentSavingsNotional:.0128,
     currentDebtNotional:.027,
-    currentDebtThreshold:3800
+    currentDebtThreshold:3800,
+    savings:100000,
+    debt:20000,
+    savingsReturnPct:2,
+    debtInterestPct:4,
+    debtMonthlyRepayment:0,
+    debtRepaymentSource:'external',
+    firstJan1Portfolio:0,
+    firstJan1Savings:null,
+    firstJan1Debt:null,
+    futureStart:2028,
+    futureTaxRate:.36,
+    futureExempt:1800,
+    futureLossThreshold:500
   };
-  BH.decorateCore(FC,()=>context);
-  delete require.cache[require.resolve('../scenario-engine.js')];
-  const SC=require('../scenario-engine.js');
 
   const config={
     mode:'mortgage-invest',
@@ -35,24 +47,15 @@ test('Scenario engine receives the same household Box 3 context through the shar
     mortgageType:'annuity',
     mortgage:{balance:0,ratePct:0,years:30},
     tax:{enabled:false,deductionRate:0,wozValue:0},
-    box3:{
-      mode:'current',
-      taxPartners:1,
-      paySource:'external',
-      currentTaxRate:.36,
-      currentAllowance:59357,
-      currentNotional:.06,
-      firstJan1Portfolio:0,
-      futureStart:2028,
-      futureTaxRate:.36,
-      futureExempt:1800,
-      futureLossThreshold:500
-    },
+    box3,
     homeGrowthPct:0,
     rentGrowthPct:0,
     sellingCostPct:0,
     vveMonthly:0,
     maintenanceAnnual:0,
+    ownerTaxesAnnual:0,
+    insuranceAnnual:0,
+    groundLeaseAnnual:0,
     mortgageInvest:{extraMonthly:0}
   };
 
@@ -68,10 +71,19 @@ test('Scenario engine receives the same household Box 3 context through the shar
     paySource:'external',
     currentTaxRate:.36,
     currentAllowance:59357,
-    currentNotional:.06
+    currentNotional:.06,
+    currentSavingsNotional:.0128,
+    currentDebtNotional:.027,
+    currentDebtThreshold:3800,
+    box3Savings:100000,
+    box3Debt:20000,
+    savingsReturnPct:2,
+    debtInterestPct:4
   });
 
   approx(scenario.A.box3,direct.totalTax,1e-9,'Strategy A tax');
   approx(scenario.B.box3,direct.totalTax,1e-9,'Strategy B tax');
+  approx(scenario.A.savings,direct.savings,1e-9,'Strategy A savings');
+  approx(scenario.A.box3Debt,direct.box3Debt,1e-9,'Strategy A Box 3 debt');
   assert.ok(scenario.A.box3>0,'household context should produce a positive modeled Box 3 charge');
 });
