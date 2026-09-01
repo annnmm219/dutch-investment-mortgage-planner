@@ -24,13 +24,24 @@ function ewf2026(woz){
   return 4725+(value-1350000)*.0235;
 }
 
-function mortgageTaxBenefit({interest=0,months=1,deductionRate=0,wozValue=0,enabled=true,hillenRelief=0.71867}={}){
-  if(!enabled||months<=0)return 0;
-  const grossInterest=nonNegative(interest);
+function hillenReliefForYear(year=2026,override){
+  if(Number.isFinite(Number(override)))return clamp(Number(override),0,1);
+  const y=Math.round(Number(year)||2026);
+  if(y<=2018)return 1;
+  if(y<=2025)return clamp(1-(y-2018)/30,0,1);
+  if(y>=2041)return 0;
+  return clamp(.71867-(y-2026)*.048,0,1);
+}
+
+function mortgageTaxBenefit({interest=0,months=1,ownershipMonths,deductionRate=0,wozValue=0,enabled=true,hillenRelief,year=2026}={}){
+  const ownedMonths=ownershipMonths==null?Number(months)||0:Number(ownershipMonths)||0;
+  if(!enabled||ownedMonths<=0)return 0;
+  const deductibleInterest=nonNegative(interest);
   const rate=clamp(Number(deductionRate)||0,0,1);
-  const ewf=ewf2026(wozValue)*months/12;
-  if(grossInterest>=ewf)return (grossInterest-ewf)*rate;
-  return -(ewf-grossInterest)*(1-clamp(Number(hillenRelief)||0,0,1))*rate;
+  const ewf=ewf2026(wozValue)*ownedMonths/12;
+  if(deductibleInterest>=ewf)return (deductibleInterest-ewf)*rate;
+  const relief=hillenReliefForYear(year,hillenRelief);
+  return -(ewf-deductibleInterest)*(1-relief)*rate;
 }
 
 function allocateAnnualMortgageTax(rows=[],tax={}){
@@ -43,42 +54,58 @@ function allocateAnnualMortgageTax(rows=[],tax={}){
   const annualBuckets={};
 
   resultRows.forEach((row,index)=>{
-    if(row.taxEligible===false)return;
+    if(row.homeOwned===false)return;
     const year=Number(row.year);
     if(!Number.isFinite(year))return;
-    if(!annualBuckets[year])annualBuckets[year]={year,indexes:[],interest:0,months:0,taxBenefit:0};
+    if(!annualBuckets[year])annualBuckets[year]={year,indexes:[],grossInterest:0,deductibleInterest:0,interest:0,ownershipMonths:0,months:0,eligibleMonths:0,taxBenefit:0,hillenRelief:0};
     const bucket=annualBuckets[year];
+    const deductible=row.deductibleInterest!=null?nonNegative(row.deductibleInterest):(row.hraEligible===false?0:nonNegative(row.interest));
     bucket.indexes.push(index);
-    bucket.interest+=nonNegative(row.interest);
-    bucket.months++;
+    bucket.grossInterest+=nonNegative(row.interest);
+    bucket.deductibleInterest+=deductible;
+    bucket.interest=bucket.deductibleInterest;
+    bucket.ownershipMonths++;
+    bucket.months=bucket.ownershipMonths;
+    if(deductible>0)bucket.eligibleMonths++;
   });
 
   let totalTaxBenefit=0;
   Object.values(annualBuckets).forEach(bucket=>{
+    const relief=hillenReliefForYear(bucket.year,typeof tax.hillenRelief==='function'?tax.hillenRelief(bucket.year):tax.hillenRelief);
     const annualBenefit=mortgageTaxBenefit({
-      interest:bucket.interest,
-      months:bucket.months,
+      interest:bucket.deductibleInterest,
+      ownershipMonths:bucket.ownershipMonths,
       deductionRate:tax.deductionRate,
       wozValue:tax.wozValue,
       enabled:tax.enabled!==false,
-      hillenRelief:tax.hillenRelief
+      hillenRelief:relief,
+      year:bucket.year
     });
+    bucket.hillenRelief=relief;
     bucket.taxBenefit=annualBenefit;
     totalTaxBenefit+=annualBenefit;
 
-    const count=bucket.indexes.length;
-    if(!count)return;
+    const indexes=bucket.indexes;
+    if(!indexes.length)return;
+    const positiveByInterest=annualBenefit>=0&&bucket.deductibleInterest>0;
     let allocated=0;
-    bucket.indexes.forEach((rowIndex,pos)=>{
+    const allocationIndexes=positiveByInterest
+      ?indexes.filter(i=>nonNegative(resultRows[i].deductibleInterest)>0)
+      :indexes;
+    allocationIndexes.forEach((rowIndex,pos)=>{
       const row=resultRows[rowIndex];
       let share;
-      if(pos===count-1)share=annualBenefit-allocated;
-      else if(bucket.interest>0)share=annualBenefit*(nonNegative(row.interest)/bucket.interest);
-      else share=annualBenefit/count;
+      if(pos===allocationIndexes.length-1)share=annualBenefit-allocated;
+      else if(positiveByInterest)share=annualBenefit*(nonNegative(row.deductibleInterest)/bucket.deductibleInterest);
+      else share=annualBenefit/allocationIndexes.length;
       allocated+=share;
       row.taxReturn=share;
-      row.net=(Number(row.gross)||0)-share;
+    });
+    indexes.forEach(rowIndex=>{
+      const row=resultRows[rowIndex];
+      row.net=(Number(row.gross)||0)-(Number(row.taxReturn)||0);
       row.cash=row.net+nonNegative(row.extra);
+      row.cashWithRequestedExtra=row.net+nonNegative(row.requestedExtra??row.extra);
     });
   });
 
@@ -93,7 +120,7 @@ function regimeForYear({mode='none',year,futureStart=2028}={}){
 }
 
 function box3TaxForYear({
-  regime='none',jan1Portfolio=0,jan1Savings=0,jan1Debt=0,marketGain=0,savingsIncome=0,debtInterest=0,lossCarry=0,
+  regime='none',jan1Portfolio=0,jan1Savings=0,jan1Debt=0,marketGain=0,savingsIncome=0,debtInterest=0,lossCarry=0,allowActualRebuttal=true,
   taxPartners=1,currentTaxRate=.36,currentAllowance=59357,currentNotional=.06,currentSavingsNotional=.0128,currentDebtNotional=.027,currentDebtThreshold=3800,
   futureTaxRate=.36,futureExempt=1800,futureLossThreshold=500
 }={}){
@@ -119,19 +146,28 @@ function box3TaxForYear({
     const deemedIncome=Math.max(0,deemedReturn*share);
     const notionalTax=deemedIncome*clamp(Number(currentTaxRate)||0,0,1);
     const actualTax=Math.max(0,actualReturn)*clamp(Number(currentTaxRate)||0,0,1);
-    tax=Math.min(notionalTax,actualTax);
-    method=actualTax<=notionalTax?'actual-return rebuttal':'deemed return';
-    return{tax,lossCarry:nextLossCarry,method,notionalTax,actualTax,deemedIncome,deemedReturn,actualReturn,deductibleDebt,rendementsgrondslag,taxableBase,share,
+    if(allowActualRebuttal){
+      tax=Math.min(notionalTax,actualTax);
+      method=actualTax<=notionalTax?'actual-return rebuttal':'deemed return';
+    }else{
+      tax=notionalTax;
+      method='deemed return · incomplete actual-return year';
+    }
+    return{tax,lossCarry:nextLossCarry,method,notionalTax,actualTax,deemedIncome,deemedReturn,actualReturn,deductibleDebt,rendementsgrondslag,taxableBase,share,allowActualRebuttal,
       components:{savingsDeemed,investmentDeemed,debtDeemed,savingsIncome:Number(savingsIncome)||0,marketGain:Number(marketGain)||0,debtInterest:nonNegative(debtInterest)}};
   }
 
   if(regime==='future'){
     const result=actualReturn;
-    if(result<0){nextLossCarry+=Math.max(0,-result-nonNegative(futureLossThreshold));method='proposed actual return · loss';}
-    else{
-      const usedLoss=Math.min(nextLossCarry,result),afterLoss=Math.max(0,result-usedLoss);
+    if(result<0){
+      nextLossCarry+=Math.max(0,-result-nonNegative(futureLossThreshold));
+      method='proposed actual return · loss';
+    }else{
+      const afterExemption=Math.max(0,result-nonNegative(futureExempt)*partners);
+      const usedLoss=Math.min(nextLossCarry,afterExemption);
+      const taxable=Math.max(0,afterExemption-usedLoss);
       nextLossCarry-=usedLoss;
-      tax=Math.max(0,afterLoss-nonNegative(futureExempt)*partners)*clamp(Number(futureTaxRate)||0,0,1);
+      tax=taxable*clamp(Number(futureTaxRate)||0,0,1);
       method='proposed actual return';
     }
     return{tax,lossCarry:nextLossCarry,method,actualReturn:result};
@@ -162,28 +198,41 @@ function mortgageSchedule({balance=0,annualRatePct=0,termYears=30,type='annuity'
   const linearPrincipal=initialBalance/termMonths;
   const annuityPayment=monthlyRate===0?initialBalance/termMonths:initialBalance*monthlyRate/(1-Math.pow(1+monthlyRate,-termMonths));
   const taxEnabled=tax.enabled!==false,deductionRate=clamp(Number(tax.deductionRate)||0,0,1),wozValue=nonNegative(tax.wozValue);
-  let outstanding=initialBalance,totalInterest=0,totalScheduledPrincipal=0,totalExtra=0,payoffMonthIndex=null;
+  const hraRemainingMonths=tax.hraRemainingMonths==null?Math.min(termMonths,360):Math.max(0,Math.round(Number(tax.hraRemainingMonths)||0));
+  const qualifyingInterestFraction=clamp(Number(tax.qualifyingInterestFraction??1)||0,0,1);
+  const homeOwnershipMonths=tax.homeOwnershipMonths==null?horizonMonths:Math.max(0,Math.round(Number(tax.homeOwnershipMonths)||0));
+  let outstanding=initialBalance,totalInterest=0,totalScheduledPrincipal=0,totalExtra=0,totalRequestedExtra=0,totalUnusedExtra=0,payoffMonthIndex=null;
   const rawRows=[];
   let year=Number(startYear)||2026,month=clamp(Number(startMonth)||1,1,12);
 
   for(let i=0;i<horizonMonths;i++){
-    const taxEligible=outstanding>0;
+    const homeOwned=i<homeOwnershipMonths;
+    const balanceAtStart=outstanding;
+    const requestedExtra=Array.isArray(extraMonthly)?nonNegative(extraMonthly[i]):typeof extraMonthly==='function'?nonNegative(extraMonthly(i,{year,month,balance:outstanding})):nonNegative(extraMonthly);
+    totalRequestedExtra+=requestedExtra;
     let interest=0,principal=0,gross=0,extra=0;
     if(outstanding>0){
       interest=outstanding*monthlyRate;
       principal=mortgageType==='linear'?Math.min(outstanding,linearPrincipal):Math.min(outstanding,Math.max(0,annuityPayment-interest));
       gross=interest+principal;outstanding-=principal;
-      const extraRequested=Array.isArray(extraMonthly)?nonNegative(extraMonthly[i]):typeof extraMonthly==='function'?nonNegative(extraMonthly(i,{year,month,balance:outstanding})):nonNegative(extraMonthly);
-      extra=Math.min(outstanding,extraRequested);outstanding-=extra;
+      extra=Math.min(outstanding,requestedExtra);outstanding-=extra;
       if(outstanding<=.005){outstanding=0;if(payoffMonthIndex===null)payoffMonthIndex=i;}
     }
-    totalInterest+=interest;totalScheduledPrincipal+=principal;totalExtra+=extra;
-    rawRows.push({monthIndex:i,year,month,balance:outstanding,gross,principal,interest,taxReturn:0,net:gross,extra,cash:gross+extra,taxEligible});
+    const unusedExtra=Math.max(0,requestedExtra-extra);
+    totalInterest+=interest;totalScheduledPrincipal+=principal;totalExtra+=extra;totalUnusedExtra+=unusedExtra;
+    const hraEligible=taxEnabled&&homeOwned&&i<hraRemainingMonths&&balanceAtStart>0&&qualifyingInterestFraction>0;
+    const deductibleInterest=hraEligible?interest*qualifyingInterestFraction:0;
+    rawRows.push({monthIndex:i,year,month,balance:outstanding,gross,principal,interest,deductibleInterest,taxReturn:0,net:gross,extra,requestedExtra,unusedExtra,cash:gross+extra,cashWithRequestedExtra:gross+requestedExtra,homeOwned,hraEligible});
     month++;if(month===13){month=1;year++;}
   }
   const allocation=allocateAnnualMortgageTax(rawRows,{enabled:taxEnabled,deductionRate,wozValue,hillenRelief:tax.hillenRelief});
   return{rows:allocation.rows,annualTaxBuckets:allocation.annualBuckets,initialBalance,balance:outstanding,totalInterest,totalTaxBenefit:allocation.totalTaxBenefit,
-    totalScheduledPrincipal,totalExtra,totalScheduledPaid:totalInterest+totalScheduledPrincipal,firstScheduled:allocation.rows.length?allocation.rows[0].gross:0,payoffMonthIndex,type:mortgageType};
+    totalScheduledPrincipal,totalExtra,totalRequestedExtra,totalUnusedExtra,totalScheduledPaid:totalInterest+totalScheduledPrincipal,firstScheduled:allocation.rows.length?allocation.rows[0].gross:0,payoffMonthIndex,type:mortgageType,
+    hraRemainingMonths,qualifyingInterestFraction,homeOwnershipMonths};
+}
+
+function provisionalBox3({regime,jan1Portfolio,jan1Savings,jan1Debt,marketGain,savingsIncome,debtInterest,lossCarry,taxPartners,currentTaxRate,currentAllowance,currentNotional,currentSavingsNotional,currentDebtNotional,currentDebtThreshold,futureTaxRate,futureExempt,futureLossThreshold}){
+  return box3TaxForYear({regime,jan1Portfolio,jan1Savings,jan1Debt,marketGain,savingsIncome,debtInterest,lossCarry,taxPartners,currentTaxRate,currentAllowance,currentNotional,currentSavingsNotional,currentDebtNotional,currentDebtThreshold,futureTaxRate,futureExempt,futureLossThreshold,allowActualRebuttal:false});
 }
 
 function simulateInvestmentFlows({
@@ -194,7 +243,7 @@ function simulateInvestmentFlows({
 }={}){
   const monthlyReturn=(Number(annualReturnPct)||0)/100/12,monthlySavingsRate=(Number(savingsReturnPct)||0)/100/12,monthlyDebtRate=(Number(debtInterestPct)||0)/100/12;
   let portfolio=nonNegative(initialPortfolio),savings=nonNegative(box3Savings),debt=nonNegative(box3Debt);
-  let totalTax=0,currentTax=0,futureTax=0,externalTax=0,taxPaidFromSavings=0,taxPaidFromPortfolio=0,lossCarry=0;
+  let totalTax=0,currentTax=0,futureTax=0,unsettledTaxEstimate=0,externalTax=0,taxPaidFromSavings=0,taxPaidFromPortfolio=0,lossCarry=0;
   let externalDebtRepayment=0,totalDebtRepaid=0,totalDebtInterest=0,cashShortfall=0;
   let year=Number(startYear)||2026,month=clamp(Number(startMonth)||1,1,12);
   let yearStartPortfolio=portfolio,yearStartSavings=savings,yearStartDebt=debt;
@@ -218,30 +267,38 @@ function simulateInvestmentFlows({
       debt-=repay;totalDebtRepaid+=repay;
     }
 
-    const nextMonth=month===12?1:month+1,nextYear=month===12?year+1:year,yearEnd=nextYear!==year||i===monthlyFlows.length-1;
-    if(yearEnd){
+    const nextMonth=month===12?1:month+1,nextYear=month===12?year+1:year,endOfCalendarYear=nextYear!==year,finalMonth=i===monthlyFlows.length-1;
+    if(endOfCalendarYear||finalMonth){
       const regime=regimeForYear({mode:box3Mode,year,futureStart});
-      const firstYear=year===Number(startYear),midYear=Number(startMonth)>1;
-      const jan1Portfolio=firstYear&&midYear?nonNegative(firstJan1Portfolio):nonNegative(yearStartPortfolio);
-      const jan1Savings=firstYear&&midYear&&firstJan1Savings!=null?nonNegative(firstJan1Savings):nonNegative(yearStartSavings);
-      const jan1Debt=firstYear&&midYear&&firstJan1Debt!=null?nonNegative(firstJan1Debt):nonNegative(yearStartDebt);
-      const taxResult=box3TaxForYear({regime,jan1Portfolio,jan1Savings,jan1Debt,marketGain,savingsIncome,debtInterest,lossCarry,taxPartners,currentTaxRate,currentAllowance,currentNotional,currentSavingsNotional,currentDebtNotional,currentDebtThreshold,futureTaxRate,futureExempt,futureLossThreshold});
-      lossCarry=taxResult.lossCarry;totalTax+=taxResult.tax;if(regime==='current')currentTax+=taxResult.tax;if(regime==='future')futureTax+=taxResult.tax;
+      const firstYear=year===Number(startYear),firstPartial=firstYear&&Number(startMonth)>1;
+      const jan1Portfolio=firstPartial?nonNegative(firstJan1Portfolio):nonNegative(yearStartPortfolio);
+      const jan1Savings=firstPartial&&firstJan1Savings!=null?nonNegative(firstJan1Savings):nonNegative(yearStartSavings);
+      const jan1Debt=firstPartial&&firstJan1Debt!=null?nonNegative(firstJan1Debt):nonNegative(yearStartDebt);
+      const common={regime,jan1Portfolio,jan1Savings,jan1Debt,marketGain,savingsIncome,debtInterest,lossCarry,taxPartners,currentTaxRate,currentAllowance,currentNotional,currentSavingsNotional,currentDebtNotional,currentDebtThreshold,futureTaxRate,futureExempt,futureLossThreshold};
+      const canSettle=endOfCalendarYear&&!(firstPartial&&regime==='future');
+      const taxResult=canSettle
+        ?box3TaxForYear({...common,allowActualRebuttal:!(firstPartial&&regime==='current')})
+        :provisionalBox3(common);
       const beforePortfolio=portfolio,beforeSavings=savings,beforeDebt=debt;
-      const paid=payTaxFromSource({tax:taxResult.tax,paySource,portfolio,savings});
-      portfolio=paid.portfolio;savings=paid.savings;externalTax+=paid.external;taxPaidFromSavings+=paid.fromSavings;taxPaidFromPortfolio+=paid.fromPortfolio;
-      yearBuckets[year]={year,regime,jan1Portfolio,jan1Savings,jan1Debt,marketGain,savingsIncome,debtInterest,endPortfolioBeforeTax:beforePortfolio,endSavingsBeforeTax:beforeSavings,endDebt:beforeDebt,
-        endBeforeTax:beforePortfolio,box3Tax:taxResult.tax,endAfterTax:portfolio,endPortfolio:portfolio,endSavings:savings,method:taxResult.method,notionalTax:taxResult.notionalTax,actualTax:taxResult.actualTax,
+      let paid={portfolio,savings,fromPortfolio:0,fromSavings:0,external:0};
+      if(canSettle){
+        lossCarry=taxResult.lossCarry;totalTax+=taxResult.tax;if(regime==='current')currentTax+=taxResult.tax;if(regime==='future')futureTax+=taxResult.tax;
+        paid=payTaxFromSource({tax:taxResult.tax,paySource,portfolio,savings});
+        portfolio=paid.portfolio;savings=paid.savings;externalTax+=paid.external;taxPaidFromSavings+=paid.fromSavings;taxPaidFromPortfolio+=paid.fromPortfolio;
+      }else unsettledTaxEstimate+=taxResult.tax;
+      yearBuckets[year]={year,regime,settled:canSettle,jan1Portfolio,jan1Savings,jan1Debt,marketGain,savingsIncome,debtInterest,endPortfolioBeforeTax:beforePortfolio,endSavingsBeforeTax:beforeSavings,endDebt:beforeDebt,
+        endBeforeTax:beforePortfolio,box3Tax:canSettle?taxResult.tax:0,unsettledTax:canSettle?0:taxResult.tax,endAfterTax:portfolio,endPortfolio:portfolio,endSavings:savings,method:canSettle?taxResult.method:`unsettled estimate · ${taxResult.method}`,notionalTax:taxResult.notionalTax,actualTax:taxResult.actualTax,
         taxPaidFromSavings:paid.fromSavings,taxPaidFromPortfolio:paid.fromPortfolio,externalTax:paid.external};
-      series.push({year,month,portfolio,savings,box3Debt:debt,netFinancialAssets:portfolio+savings-debt,box3Tax:totalTax});
+      series.push({year,month,portfolio,savings,box3Debt:debt,netFinancialAssets:portfolio+savings-debt,box3Tax:totalTax,unsettledTaxEstimate});
       yearStartPortfolio=portfolio;yearStartSavings=savings;yearStartDebt=debt;marketGain=0;savingsIncome=0;debtInterest=0;
     }
     year=nextYear;month=nextMonth;
   }
 
   const netFinancialAssets=portfolio+savings-debt;
-  return{portfolio,savings,box3Debt:debt,netFinancialAssets,totalTax,currentTax,futureTax,externalTax,taxPaidFromSavings,taxPaidFromPortfolio,
-    comparableWealth:portfolio-externalTax-taxPaidFromSavings,householdComparableWealth:netFinancialAssets-externalTax-externalDebtRepayment-totalDebtInterest,
+  const householdComparableWealth=netFinancialAssets-externalTax-externalDebtRepayment-totalDebtInterest-unsettledTaxEstimate;
+  return{portfolio,savings,box3Debt:debt,netFinancialAssets,totalTax,currentTax,futureTax,unsettledTaxEstimate,externalTax,taxPaidFromSavings,taxPaidFromPortfolio,
+    comparableWealth:householdComparableWealth,householdComparableWealth,
     externalDebtRepayment,totalDebtRepaid,totalDebtInterest,cashShortfall,lossCarry,yearBuckets,series};
 }
 
@@ -264,23 +321,27 @@ function simulatePlan(config={}){
   const annuityPayment=monthlyMortRate===0?initialMort/mortTermMonths:initialMort*monthlyMortRate/(1-Math.pow(1+monthlyMortRate,-mortTermMonths));
   const totalMonths=phases.reduce((sum,p)=>sum+Math.max(0,Math.round((Number(p.years)||0)*12)),0);
   const monthlySavingsRate=(Number(config.savingsReturnPct)||0)/100/12,monthlyDebtRate=(Number(config.debtInterestPct)||0)/100/12;
+  const hraRemainingMonths=config.hraRemainingMonths==null?Math.min(mortTermMonths,360):Math.max(0,Math.round(Number(config.hraRemainingMonths)||0));
+  const qualifyingInterestFraction=clamp(Number(config.qualifyingInterestFraction??1)||0,0,1);
+  const homeOwnershipMonths=config.homeOwnershipMonths==null?totalMonths:Math.max(0,Math.round(Number(config.homeOwnershipMonths)||0));
+  const unusedMortgageDestination=['invest','savings','consume'].includes(config.unusedMortgageDestination)?config.unusedMortgageDestination:'invest';
 
   let portfolio=nonNegative(config.startPortfolio),savings=nonNegative(config.box3Savings),box3Debt=nonNegative(config.box3Debt),invested=portfolio,mort=initialMort;
-  let grossInterest=0,extraPaid=0,scheduledPrincipal=0,box3Tax=0,currentTax=0,futureTax=0,lossCarry=0,externalTax=0,taxPaidFromSavings=0,taxPaidFromPortfolio=0;
+  let grossInterest=0,extraPaid=0,plannedMortgageExtra=0,unusedMortgageCash=0,fallbackInvested=0,fallbackSaved=0,fallbackConsumed=0,scheduledPrincipal=0,box3Tax=0,currentTax=0,futureTax=0,unsettledTaxEstimate=0,lossCarry=0,externalTax=0,taxPaidFromSavings=0,taxPaidFromPortfolio=0;
   let totalDebtInterest=0,totalDebtRepaid=0,externalDebtRepayment=0,payoffDate=null;
   const rawSchedule=[],series=[],yearBuckets={};
   let year=startYear,month=startMonth,global=0;
 
   function bucket(y){
     if(!yearBuckets[y])yearBuckets[y]={year:y,startPortfolio:null,startSavings:null,startDebt:null,endBeforeTax:0,endAfterTax:0,marketGain:0,savingsIncome:0,debtInterest:0,
-      jan1Savings:0,jan1Debt:0,contrib:0,mortInterest:0,mortMonths:0,mortTax:0,box3Tax:0,regime:'none',method:'none'};
+      jan1Savings:0,jan1Debt:0,contrib:0,mortInterest:0,mortMonths:0,mortTax:0,box3Tax:0,unsettledTax:0,settled:true,regime:'none',method:'none'};
     return yearBuckets[y];
   }
 
   for(const phase of phases){
     const phaseMonths=Math.max(0,Math.round((Number(phase.years)||0)*12));
     for(let pm=0;pm<phaseMonths;pm++){
-      global++;const b=bucket(year);
+      const monthIndex=global;global++;const b=bucket(year);
       if(b.startPortfolio===null){b.startPortfolio=portfolio;b.startSavings=savings;b.startDebt=box3Debt;}
       const growth=portfolio*monthlyReturn;portfolio+=growth;b.marketGain+=growth;
       const saveInterest=savings*monthlySavingsRate;savings+=saveInterest;b.savingsIncome+=saveInterest;
@@ -302,35 +363,57 @@ function simulatePlan(config={}){
       }
       investContrib+=bonusInvest;portfolio+=investContrib;invested+=investContrib;b.contrib+=investContrib;
 
-      const taxEligible=mort>0;let interest=0,principal=0,extra=0,grossScheduled=0;
+      const homeOwned=monthIndex<homeOwnershipMonths;
+      const balanceAtStart=mort;
+      let interest=0,principal=0,extra=0,grossScheduled=0;
       if(mort>0){
-        interest=mort*monthlyMortRate;grossInterest+=interest;b.mortInterest+=interest;b.mortMonths++;
+        interest=mort*monthlyMortRate;grossInterest+=interest;
         principal=mortType==='linear'?Math.min(mort,linearPrincipal):Math.min(mort,Math.max(0,annuityPayment-interest));
         grossScheduled=interest+principal;mort-=principal;scheduledPrincipal+=principal;
-        if(phase.mortgageFreq==='monthly')extra+=nonNegative(phase.mortgageExtra);else if(month===bonusMonth)extra+=nonNegative(phase.mortgageExtra);
-        extra+=bonusMort;extra=Math.min(mort,Math.max(0,extra));mort-=extra;extraPaid+=extra;
-        if(mort<=.005){mort=0;if(!payoffDate)payoffDate={year,month};}
       }
-      rawSchedule.push({year,month,balance:mort,gross:grossScheduled,principal,interest,taxReturn:0,net:grossScheduled,extra,cash:grossScheduled+extra,taxEligible});
+      let requestedExtra=0;
+      if(phase.mortgageFreq==='yearly'){if(month===bonusMonth)requestedExtra+=nonNegative(phase.mortgageExtra);}
+      else requestedExtra+=nonNegative(phase.mortgageExtra);
+      requestedExtra+=bonusMort;
+      plannedMortgageExtra+=requestedExtra;
+      if(mort>0){extra=Math.min(mort,requestedExtra);mort-=extra;extraPaid+=extra;}
+      const unusedExtra=Math.max(0,requestedExtra-extra);unusedMortgageCash+=unusedExtra;
+      if(unusedExtra>0){
+        if(unusedMortgageDestination==='savings'){savings+=unusedExtra;fallbackSaved+=unusedExtra;}
+        else if(unusedMortgageDestination==='consume')fallbackConsumed+=unusedExtra;
+        else{portfolio+=unusedExtra;invested+=unusedExtra;b.contrib+=unusedExtra;fallbackInvested+=unusedExtra;}
+      }
+      if(balanceAtStart>0&&mort<=.005){mort=0;if(!payoffDate)payoffDate={year,month};}
+      const hraEligible=config.mortTaxEnabled!==false&&homeOwned&&monthIndex<hraRemainingMonths&&balanceAtStart>0&&qualifyingInterestFraction>0;
+      const deductibleInterest=hraEligible?interest*qualifyingInterestFraction:0;
+      rawSchedule.push({year,month,balance:mort,gross:grossScheduled,principal,interest,deductibleInterest,taxReturn:0,net:grossScheduled,extra,requestedExtra,unusedExtra,cash:grossScheduled+extra,cashWithRequestedExtra:grossScheduled+requestedExtra,homeOwned,hraEligible});
       b.endBeforeTax=portfolio;
 
       const nextMonth=month===12?1:month+1,nextYear=month===12?year+1:year,endOfCalendarYear=nextYear!==year,finalMonth=global===totalMonths;
       if(endOfCalendarYear||finalMonth){
         const regime=regimeForYear({mode:config.box3Mode,year,futureStart:config.futureStart});b.regime=regime;
-        const firstYear=year===startYear,midYear=startMonth>1;
-        const jan1Portfolio=firstYear&&midYear?nonNegative(config.firstJan1Portfolio):Math.max(0,b.startPortfolio||0);
-        const jan1Savings=firstYear&&midYear&&config.firstJan1Savings!=null?nonNegative(config.firstJan1Savings):Math.max(0,b.startSavings||0);
-        const jan1Debt=firstYear&&midYear&&config.firstJan1Debt!=null?nonNegative(config.firstJan1Debt):Math.max(0,b.startDebt||0);
-        const taxResult=box3TaxForYear({regime,jan1Portfolio,jan1Savings,jan1Debt,marketGain:b.marketGain,savingsIncome:b.savingsIncome,debtInterest:b.debtInterest,lossCarry,
+        const firstYear=year===startYear,firstPartial=firstYear&&startMonth>1;
+        const jan1Portfolio=firstPartial?nonNegative(config.firstJan1Portfolio):Math.max(0,b.startPortfolio||0);
+        const jan1Savings=firstPartial&&config.firstJan1Savings!=null?nonNegative(config.firstJan1Savings):Math.max(0,b.startSavings||0);
+        const jan1Debt=firstPartial&&config.firstJan1Debt!=null?nonNegative(config.firstJan1Debt):Math.max(0,b.startDebt||0);
+        const common={regime,jan1Portfolio,jan1Savings,jan1Debt,marketGain:b.marketGain,savingsIncome:b.savingsIncome,debtInterest:b.debtInterest,lossCarry,
           taxPartners:config.taxPartners,currentTaxRate:config.currentTaxRate,currentAllowance:config.currentAllowance,currentNotional:config.currentNotional,currentSavingsNotional:config.currentSavingsNotional,
-          currentDebtNotional:config.currentDebtNotional,currentDebtThreshold:config.currentDebtThreshold,futureTaxRate:config.futureTaxRate,futureExempt:config.futureExempt,futureLossThreshold:config.futureLossThreshold});
-        lossCarry=taxResult.lossCarry;b.method=taxResult.method;b.box3Tax=taxResult.tax;b.notionalTax=taxResult.notionalTax;b.actualTax=taxResult.actualTax;
-        b.jan1Portfolio=jan1Portfolio;b.jan1Savings=jan1Savings;b.jan1Debt=jan1Debt;box3Tax+=taxResult.tax;
-        if(regime==='current')currentTax+=taxResult.tax;if(regime==='future')futureTax+=taxResult.tax;
-        const paid=payTaxFromSource({tax:taxResult.tax,paySource:config.box3PaySource,portfolio,savings});
-        portfolio=paid.portfolio;savings=paid.savings;externalTax+=paid.external;taxPaidFromSavings+=paid.fromSavings;taxPaidFromPortfolio+=paid.fromPortfolio;
-        b.taxPaidFromSavings=paid.fromSavings;b.taxPaidFromPortfolio=paid.fromPortfolio;b.externalTax=paid.external;b.endAfterTax=portfolio;b.endSavings=savings;b.endDebt=box3Debt;
-        series.push({year,month,portfolio,savings,box3Debt,netFinancialAssets:portfolio+savings-box3Debt,mort,invested,box3Tax});
+          currentDebtNotional:config.currentDebtNotional,currentDebtThreshold:config.currentDebtThreshold,futureTaxRate:config.futureTaxRate,futureExempt:config.futureExempt,futureLossThreshold:config.futureLossThreshold};
+        const canSettle=endOfCalendarYear&&!(firstPartial&&regime==='future');
+        const taxResult=canSettle
+          ?box3TaxForYear({...common,allowActualRebuttal:!(firstPartial&&regime==='current')})
+          :provisionalBox3(common);
+        b.method=canSettle?taxResult.method:`unsettled estimate · ${taxResult.method}`;b.settled=canSettle;b.notionalTax=taxResult.notionalTax;b.actualTax=taxResult.actualTax;
+        b.jan1Portfolio=jan1Portfolio;b.jan1Savings=jan1Savings;b.jan1Debt=jan1Debt;
+        if(canSettle){
+          lossCarry=taxResult.lossCarry;b.box3Tax=taxResult.tax;box3Tax+=taxResult.tax;
+          if(regime==='current')currentTax+=taxResult.tax;if(regime==='future')futureTax+=taxResult.tax;
+          const paid=payTaxFromSource({tax:taxResult.tax,paySource:config.box3PaySource,portfolio,savings});
+          portfolio=paid.portfolio;savings=paid.savings;externalTax+=paid.external;taxPaidFromSavings+=paid.fromSavings;taxPaidFromPortfolio+=paid.fromPortfolio;
+          b.taxPaidFromSavings=paid.fromSavings;b.taxPaidFromPortfolio=paid.fromPortfolio;b.externalTax=paid.external;
+        }else{b.box3Tax=0;b.unsettledTax=taxResult.tax;unsettledTaxEstimate+=taxResult.tax;}
+        b.endAfterTax=portfolio;b.endSavings=savings;b.endDebt=box3Debt;
+        series.push({year,month,portfolio,savings,box3Debt,netFinancialAssets:portfolio+savings-box3Debt,mort,invested,box3Tax,unsettledTaxEstimate});
       }
       year=nextYear;month=nextMonth;
     }
@@ -338,12 +421,13 @@ function simulatePlan(config={}){
 
   const allocation=allocateAnnualMortgageTax(rawSchedule,{enabled:config.mortTaxEnabled!==false,deductionRate:config.deductRate,wozValue:config.wozValue,hillenRelief:config.hillenRelief});
   const schedule=allocation.rows,mortTax=allocation.totalTaxBenefit;
-  Object.values(yearBuckets).forEach(b=>{const taxBucket=allocation.annualBuckets[b.year];b.mortInterest=taxBucket?.interest??b.mortInterest;b.mortMonths=taxBucket?.months??0;b.mortTax=taxBucket?.taxBenefit??0;});
+  Object.values(yearBuckets).forEach(b=>{const taxBucket=allocation.annualBuckets[b.year];b.mortInterest=taxBucket?.grossInterest??b.mortInterest;b.deductibleInterest=taxBucket?.deductibleInterest??0;b.mortMonths=taxBucket?.ownershipMonths??0;b.mortTax=taxBucket?.taxBenefit??0;b.hillenRelief=taxBucket?.hillenRelief??0;});
   const netFinancialAssets=portfolio+savings-box3Debt;
-  return{portfolio,savings,box3Debt,netFinancialAssets,invested,mort,initialMort,grossInterest,mortTax,netInterest:grossInterest-mortTax,extraPaid,scheduledPrincipal,
-    grossScheduledTotal:grossInterest+scheduledPrincipal,firstScheduled:schedule.length?schedule[0].gross:0,box3Tax,currentTax,futureTax,externalTax,taxPaidFromSavings,taxPaidFromPortfolio,
-    totalDebtInterest,totalDebtRepaid,externalDebtRepayment,lossCarry,payoffDate,schedule,series,yearBuckets,horizonMonths:global,mortType};
+  const cashConservationDifference=plannedMortgageExtra-extraPaid-fallbackInvested-fallbackSaved-fallbackConsumed;
+  return{portfolio,savings,box3Debt,netFinancialAssets,householdComparableWealth:netFinancialAssets-externalTax-externalDebtRepayment-totalDebtInterest-unsettledTaxEstimate,invested,mort,initialMort,grossInterest,mortTax,netInterest:grossInterest-mortTax,extraPaid,plannedMortgageExtra,unusedMortgageCash,fallbackInvested,fallbackSaved,fallbackConsumed,cashConservationDifference,unusedMortgageDestination,scheduledPrincipal,
+    grossScheduledTotal:grossInterest+scheduledPrincipal,firstScheduled:schedule.length?schedule[0].gross:0,box3Tax,currentTax,futureTax,unsettledTaxEstimate,externalTax,taxPaidFromSavings,taxPaidFromPortfolio,
+    totalDebtInterest,totalDebtRepaid,externalDebtRepayment,lossCarry,payoffDate,schedule,series,yearBuckets,horizonMonths:global,mortType,hraRemainingMonths,qualifyingInterestFraction,homeOwnershipMonths};
 }
 
-return{clamp,deductionRate2026,ewf2026,mortgageTaxBenefit,allocateAnnualMortgageTax,regimeForYear,box3TaxForYear,payTaxFromSource,mortgageSchedule,simulateInvestmentFlows,equalizeCashFlows,simulatePlan};
+return{clamp,deductionRate2026,ewf2026,hillenReliefForYear,mortgageTaxBenefit,allocateAnnualMortgageTax,regimeForYear,box3TaxForYear,payTaxFromSource,mortgageSchedule,simulateInvestmentFlows,equalizeCashFlows,simulatePlan};
 });
