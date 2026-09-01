@@ -1,36 +1,41 @@
 # Dutch Investment & Mortgage Planner
 
-A browser-based planning tool for comparing multi-stage investing, Dutch mortgage repayment strategies, mortgage-interest tax relief, Box 3, home-purchase rules, and household strategy choices.
+A static browser planner for comparing Dutch mortgage, investment, Box 3, purchase-cost, and household strategy choices.
+
+The project is designed for **scenario planning**, not mortgage underwriting, tax filing, or financial advice.
 
 ## Current model
-
-The planner is a static browser app with a shared calculation kernel. It is intended for scenario planning, not mortgage underwriting, tax filing, or financial advice.
 
 ### Main capabilities
 
 - 1 to 6 investment / repayment phases
 - Annuity and Linear mortgage schedules with extra repayments
 - 2026 HRA estimate after eigenwoningforfait / Hillen approximation
-- Annual HRA calculation allocated back to monthly rows so the schedule reconciles exactly
-- 2026 mixed-asset Box 3 estimate with investments, bank deposits, Box 3 debt, debt threshold, tax-free wealth allowance, and modeled actual-return rebuttal
+- Annual HRA calculation allocated back to monthly schedule rows so totals reconcile exactly
+- 2026 mixed-asset Box 3 estimate across investments, savings / bank deposits, and Box 3 debt
 - Dynamic savings and Box 3 debt balances
-- Rule-driven 2026 transfer tax, NHG planning check, and LTV warning
-- Five strategy comparisons: Buy vs Rent, larger vs smaller down payment, extra mortgage repayment vs invest, Linear vs Annuity, and Keep vs Sell + Rent
-- Marginal **Next €** invest-vs-repay break-even analysis
-- Fair-cash-flow equalisation and return sensitivity
-- Dependency-free Node regression tests and GitHub Actions CI
+- Box 3 tax paid from savings, investments, or external cash flow
+- 2026 transfer-tax, NHG planning, and LTV checks
+- Five scenario comparisons: Buy vs Rent, larger vs smaller down payment, extra mortgage repayment vs invest, Linear vs Annuity, Keep vs Sell + Rent
+- Fair-cash-flow equalisation across strategies
+- Return sensitivity analysis
+- **Next €** invest-vs-repay break-even analysis
+- Browser-local save / restore and one-click reset
+- Dependency-free Node regression suite and GitHub Actions CI
 
 ## Architecture
 
-`finance-core.js` is the single source of truth for mortgage amortisation, annual HRA allocation, Box 3 calculations, household savings / Box 3 debt ledgers, investment growth, cash-flow equalisation, and the combined plan simulation.
+`finance-core.js` is the shared calculation kernel for mortgage amortisation, HRA allocation, Box 3, household balances, investment growth, cash-flow equalisation, and combined-plan simulation.
 
-`box3-household.js` is the browser adapter for the dynamic household balances and conservative default framing. It does not contain a second Box 3 formula.
+`box3-household.js` is the browser adapter for the dynamic household balance sheet and conservative default framing. It does not contain a second Box 3 formula.
 
-`purchase-rules.js` contains pure 2026 Dutch purchase-rule calculations for transfer tax, simplified NHG checks/fees, and LTV.
+`purchase-rules.js` contains pure 2026 Dutch purchase-rule calculations for transfer tax, simplified NHG checks / fees, and LTV.
 
-`scenario-engine.js` contains the pure five-way scenario engine plus its browser UI. Household savings / Box 3 debt settings are passed explicitly into the shared finance core so purchase decisions and Box 3 cannot drift apart.
+`scenario-engine.js` contains the pure five-way scenario engine plus its browser UI. Household savings and Box 3 debt are passed into the same FinanceCore functions used by the main plan.
 
-`next-euro.js` is a thin decision layer on top of `ScenarioCore.runScenario()`. It does not implement another repay-vs-invest formula. It repeatedly runs the existing **Extra mortgage repayment vs Invest** scenario at different investment returns and solves for the approximate crossover.
+`next-euro.js` is a thin decision layer on top of `ScenarioCore.runScenario()`. It repeatedly runs the existing Extra Repayment vs Invest scenario at different investment returns to solve for the approximate break-even return.
+
+`app-state.js` is the R6 browser-local state layer. It stores editable controls in `localStorage`, restores them on refresh, preserves the selected mortgage method and active tab, and provides a reset-to-examples action. It contains no financial formulas.
 
 The deterministic browser load order is:
 
@@ -41,83 +46,67 @@ The deterministic browser load order is:
 5. `purchase-costs.js`
 6. `scenario-engine.js`
 7. `next-euro.js`
+8. `app-state.js`
+
+## R6 product hardening
+
+R6 deliberately adds **no new financial model**.
+
+It prepares the current calculation kernel for real-user testing by adding:
+
+- browser-local autosave of editable planner inputs
+- restoration after refresh
+- persistence of phase controls that do not have normal HTML IDs
+- persistence of selected mortgage structure and active tab
+- one-click **Reset examples**
+- explicit “stored only in this browser” privacy wording
+- a visible methodology / model-boundary explanation
+- static 5% investment-return default in HTML rather than relying on JavaScript to correct 7%
+- static 2026-current Box 3 baseline rather than relying on JavaScript to replace the proposed-transition default
+- static savings / cash Box 3 tax-payment default
+- Node 24 CI with `actions/checkout@v5` and `actions/setup-node@v5`
+- golden UI / runtime regression checks
+
+The browser-local snapshot is not an account, cloud backup, or server-side profile. Reset clears that local snapshot and reloads the illustrative defaults.
 
 ## R5 Next € optimizer
 
-R5 answers the marginal household question:
+R5 answers:
 
 > If I have another €X per month, should I invest it or repay my mortgage?
 
-The user enters:
+Inputs:
 
 - extra amount per month
 - decision horizon
 - assumed investment return
 
-The planner then reports:
+Outputs:
 
-- the approximate **break-even nominal investment return before Box 3**
+- approximate **break-even nominal investment return before Box 3**
 - which strategy leads at the user's assumed return
-- the modeled end-of-horizon wealth difference
-- quick break-even comparisons for €250 / €500 / €1,000 per month
+- modeled end-of-horizon wealth difference
+- quick comparisons for €250 / €500 / €1,000 per month
 
-The break-even is not calculated from a shortcut such as `mortgage rate × (1 − deduction rate)`. Instead, R5 runs the same production scenario engine used by the full Extra Repayment vs Invest comparison. That means the result reflects the selected:
+The optimizer does not use a shortcut such as `mortgage rate × (1 − deduction rate)`. It runs the same production mortgage-invest scenario used elsewhere in the planner.
 
-- mortgage balance, rate, term and repayment structure
-- annual HRA/EWF/Hillen approximation
-- Box 3 regime and tax-payment source
-- investment portfolio
-- savings and Box 3 debt balances
-- Box 3 debt repayment settings
-- selected decision horizon
+This means the break-even reflects the entered mortgage, HRA/EWF/Hillen treatment, Box 3 settings, investments, savings, Box 3 debt, and selected horizon.
 
-The optimizer scans a bounded return range to find a sign change in comparable wealth, then uses bisection to refine the crossover. If there is no crossover in the search range, the UI says so instead of inventing a percentage.
+A 4% nominal mortgage with no HRA and no Box 3 breaks even at a 4% nominal investment-return input in this model because both rates are applied monthly from nominal annual inputs.
 
-Break-even is a model result, not a promised investment return. Extra mortgage repayment has lower market risk, while investment returns are uncertain and lender repayment rules can differ.
+HRA generally lowers the investment return required to beat repayment because deductible mortgage interest reduces the effective mortgage cost. Box 3 generally pushes the required nominal investment return upward.
+
+Break-even remains a model result, not a promised market return or a risk-adjusted guarantee.
 
 ## R4 scenario realism
 
-R4 connects the scenario decisions to the R3 household balance sheet.
+R4 connected the five scenario comparisons to the household balance sheet.
 
-### Purchase cash
+Buy vs Rent and Down Payment use the household starting-savings balance rather than a separate scenario cash pot. Purchase costs and down payments therefore reduce financial assets before future Box 3 is calculated.
 
-Buy vs Rent and Down Payment no longer have a separate standalone cash pot in the browser.
+Unused upfront cash can be invested or retained in savings.
 
-They use **Investment → Household financial balances → Starting savings / bank deposits** as their starting cash balance.
-
-For Buy vs Rent:
-
-- the buyer spends down payment + purchase costs from that starting savings
-- the renter does not spend that purchase cash
-- any uncovered buyer amount is recorded as external upfront cash
-- unused cash can either be **invested** or **kept in savings**
-- the resulting financial balances feed the same Box 3 engine as the main plan
-
-For Down Payment:
-
-- both strategies start with the same household savings
-- each strategy draws its own purchase costs + down payment
-- the remaining cash is invested or kept in savings according to the same selector
-- the resulting Box 3 exposure therefore changes with the chosen down payment
-
-The pure scenario API retains an optional `cash` input for backwards-compatible tests and programmatic use. In the browser, the common household savings balance is the source of truth.
-
-### Household balances in all five scenarios
-
-Mortgage-vs-Invest, Linear-vs-Annuity and Keep-vs-Sell also carry:
-
-- investment portfolio
-- savings / cash
-- Box 3 debt
-- Box 3 tax-payment source
-- Box 3 debt repayment
-- external Box 3 tax / debt cash flows
-
-Comparable wealth for mortgage-structure decisions is based on household financial wealth minus the remaining Box 1 mortgage, with the common home value excluded.
-
-### Owner-only costs
-
-Scenario assumptions include:
+Owner-only scenario costs include editable:
 
 - VVE / service charges
 - maintenance
@@ -125,46 +114,46 @@ Scenario assumptions include:
 - homeowner building insurance
 - ground lease / erfpacht
 
-These costs are included in owner cash flows and the monthly affordability check. They remain editable planning inputs; the newer categories default to €0 rather than pretending one amount fits every property.
-
-### Return framing
-
-The untouched illustrative browser default is **5%**.
-
-The normal Scenario sensitivity range defaults to **2–10%**. Users can still enter 12–14%, but the UI labels those levels as optimistic stress cases rather than a base planning assumption.
-
-The untouched Box 3 browser default is **2026 current rules** rather than the proposed-transition path. The proposed future regime remains available as a legislative scenario.
+The normal scenario return range defaults to 2–10%. The untouched main investment default is 5%.
 
 ## R3 household balance sheet
 
-Savings and Box 3 debt are real evolving balances:
+Savings and Box 3 debt are evolving balances rather than frozen tax context:
 
 - savings compounds at the entered rate
 - savings can fund Box 3 tax
 - Box 3 debt can be repaid
-- debt repayment can come from savings or external cash flow
-- next-year Jan 1 Box 3 values use the evolved balances
-- mid-year first-Jan-1 overrides are available for portfolio, savings and debt
+- repayment can come from savings or external cash flow
+- future Jan 1 Box 3 values use the evolved balances
+- optional first-Jan-1 overrides exist for portfolio, savings, and debt when a plan starts mid-year
 
-The owner-occupied mortgage remains separate from Box 3 debt.
+The owner-occupied Box 1 mortgage remains separate from Box 3 debt.
 
 ## HRA treatment
 
-The annual HRA/EWF/Hillen estimate is authoritative. Interest is aggregated by calendar year over active mortgage months, one annual estimate is calculated, and that exact amount is allocated back to schedule rows.
+The annual HRA/EWF/Hillen estimate is authoritative.
 
-Monthly values are **allocated tax benefit**, not predictions of monthly Belastingdienst payments.
+Mortgage interest is aggregated per calendar year across active mortgage months. One annual estimate is calculated and then allocated back across schedule rows so monthly / yearly schedule totals reconcile exactly with the headline benefit.
 
-The deduction rate remains a planning approximation rather than a complete Box 1 income-tax engine.
+Schedule values are labeled **Allocated tax benefit**. They are not predictions of monthly Belastingdienst payments.
+
+The deduction rate remains a planning approximation, not a complete Box 1 income-tax calculation.
 
 ## Box 3 notes
 
-The current-rules model uses separate deemed-return percentages for bank deposits, investments / other assets, and Box 3 debt.
+The 2026 current-rules model uses separate deemed-return percentages for:
+
+- bank deposits
+- investments / other assets
+- Box 3 debt
+
+It also models the 2026 debt threshold, tax-free wealth allowance, and the lower-of deemed-vs-modeled-actual-return comparison used by the planner.
 
 The proposed future actual-return regime remains a planning scenario only. It is not presented as enacted law.
 
 ## Purchase rules
 
-The current purchase module includes:
+The purchase module includes planning checks for:
 
 - 2026 starter exemption value cap of €555,000
 - 2% main-residence transfer tax
@@ -172,43 +161,49 @@ The current purchase module includes:
 - standard NHG planning limit €470,000
 - energy-enhanced NHG planning limit €498,200
 - 0.4% NHG fee
-- normal 100% LTV planning warning
+- normal 100% LTV warning
 
-The starter selector does not establish every personal eligibility condition, and the NHG check is not lender underwriting.
+The starter selector does not establish all personal eligibility conditions. The NHG and LTV checks do not replace lender underwriting.
 
 ## Tests
 
-Run all tests with Node 20+:
+Run the full suite with Node 24+:
 
 ```bash
 npm test
 ```
 
-The suite covers mortgage identities, HRA reconciliation, mixed-asset Box 3, dynamic household balances, Dutch purchase rules, five hand-worked strategy comparisons, purchase-cash / Box 3 coupling, owner-cost cash flows, browser bootstrap integrity, external mortgage sanity references, and the R5 Next € break-even solver.
+The suite covers:
 
-R5 specifically tests:
+- mortgage amortisation identities
+- HRA / EWF / Hillen reconciliation
+- mixed-asset Box 3
+- dynamic household savings and debt
+- 2026 purchase rules
+- external mortgage sanity references
+- five hand-worked scenario comparisons
+- purchase-cash / Box 3 coupling
+- owner-cost cash flows
+- Next € break-even behavior
+- deterministic browser load order
+- R6 local-state serialization and restore primitives
+- R6 static defaults, methodology wording, reset path, and Node 24 CI configuration
 
-- a 0% mortgage producing a 0% break-even
-- the untaxed 4% mortgage case against the mathematically equivalent effective annual investment rate
-- HRA lowering the investment return required to beat repayment
-- Box 3 raising the nominal investment break-even
-- custom and €250 / €500 / €1,000 amount analysis
-- invalid handling when there is no mortgage balance
-
-GitHub Actions runs the suite automatically on pushes to `main` and pull requests.
+GitHub Actions runs the same suite on pushes to `main` and pull requests.
 
 ## Main limitations
 
 - Investment and property returns are assumptions, not forecasts.
 - HRA is a planning approximation, not an aangifte calculation.
 - Box 3 is not a complete tax-return engine and does not model every asset category, exemption, or fiscal-partner allocation choice.
-- Box 3 debt interest is modeled as an external household cash expense; there is no full salary/disposable-income budget.
-- Scenario purchase events occur at the scenario start. For plans starting after January, use the Jan 1 overrides when first-year Box 3 needs a different reference balance.
+- Box 3 debt interest is modeled as an external household cash expense; there is no full salary / disposable-income budget.
+- Scenario purchase events occur at the scenario start. For mid-year starts, use the Jan 1 overrides when first-year Box 3 needs a different reference balance.
 - Owner-cost inputs are planning assumptions, not automatically sourced municipal or insurance quotes.
 - Proposed future Box 3 legislation may change.
-- The planner does not calculate Nibud/LTI borrowing capacity or lender acceptance.
+- The planner does not calculate official Nibud/LTI borrowing capacity or lender acceptance.
 - Extra mortgage repayment rules can vary by lender.
-- The Next € optimizer compares modeled wealth under the entered assumptions; it does not convert market risk into a guaranteed-equivalent return.
+- The Next € optimizer compares modeled wealth under entered assumptions; it does not convert investment risk into a guaranteed-equivalent return.
+- Local browser persistence is device/browser-specific and is not a backup service.
 
 ## External sanity references
 
@@ -223,9 +218,9 @@ Those sites are sanity references, not legal authorities. Dutch rule parameters 
 - **R3 Household balance sheet — complete**
 - **R4 Scenario realism — complete**
 - **R5 Next € optimizer — complete**
-- **R6 Product hardening — next**
+- **R6 Product hardening — complete**
 
-After R6, the intended next step is real-user testing before adding broader functionality.
+The intended next step is **real-user testing** before adding broader functionality.
 
 ## Run locally
 
@@ -240,5 +235,6 @@ Keep these files together and open `index.html` in a modern browser:
 - `purchase-costs.js`
 - `scenario-engine.js`
 - `next-euro.js`
+- `app-state.js`
 
 The app has no backend or account system and does not submit entered financial values to a planner server.
