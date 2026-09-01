@@ -21,29 +21,19 @@ A browser-based planning tool for comparing multi-stage investment contributions
 
 ## Calculation architecture
 
-`finance-core.js` is the single source of truth for shared financial calculations. It contains pure calculation functions for:
-
-- Linear and annuity mortgage amortisation
-- recurring extra mortgage repayment
-- 2026 eigenwoningforfait
-- mortgage-interest tax-benefit / Hillen approximation
-- current and proposed Box 3 yearly tax calculations
-- the mid-year first-Jan-1 portfolio override
-- investment growth with annual Box 3 charges
-- equalised monthly cash flows between two strategies
-- the main combined Investment + Mortgage simulation
+`finance-core.js` is the single source of truth for shared financial calculations. It contains pure calculation functions for mortgage amortisation, extra repayments, 2026 eigenwoningforfait, mortgage-interest tax benefit / Hillen approximation, current and proposed Box 3, the mid-year first-Jan-1 portfolio override, investment growth, cash-flow equalisation, and the combined Investment + Mortgage simulation.
 
 `app.js` is responsible for the main planner UI and delegates financial calculations to `finance-core.js`.
 
-`scenario-engine.js` is responsible for strategy-comparison UI and orchestration. It uses the same mortgage, tax, investment, and cash-flow functions from `finance-core.js` rather than maintaining a separate tax engine.
+`scenario-engine.js` now has a pure, Node-testable scenario layer plus the browser UI. The five scenario types all assemble their outcomes from the shared functions in `finance-core.js`, so the same production path can be exercised in automated tests.
 
 `purchase-costs.js` is UI-only. It builds the editable purchase-cost breakdown and synchronises the total purchase-cost input; it contains no mortgage, Box 3, or HRA calculation logic.
 
-This separation is intentional so the Investment, Mortgage, and Scenario views cannot silently drift onto different versions of the same tax formula.
+## Regression and scenario validation tests
 
-## Regression tests
+The dependency-free Node test suite covers both low-level financial formulas and end-to-end strategy assembly.
 
-The financial core has a dependency-free Node regression suite in `tests/finance-core.test.js`. It currently covers:
+`tests/finance-core.test.js` covers:
 
 - automatic and manual 2026 mortgage-deduction rates
 - 2026 eigenwoningforfait
@@ -58,13 +48,22 @@ The financial core has a dependency-free Node regression suite in `tests/finance
 - reconciliation between the main-plan and investment-flow engines
 - cash-flow equalisation between two strategies
 
-Run the tests locally with Node 20+:
+`tests/scenario-engine.test.js` validates the five production scenario calculations with hand-worked zero-return / zero-interest cases where the correct answer is independently derivable:
+
+- Buy vs Rent
+- Larger vs smaller down payment
+- Extra mortgage repayment vs Invest
+- Linear vs Annuity
+- Keep home vs Sell + Rent
+- purchase and selling costs charged exactly once
+
+Run all tests locally with Node 20+:
 
 ```bash
 npm test
 ```
 
-The repository also runs the same suite automatically in GitHub Actions on pushes to `main` and on pull requests. New calculation features should add or update a regression case before being considered complete.
+GitHub Actions runs the same suite automatically on pushes to `main` and on pull requests.
 
 ## Scenario cash-flow treatment
 
@@ -114,9 +113,9 @@ Important limitations include:
 - Extra mortgage repayments can be treated differently by individual lenders.
 - The annuity simulation assumes the scheduled annuity payment remains unchanged after an extra repayment, generally shortening the payoff period rather than automatically lowering the contractual payment.
 
-## Next engineering step
+## Next product step
 
-With the shared calculation core and first regression suite in place, the next priority is to validate the five end-to-end Scenario comparisons against hand-worked cases: Buy vs Rent, larger vs smaller down payment, extra mortgage repayment vs invest, Linear vs Annuity, and Keep vs Sell + Rent.
+With the shared calculation core, regression suite, and five scenario assembly checks in place, the next priority is Dutch purchase-rule accuracy: replace the flat transfer-tax default with rule-driven 2026 transfer-tax logic and then add LTV / NHG guardrails.
 
 ## Sources referenced in the calculator
 
