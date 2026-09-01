@@ -145,20 +145,15 @@ function injectBrowserUI(){
 }
 
 function bootBrowser(){
-  if(typeof window==='undefined'||!window.FinanceCore)return;
+  if(typeof window==='undefined')return;
+  if(!window.FinanceCore)throw new Error('FinanceCore must load before box3-household.js');
   injectBrowserUI();
   decorateCore(window.FinanceCore,browserContext);
-  const trigger=()=>{
-    const el=document.getElementById('currentNotional')||document.getElementById('box3Mode');
-    if(el)el.dispatchEvent(new Event('input',{bubbles:true}));
-  };
-  setTimeout(trigger,0);
-  setTimeout(trigger,150);
 }
 
 return{DEFAULTS,normalizeContext,decorateCore,browserContext,injectBrowserUI,bootBrowser};
 });
 
-if(typeof window!=='undefined'&&window.FinanceCore){
+if(typeof window!=='undefined'){
   window.Box3Household.bootBrowser();
 }
