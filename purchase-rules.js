@@ -20,7 +20,7 @@ const RULES_2026={
 
 function transferTax2026({propertyValue=0,mode='main',manualAmount=0}={}){
   const value=nonNegative(propertyValue);
-  if(mode==='manual')return{amount:nonNegative(manualAmount),rate:null,mode,starterEligible:null};
+  if(mode==='manual')return{amount:nonNegative(manualAmount),rate:null,mode,starterEligible:null,propertyValue:value};
   if(mode==='starter'){
     const eligible=value>0&&value<=RULES_2026.starterValueLimit;
     const rate=eligible?0:RULES_2026.mainResidenceTransferTaxRate;
@@ -28,13 +28,14 @@ function transferTax2026({propertyValue=0,mode='main',manualAmount=0}={}){
       amount:value*rate,
       rate,
       mode,
+      propertyValue:value,
       starterEligible:eligible,
       warning:eligible?'':'Starter exemption cannot apply above €555,000 in 2026; 2% main-residence transfer tax is used instead.'
     };
   }
-  if(mode==='other-home')return{amount:value*RULES_2026.otherResidenceTransferTaxRate,rate:RULES_2026.otherResidenceTransferTaxRate,mode,starterEligible:null};
-  if(mode==='other-real-estate')return{amount:value*RULES_2026.otherRealEstateTransferTaxRate,rate:RULES_2026.otherRealEstateTransferTaxRate,mode,starterEligible:null};
-  return{amount:value*RULES_2026.mainResidenceTransferTaxRate,rate:RULES_2026.mainResidenceTransferTaxRate,mode:'main',starterEligible:null};
+  if(mode==='other-home')return{amount:value*RULES_2026.otherResidenceTransferTaxRate,rate:RULES_2026.otherResidenceTransferTaxRate,mode,propertyValue:value,starterEligible:null};
+  if(mode==='other-real-estate')return{amount:value*RULES_2026.otherRealEstateTransferTaxRate,rate:RULES_2026.otherRealEstateTransferTaxRate,mode,propertyValue:value,starterEligible:null};
+  return{amount:value*RULES_2026.mainResidenceTransferTaxRate,rate:RULES_2026.mainResidenceTransferTaxRate,mode:'main',propertyValue:value,starterEligible:null};
 }
 
 function nhg2026({purchasePrice=0,appraisedValue=0,mortgageAmount=0,mode='none'}={}){
@@ -97,7 +98,10 @@ function calculatePurchase2026({
   const savings=nonNegative(ownSavings);
   const appraisal=nonNegative(appraisedValue)||price;
   const base=nonNegative(baseCosts);
-  const transfer=transferTax2026({propertyValue:price,mode:transferTaxMode,manualAmount:manualTransferTax});
+  // Dutch transfer tax is based on economic value, which is at least the consideration paid.
+  // In this planning model the entered appraisal is our market-value proxy, so the automatic tax base is the higher of price and appraisal.
+  const transferTaxBase=Math.max(price,appraisal);
+  const transfer=transferTax2026({propertyValue:transferTaxBase,mode:transferTaxMode,manualAmount:manualTransferTax});
 
   let nhgFee=0;
   let loan=0;
@@ -125,6 +129,7 @@ function calculatePurchase2026({
     housePrice:price,
     ownSavings:savings,
     appraisedValue:appraisal,
+    transferTaxBase,
     baseCosts:base,
     transferTax:transfer,
     nhg,
