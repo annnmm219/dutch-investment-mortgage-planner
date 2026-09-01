@@ -32,6 +32,62 @@ function mortgageTaxBenefit({interest=0,months=1,deductionRate=0,wozValue=0,enab
   return -(ewf-grossInterest)*(1-clamp(Number(hillenRelief)||0,0,1))*rate;
 }
 
+function allocateAnnualMortgageTax(rows=[],tax={}){
+  const resultRows=(Array.isArray(rows)?rows:[]).map(r=>({
+    ...r,
+    taxReturn:0,
+    net:Number(r.gross)||0,
+    cash:(Number(r.gross)||0)+nonNegative(r.extra)
+  }));
+  const annualBuckets={};
+
+  resultRows.forEach((row,index)=>{
+    if(row.taxEligible===false)return;
+    const year=Number(row.year);
+    if(!Number.isFinite(year))return;
+    if(!annualBuckets[year])annualBuckets[year]={year,indexes:[],interest:0,months:0,taxBenefit:0};
+    const bucket=annualBuckets[year];
+    bucket.indexes.push(index);
+    bucket.interest+=nonNegative(row.interest);
+    bucket.months++;
+  });
+
+  let totalTaxBenefit=0;
+  Object.values(annualBuckets).forEach(bucket=>{
+    const annualBenefit=mortgageTaxBenefit({
+      interest:bucket.interest,
+      months:bucket.months,
+      deductionRate:tax.deductionRate,
+      wozValue:tax.wozValue,
+      enabled:tax.enabled!==false,
+      hillenRelief:tax.hillenRelief
+    });
+    bucket.taxBenefit=annualBenefit;
+    totalTaxBenefit+=annualBenefit;
+
+    const count=bucket.indexes.length;
+    if(!count)return;
+    let allocated=0;
+    bucket.indexes.forEach((rowIndex,pos)=>{
+      const row=resultRows[rowIndex];
+      let share;
+      if(pos===count-1){
+        share=annualBenefit-allocated;
+      }else if(bucket.interest>0){
+        share=annualBenefit*(nonNegative(row.interest)/bucket.interest);
+      }else{
+        share=annualBenefit/count;
+      }
+      allocated+=share;
+      row.taxReturn=share;
+      row.net=(Number(row.gross)||0)-share;
+      row.cash=row.net+nonNegative(row.extra);
+    });
+  });
+
+  return{rows:resultRows,annualBuckets,totalTaxBenefit};
+}
+
 function regimeForYear({mode='none',year,futureStart=2028}={}){
   if(mode==='none')return'none';
   if(mode==='current')return'current';
@@ -159,14 +215,14 @@ function mortgageSchedule({
   let totalScheduledPrincipal=0;
   let totalExtra=0;
   let payoffMonthIndex=null;
-  const rows=[];
-  const annualBuckets={};
+  const rawRows=[];
 
   let year=Number(startYear)||2026;
   let month=clamp(Number(startMonth)||1,1,12);
 
   for(let i=0;i<horizonMonths;i++){
-    let interest=0,principal=0,gross=0,extra=0,taxReturn=0;
+    const taxEligible=outstanding>0;
+    let interest=0,principal=0,gross=0,extra=0;
     if(outstanding>0){
       interest=outstanding*monthlyRate;
       principal=mortgageType==='linear'
@@ -179,7 +235,6 @@ function mortgageSchedule({
         :typeof extraMonthly==='function'?nonNegative(extraMonthly(i,{year,month,balance:outstanding})):nonNegative(extraMonthly);
       extra=Math.min(outstanding,extraRequested);
       outstanding-=extra;
-      taxReturn=mortgageTaxBenefit({interest,months:1,deductionRate,wozValue,enabled:taxEnabled});
       if(outstanding<=.005){
         outstanding=0;
         if(payoffMonthIndex===null)payoffMonthIndex=i;
@@ -189,29 +244,25 @@ function mortgageSchedule({
     totalInterest+=interest;
     totalScheduledPrincipal+=principal;
     totalExtra+=extra;
-    if(!annualBuckets[year])annualBuckets[year]={interest:0,months:0};
-    if(interest>0){annualBuckets[year].interest+=interest;annualBuckets[year].months++;}
-    rows.push({monthIndex:i,year,month,balance:outstanding,gross,principal,interest,taxReturn,net:gross-taxReturn,extra,cash:gross-taxReturn+extra});
+    rawRows.push({monthIndex:i,year,month,balance:outstanding,gross,principal,interest,taxReturn:0,net:gross,extra,cash:gross+extra,taxEligible});
 
     month++;
     if(month===13){month=1;year++;}
   }
 
-  let totalTaxBenefit=0;
-  Object.values(annualBuckets).forEach(b=>{
-    totalTaxBenefit+=mortgageTaxBenefit({interest:b.interest,months:b.months,deductionRate,wozValue,enabled:taxEnabled});
-  });
+  const allocation=allocateAnnualMortgageTax(rawRows,{enabled:taxEnabled,deductionRate,wozValue,hillenRelief:tax.hillenRelief});
 
   return{
-    rows,
+    rows:allocation.rows,
+    annualTaxBuckets:allocation.annualBuckets,
     initialBalance,
     balance:outstanding,
     totalInterest,
-    totalTaxBenefit,
+    totalTaxBenefit:allocation.totalTaxBenefit,
     totalScheduledPrincipal,
     totalExtra,
     totalScheduledPaid:totalInterest+totalScheduledPrincipal,
-    firstScheduled:rows.length?rows[0].gross:0,
+    firstScheduled:allocation.rows.length?allocation.rows[0].gross:0,
     payoffMonthIndex,
     type:mortgageType
   };
@@ -381,7 +432,7 @@ function simulatePlan(config={}){
   let mort=initialMort;
   let grossInterest=0,extraPaid=0,scheduledPrincipal=0,box3Tax=0,currentTax=0,futureTax=0,lossCarry=0;
   let payoffDate=null;
-  const schedule=[],series=[],yearBuckets={};
+  const rawSchedule=[],series=[],yearBuckets={};
   let year=startYear,month=startMonth,global=0;
 
   function bucket(y){
@@ -433,7 +484,8 @@ function simulatePlan(config={}){
       invested+=investContrib;
       b.contrib+=investContrib;
 
-      let interest=0,principal=0,extra=0,grossScheduled=0,taxReturn=0;
+      const taxEligible=mort>0;
+      let interest=0,principal=0,extra=0,grossScheduled=0;
       if(mort>0){
         interest=mort*monthlyMortRate;
         grossInterest+=interest;
@@ -449,14 +501,13 @@ function simulatePlan(config={}){
         extra=Math.min(mort,Math.max(0,extra));
         mort-=extra;
         extraPaid+=extra;
-        taxReturn=mortgageTaxBenefit({interest,months:1,deductionRate:config.deductRate,wozValue:config.wozValue,enabled:config.mortTaxEnabled!==false});
         if(mort<=.005){
           mort=0;
           if(!payoffDate)payoffDate={year,month};
         }
       }
 
-      schedule.push({year,month,balance:mort,gross:grossScheduled,principal,interest,taxReturn,net:grossScheduled-taxReturn,extra});
+      rawSchedule.push({year,month,balance:mort,gross:grossScheduled,principal,interest,taxReturn:0,net:grossScheduled,extra,cash:grossScheduled+extra,taxEligible});
       b.endBeforeTax=portfolio;
 
       const nextMonth=month===12?1:month+1;
@@ -506,10 +557,19 @@ function simulatePlan(config={}){
     }
   }
 
-  let mortTax=0;
+  const allocation=allocateAnnualMortgageTax(rawSchedule,{
+    enabled:config.mortTaxEnabled!==false,
+    deductionRate:config.deductRate,
+    wozValue:config.wozValue,
+    hillenRelief:config.hillenRelief
+  });
+  const schedule=allocation.rows;
+  const mortTax=allocation.totalTaxBenefit;
   Object.values(yearBuckets).forEach(b=>{
-    b.mortTax=mortgageTaxBenefit({interest:b.mortInterest,months:b.mortMonths,deductionRate:config.deductRate,wozValue:config.wozValue,enabled:config.mortTaxEnabled!==false});
-    mortTax+=b.mortTax;
+    const taxBucket=allocation.annualBuckets[b.year];
+    b.mortInterest=taxBucket?.interest??b.mortInterest;
+    b.mortMonths=taxBucket?.months??0;
+    b.mortTax=taxBucket?.taxBenefit??0;
   });
 
   return{
@@ -525,6 +585,7 @@ return{
   deductionRate2026,
   ewf2026,
   mortgageTaxBenefit,
+  allocateAnnualMortgageTax,
   regimeForYear,
   box3TaxForYear,
   mortgageSchedule,
