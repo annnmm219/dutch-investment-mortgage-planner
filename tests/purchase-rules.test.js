@@ -26,6 +26,17 @@ test('2026 starter exemption is 0% up to €555,000 and falls back to 2% above t
   assert.equal(tooHigh.starterEligible,false);
 });
 
+test('automatic transfer-tax base uses economic value and is never below purchase price',()=>{
+  const higherMarket=PR.calculatePurchase2026({housePrice:550000,ownSavings:100000,baseCosts:0,transferTaxMode:'starter',appraisedValue:560000,nhgMode:'none'});
+  approx(higherMarket.transferTaxBase,560000,1e-9);
+  assert.equal(higherMarket.transferTax.starterEligible,false);
+  approx(higherMarket.transferTax.amount,11200,1e-9);
+
+  const lowerMarket=PR.calculatePurchase2026({housePrice:560000,ownSavings:100000,baseCosts:0,transferTaxMode:'main',appraisedValue:550000,nhgMode:'none'});
+  approx(lowerMarket.transferTaxBase,560000,1e-9);
+  approx(lowerMarket.transferTax.amount,11200,1e-9);
+});
+
 test('2026 non-main-residence residential transfer tax is 8%',()=>{
   const x=PR.transferTax2026({propertyValue:350000,mode:'other-home'});
   approx(x.amount,28000,1e-9);
@@ -80,9 +91,6 @@ test('NHG fee is solved consistently with the mortgage amount it helps create',(
 });
 
 test('mortgagecalc.nl displayed 2026 mortgage example matches our gross and net amortisation within rounding',()=>{
-  // mortgagecalc.nl currently displays a €320k loan over 30 years with a 4.37% rate,
-  // approximately €1,597 annuity / €2,054 linear month-one gross payments,
-  // and about €1,206 net monthly cost for the annuity example after HRA + EWF.
   const ann=FC.mortgageSchedule({balance:320000,annualRatePct:4.37,termYears:30,type:'annuity',months:360,tax:{enabled:false}});
   const lin=FC.mortgageSchedule({balance:320000,annualRatePct:4.37,termYears:30,type:'linear',months:360,tax:{enabled:false}});
   approx(ann.firstScheduled,1596.77,.01,'mortgagecalc annuity month 1');
