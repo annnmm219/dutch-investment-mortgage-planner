@@ -160,7 +160,7 @@
       <div class="grid3">
         <div class="field"><label for="housePrice">House price</label><input id="housePrice" type="number" min="0" step="1000" value="350000"></div>
         <div class="field"><label for="ownSavings">Own savings</label><input id="ownSavings" type="number" min="0" step="1000" value="40000"></div>
-        <div class="field"><label for="purchaseCosts">Estimated purchase costs</label><input id="purchaseCosts" type="number" min="0" step="500" value="15000"><p class="inline">Enter your own estimate; purchase costs depend on the buyer and transaction.</p></div>
+        <div class="field"><label for="purchaseCosts">Estimated purchase costs</label><input id="purchaseCosts" type="number" min="0" step="500" value="15000"><p class="inline">Open the editable cost breakdown below to change this total line by line.</p></div>
       </div>
       <div class="grid2">
         <div class="field"><label for="purchaseRate">Mortgage interest rate %</label><input id="purchaseRate" type="number" min="0" max="20" step="0.01" value="4.00"></div>
@@ -223,13 +223,10 @@
 </section>
 
 <section class="panel" id="tab-scenarios">
-  <div class="section-divider"><h2>Scenarios</h2><p>Choose your own return assumptions. Mortgage and tax settings remain unchanged.</p></div>
+  <div class="section-divider"><h2>Scenarios</h2><p>Decision comparisons and sensitivity analysis.</p></div>
 
   <div class="card">
-    <div class="section-head"><div>
-      <p class="section-label">Investment return scenarios</p>
-      <p class="section-note">Edit any rate, including strong-market assumptions such as 12–14%. These scenarios do not overwrite the main expected return in Investment.</p>
-    </div></div>
+    <div class="section-head"><div><p class="section-label">Investment return scenarios</p><p class="section-note">Legacy return cards retained for the main-plan calculation engine.</p></div></div>
     <div class="grid3 scenario-inputs">
       <div class="field"><label for="scenarioRate1">Scenario 1 return %</label><input id="scenarioRate1" type="number" min="-30" max="30" step="0.5" value="4"></div>
       <div class="field"><label for="scenarioRate2">Scenario 2 return %</label><input id="scenarioRate2" type="number" min="-30" max="30" step="0.5" value="7"></div>
@@ -239,48 +236,18 @@
   </div>
 
   <div class="card">
-    <div class="section-head"><div>
-      <p class="section-label">Combined timeline</p>
-      <p class="section-note">Uses the main Expected annual return from Investment and the mortgage method selected in the Linear vs Annuity comparison.</p>
-    </div></div>
+    <div class="section-head"><div><p class="section-label">Combined timeline</p><p class="section-note">Main Investment + Mortgage plan.</p></div></div>
     <div class="chart-wrap"><canvas id="mainChart" role="img" aria-label="Investment portfolio and mortgage balance over time"></canvas></div>
-    <div class="legend">
-      <span><i class="line" style="background:#2a78d6"></i>Portfolio after Box 3</span>
-      <span><i class="line" style="background:#1baf7a"></i>Mortgage balance</span>
-      <span><i class="line dashed"></i>Total invested</span>
-    </div>
+    <div class="legend"><span><i class="line" style="background:#2a78d6"></i>Portfolio after Box 3</span><span><i class="line" style="background:#1baf7a"></i>Mortgage balance</span><span><i class="line dashed"></i>Total invested</span></div>
     <div id="validation" class="validation"></div>
   </div>
 
-  <details class="fold">
-    <summary>Final results summary</summary>
-    <div class="fold-body">
-      <p class="subsection-copy">Hidden by default for privacy. Open this only when you want to review headline end-of-plan numbers.</p>
-      <div class="stats result-stats">
-        <div class="stat accent"><p class="stat-label">Portfolio after selected Box 3</p><p class="stat-value" id="sPortfolio">—</p><p class="stat-sub" id="sPortfolioSub">—</p></div>
-        <div class="stat"><p class="stat-label">Total invested</p><p class="stat-value" id="sInvested">—</p><p class="stat-sub" id="sInvestedSub">—</p></div>
-        <div class="stat green"><p class="stat-label">Mortgage remaining</p><p class="stat-value" id="sMortgage">—</p><p class="stat-sub" id="sMortgageSub">—</p></div>
-      </div>
-    </div>
-  </details>
+  <details class="fold"><summary>Final results summary</summary><div class="fold-body"><p class="subsection-copy">Hidden by default for privacy. These are the headline results from the main Investment + Mortgage plan.</p><div class="stats result-stats"><div class="stat accent"><p class="stat-label">Portfolio after Box 3</p><p class="stat-value" id="sPortfolio">—</p><p class="stat-sub" id="sPortfolioSub">—</p></div><div class="stat"><p class="stat-label">Total invested</p><p class="stat-value" id="sInvested">—</p><p class="stat-sub" id="sInvestedSub">—</p></div><div class="stat green"><p class="stat-label">Mortgage remaining</p><p class="stat-value" id="sMortgage">—</p><p class="stat-sub" id="sMortgageSub">—</p></div></div></div></details>
 
-  <details class="fold"><summary>Model status and sources</summary><div class="fold-body">
-    <div class="source-list">
-      Mortgage presentation reference: WhatTheMortgage.com for purchase inputs, annuity/linear comparison and Balance / Gross / Capital / Interest / Tax Return / Net schedule structure. Calculations here are independently implemented.<br>
-      Mortgage deduction: Belastingdienst 2026 mortgage-interest deduction limitation and eigenwoningforfait rules.<br>
-      Current Box 3: Belastingdienst 2026 rate, €59,357 tax-free wealth per person, and 6.00% deemed return for investments/other assets; the actual-return rebuttal includes value changes and does not use the tax-free wealth allowance.<br>
-      Proposed Box 3: Rijksoverheid / parliamentary bill Wet werkelijk rendement box 3. Ordinary listed shares and funds/ETFs are modeled using annual wealth accretion; proposed parameters remain editable.<br>
-      <a href="https://whathemortgage.com/" target="_blank" rel="noopener">WhatTheMortgage reference</a> ·
-      <a href="https://www.belastingdienst.nl/wps/wcm/connect/nl/koopwoning/content/tariefsaanpassing-eigen-woning" target="_blank" rel="noopener">Belastingdienst mortgage deduction</a> ·
-      <a href="https://www.belastingdienst.nl/wps/wcm/connect/nl/box-3/content/berekening-box-3-inkomen-2026" target="_blank" rel="noopener">Belastingdienst Box 3 2026</a> ·
-      <a href="https://www.rijksoverheid.nl/themas/werk/inkomstenbelasting/plannen-werkelijk-rendement-box-3" target="_blank" rel="noopener">Rijksoverheid proposed Box 3</a>
-    </div>
-    <div class="callout warn model-warning"><strong>Planning tool, not tax or financial advice.</strong> Future tax treatment depends on legislation and the user's complete tax position.</div>
-  </div></details>
+  <details class="fold"><summary>Model status and sources</summary><div class="fold-body"><div class="source-list">Mortgage presentation reference: WhatTheMortgage.com for purchase inputs, annuity/linear comparison and monthly Balance / Gross / Capital / Interest / Tax Return / Net structure. Calculations here are independently implemented.<br>Mortgage deduction: Belastingdienst 2026 mortgage-interest deduction limitation and eigenwoningforfait assumptions.<br>Current Box 3: Belastingdienst 2026 parameters for ordinary investments; the actual-return rebuttal includes value changes and does not use the tax-free wealth allowance.<br>Proposed Box 3: Rijksoverheid / parliamentary proposal for actual-return taxation. Future parameters remain editable.<br><a href="https://whathemortgage.com/" target="_blank" rel="noopener">WhatTheMortgage reference</a> · <a href="https://www.belastingdienst.nl/wps/wcm/connect/nl/koopwoning/content/tariefsaanpassing-eigen-woning" target="_blank" rel="noopener">Belastingdienst mortgage deduction</a> · <a href="https://www.belastingdienst.nl/wps/wcm/connect/nl/box-3/content/berekening-box-3-inkomen-2026" target="_blank" rel="noopener">Belastingdienst Box 3 2026</a> · <a href="https://www.rijksoverheid.nl/themas/werk/inkomstenbelasting/plannen-werkelijk-rendement-box-3" target="_blank" rel="noopener">Rijksoverheid proposed Box 3</a></div><div class="callout warn model-warning"><strong>Planning tool, not tax or financial advice.</strong> Future tax treatment depends on legislation and the user's complete tax position.</div></div></details>
 </section>
-
 </div>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.js"></script>
 <script src="app.js"></script>
-</body>
-</html>
+<script src="scenario-engine.js"></script>
+</body></html>
