@@ -19,6 +19,7 @@ details.fold{background:var(--surface);border:.5px solid var(--border);border-ra
 .scenario-inputs{margin-bottom:4px}.scenarios{display:grid;grid-template-columns:repeat(3,1fr);gap:10px}.scenario{background:var(--alt);border-radius:var(--small);padding:15px 17px;border-top:3px solid transparent}.scenario .lab{font-size:12px;color:var(--muted)}.scenario .val{font-size:20px;font-weight:600;margin-top:5px}.scenario .sub{font-size:11px;color:var(--muted);margin-top:3px}
 .chart-wrap{height:280px;position:relative;margin-top:10px}.legend{display:flex;gap:18px;flex-wrap:wrap;font-size:11px;color:var(--muted);margin-top:9px}.line{width:20px;height:2px;border-radius:1px;display:inline-block;margin-right:5px;vertical-align:middle}.line.dashed,.dashed{border-top:2px dashed #9a9a96;background:transparent}
 .validation{display:none;margin-top:10px;background:var(--amberbg);border-radius:var(--small);padding:11px 13px;font-size:11px;color:var(--amber)}.validation.show{display:block}.source-list{font-size:11px;color:var(--muted);line-height:1.7}.source-list a{color:var(--accenttext);text-decoration:none}.model-warning{margin-top:14px}.hidden{display:none!important}
+.model-footer{margin-top:22px;padding-top:14px;border-top:.5px solid var(--border);font-size:11px;color:var(--muted);text-align:center}
 .phase-budget-field,.phase-budget-status,#phaseBudgetSummary{display:none!important}
 @media(min-width:1001px){#phaseList .phase-fields{grid-template-columns:repeat(6,minmax(0,1fr))!important}}
 @media(max-width:1000px){.phase-fields{grid-template-columns:repeat(3,1fr)}}
