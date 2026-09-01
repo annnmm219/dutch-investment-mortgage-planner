@@ -51,7 +51,7 @@
       </div>
     </div>
     <div id="phaseList" class="phase-list"></div>
-    <p class="foot"><strong>Extra mortgage repayment</strong> = recurring overpayment from normal cash flow. <strong>Annual bonus / lump sum</strong> = one payment per year that can be invested, paid to the mortgage, or split.</p>
+    <p class="foot"><strong>Monthly / yearly extra mortgage repayment</strong> = recurring overpayment from normal cash flow at the selected frequency. <strong>Annual bonus / lump sum</strong> = one separate payment per year that can be invested, paid to the mortgage, or split.</p>
   </div>
 
   <div class="card">
@@ -89,11 +89,22 @@
 
     <div id="regimeExplanation" class="callout"></div>
 
+    <p class="summary-period" id="taxSummaryPeriod">End-of-plan result</p>
     <div class="summary tax-summary">
-      <div class="summary-item"><p class="k">Portfolio before Box 3</p><p class="v" id="bBeforeTax">—</p><p class="s">same plan with Box 3 switched off</p></div>
-      <div class="summary-item"><p class="k">Box 3 tax to pay</p><p class="v" id="sBox3">—</p><p class="s" id="sBox3Sub">—</p></div>
-      <div class="summary-item"><p class="k">Portfolio after Box 3</p><p class="v" id="bAfterTax">—</p><p class="s" id="bAfterTaxSub">—</p></div>
+      <div class="summary-item"><p class="k" id="bBeforeTaxLabel">Portfolio before Box 3</p><p class="v" id="bBeforeTax">—</p><p class="s">same plan with Box 3 switched off</p></div>
+      <div class="summary-item"><p class="k" id="sBox3Label">Cumulative Box 3 tax</p><p class="v" id="sBox3">—</p><p class="s" id="sBox3Sub">—</p></div>
+      <div class="summary-item"><p class="k" id="bAfterTaxLabel">Portfolio after Box 3</p><p class="v" id="bAfterTax">—</p><p class="s" id="bAfterTaxSub">—</p></div>
     </div>
+
+    <details class="inner-fold">
+      <summary>Year-by-year Box 3 breakdown</summary>
+      <div class="inner-fold-body">
+        <p class="subsection-copy">Shows the portfolio immediately before each year's modeled Box 3 charge, that year's tax, and the portfolio immediately afterward. Earlier tax withdrawals already affect later-year growth.</p>
+        <div class="table-wrap box3-table-wrap">
+          <table class="box3-table"><thead><tr><th>Year</th><th>Regime</th><th>Before annual tax</th><th>Box 3 tax</th><th>After annual tax</th></tr></thead><tbody id="box3YearBody"></tbody></table>
+        </div>
+      </div>
+    </details>
 
     <div id="futureLawWarning" class="callout warn"><strong>Proposed 2028 regime, not enacted law.</strong> It is modeled only as a planning scenario and its parameters remain editable.</div>
   </div>
@@ -182,7 +193,7 @@
     </div></div>
     <div class="grid4">
       <div class="field"><label for="grossIncome">Gross annual Box 1 income</label><input id="grossIncome" type="number" min="0" step="1000" value="60000"></div>
-      <div class="field"><label for="wozValue">WOZ value</label><input id="wozValue" type="number" min="0" step="1000" value="400000"></div>
+      <div class="field"><label for="wozValue">WOZ value</label><input id="wozValue" type="number" min="0" step="1000" value="400000"><p class="inline">Used only for the eigenwoningforfait adjustment in the mortgage-interest tax estimate.</p></div>
       <div class="field"><label for="deductionMode">Deduction rate</label><select id="deductionMode"><option value="auto" selected>Automatic 2026 estimate</option><option value="manual">Manual rate</option></select></div>
       <div class="field"><label for="manualDeduction">Manual deduction %</label><input id="manualDeduction" type="number" min="0" max="60" step="0.01" value="37.56"></div>
     </div>
@@ -190,6 +201,7 @@
       <div class="toggle"><input id="mortTaxEnabled" type="checkbox" checked><label for="mortTaxEnabled">Include mortgage-interest tax relief</label></div>
       <div class="callout"><strong id="deductionDisplay">37.56%</strong><br><span id="deductionWhy">2026 estimate.</span></div>
     </div>
+    <div class="callout woz-callout" id="wozImpact">WOZ impact will appear here.</div>
     <div class="summary">
       <div class="summary-item"><p class="k">Gross mortgage interest</p><p class="v" id="mGrossInterest">—</p><p class="s">planning horizon</p></div>
       <div class="summary-item"><p class="k">Estimated tax benefit</p><p class="v" id="mTaxBenefit">—</p><p class="s">after EWF/Hillen approximation</p></div>
@@ -243,33 +255,32 @@
   <details class="fold">
     <summary>Final results summary</summary>
     <div class="fold-body">
-      <p class="subsection-copy">Hidden by default for privacy. Open only when you want to review the headline results.</p>
+      <p class="subsection-copy">Hidden by default for privacy. Open this only when you want to review headline end-of-plan numbers.</p>
       <div class="stats result-stats">
-        <div class="stat accent"><p class="stat-label">Portfolio after Box 3</p><p class="stat-value" id="sPortfolio">—</p><p class="stat-sub" id="sPortfolioSub">—</p></div>
+        <div class="stat accent"><p class="stat-label">Portfolio after selected Box 3</p><p class="stat-value" id="sPortfolio">—</p><p class="stat-sub" id="sPortfolioSub">—</p></div>
         <div class="stat"><p class="stat-label">Total invested</p><p class="stat-value" id="sInvested">—</p><p class="stat-sub" id="sInvestedSub">—</p></div>
         <div class="stat green"><p class="stat-label">Mortgage remaining</p><p class="stat-value" id="sMortgage">—</p><p class="stat-sub" id="sMortgageSub">—</p></div>
       </div>
     </div>
   </details>
 
-  <details class="fold">
-    <summary>Model status and sources</summary>
-    <div class="fold-body">
-      <div class="source-list">
-        Mortgage presentation reference: WhatTheMortgage.com for purchase inputs, annuity/linear comparison and its monthly Balance / Gross / Capital / Interest / Tax Return / Net structure. This planner uses its own calculation engine.<br>
-        Mortgage deduction: Belastingdienst 2026 mortgage-interest deduction limitation and eigenwoningforfait assumptions.<br>
-        Current Box 3: Belastingdienst 2026 parameters for ordinary investments; the actual-return rebuttal includes value changes and does not use the tax-free wealth allowance.<br>
-        Proposed Box 3: Rijksoverheid / parliamentary proposal for actual-return taxation. Future parameters remain editable.<br>
-        <a href="https://whathemortgage.com/" target="_blank" rel="noopener">WhatTheMortgage reference</a> ·
-        <a href="https://www.belastingdienst.nl/wps/wcm/connect/nl/koopwoning/content/tariefsaanpassing-eigen-woning" target="_blank" rel="noopener">Belastingdienst mortgage deduction</a> ·
-        <a href="https://www.belastingdienst.nl/wps/wcm/connect/nl/box-3/content/berekening-box-3-inkomen-2026" target="_blank" rel="noopener">Belastingdienst Box 3 2026</a> ·
-        <a href="https://www.rijksoverheid.nl/themas/werk/inkomstenbelasting/plannen-werkelijk-rendement-box-3" target="_blank" rel="noopener">Rijksoverheid proposed Box 3</a>
-      </div>
-      <div class="callout warn model-warning"><strong>Planning tool, not tax or financial advice.</strong> Future tax treatment depends on legislation and the user's complete tax position.</div>
+  <details class="fold"><summary>Model status and sources</summary><div class="fold-body">
+    <div class="source-list">
+      Mortgage presentation reference: WhatTheMortgage.com for purchase inputs, annuity/linear comparison and Balance / Gross / Capital / Interest / Tax Return / Net schedule structure. Calculations here are independently implemented.<br>
+      Mortgage deduction: Belastingdienst 2026 mortgage-interest deduction limitation and eigenwoningforfait rules.<br>
+      Current Box 3: Belastingdienst 2026 rate, €59,357 tax-free wealth per person, and 6.00% deemed return for investments/other assets; the actual-return rebuttal includes value changes and does not use the tax-free wealth allowance.<br>
+      Proposed Box 3: Rijksoverheid / parliamentary bill Wet werkelijk rendement box 3. Ordinary listed shares and funds/ETFs are modeled using annual wealth accretion; proposed parameters remain editable.<br>
+      <a href="https://whathemortgage.com/" target="_blank" rel="noopener">WhatTheMortgage reference</a> ·
+      <a href="https://www.belastingdienst.nl/wps/wcm/connect/nl/koopwoning/content/tariefsaanpassing-eigen-woning" target="_blank" rel="noopener">Belastingdienst mortgage deduction</a> ·
+      <a href="https://www.belastingdienst.nl/wps/wcm/connect/nl/box-3/content/berekening-box-3-inkomen-2026" target="_blank" rel="noopener">Belastingdienst Box 3 2026</a> ·
+      <a href="https://www.rijksoverheid.nl/themas/werk/inkomstenbelasting/plannen-werkelijk-rendement-box-3" target="_blank" rel="noopener">Rijksoverheid proposed Box 3</a>
     </div>
-  </details>
+    <div class="callout warn model-warning"><strong>Planning tool, not tax or financial advice.</strong> Future tax treatment depends on legislation and the user's complete tax position.</div>
+  </div></details>
 </section>
+
 </div>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.js"></script>
 <script src="app.js"></script>
-</body></html>
+</body>
+</html>
