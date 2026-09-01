@@ -220,7 +220,7 @@ function bootBrowser(){
   function scheduleDate(startYear,startMonth,index){const d=new Date(Date.UTC(startYear,startMonth-1+index,1));return{year:d.getUTCFullYear(),month:d.getUTCMonth()+1,label:`${MONTHS[d.getUTCMonth()]} ${d.getUTCFullYear()}`}}
   function mortgageReport(){
     if(!FC)return null;
-    const setup=mortgageSetup(),startYear=Math.round(parseFlexibleNumber($('startYear')?.value)||2026),startMonth=Math.max(1,Math.min(12,Math.round(parseFlexibleNumber($('startMonth')?.value)||1)),),investmentMonths=Math.round(investmentPlanMonths()),termMonths=Math.max(1,Math.round(setup.years*12)),mode=$('mortgageReportHorizon')?.value||'investment',specificYear=Math.round(parseFlexibleNumber($('mortgageReportYear')?.value)||startYear);
+    const setup=mortgageSetup(),startYear=Math.round(parseFlexibleNumber($('startYear')?.value)||2026),startMonth=Math.max(1,Math.min(12,Math.round(parseFlexibleNumber($('startMonth')?.value)||1))),investmentMonths=Math.round(investmentPlanMonths()),termMonths=Math.max(1,Math.round(setup.years*12)),mode=$('mortgageReportHorizon')?.value||'investment',specificYear=Math.round(parseFlexibleNumber($('mortgageReportYear')?.value)||startYear);
     const months=mortgageReportingMonths({mode,startYear,startMonth,investmentMonths,mortgageTermMonths:termMonths,specificYear});
     const extra=phaseExtraSeries(months,startYear,startMonth),deductionRate=FC.deductionRate2026({mode:$('deductionMode')?.value||'auto',manualRatePct:parseFlexibleNumber($('manualDeduction')?.value)||37.56,grossIncome:parseFlexibleNumber($('grossIncome')?.value)||0}),tax={enabled:$('mortTaxEnabled')?.checked!==false,deductionRate,wozValue:Math.max(0,parseFlexibleNumber($('wozValue')?.value)||0)};
     const type=document.querySelector('.compare-card.active[data-mort-type]')?.dataset.mortType==='linear'?'linear':'annuity';
@@ -259,7 +259,8 @@ function bootBrowser(){
 
   prepareRound2Controls();prepareAllNumberInputs();
   const numberObserver=new MutationObserver(records=>records.forEach(r=>r.addedNodes.forEach(n=>{if(n.nodeType===1)prepareAllNumberInputs(n)})));numberObserver.observe(document.body,{childList:true,subtree:true});
-  document.addEventListener('input',e=>{const el=e.target;if(el?.dataset?.flexNumber==='1'&&String(el.value).includes(','))el.value=normalizeDecimalString(el.value);if(isPersistable(el))save();refreshUx();},true);
+  document.addEventListener('input',e=>{const el=e.target;if(el?.dataset?.flexNumber==='1'&&String(el.value).includes(','))el.value=normalizeDecimalString(el.value);},true);
+  document.addEventListener('input',e=>{if(isPersistable(e.target))save();refreshUx();});
   document.addEventListener('change',e=>{if(isPersistable(e.target))save();refreshUx();});
   document.addEventListener('blur',e=>{const el=e.target;if(el?.dataset?.flexNumber!=='1')return;const min=parseFlexibleNumber(el.dataset.flexMin),max=parseFlexibleNumber(el.dataset.flexMax),n=clampFlexibleValue(el.value,min,max);if(n!==null)el.value=String(n);refreshUx();},true);
   document.querySelectorAll('.tab[data-tab],.compare-card[data-mort-type]').forEach(el=>el.addEventListener('click',()=>{if(!restoring)save();refreshUx()}));
