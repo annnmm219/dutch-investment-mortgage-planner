@@ -15,6 +15,7 @@ A browser-based planning tool for comparing multi-stage investment contributions
 - Side-by-side Linear vs Annuity comparison
 - Monthly or yearly mortgage payment schedule
 - Dutch mortgage-interest deduction estimate with eigenwoningforfait / Hillen approximation
+- Annual HRA/EWF/Hillen calculation allocated back to monthly schedule rows so schedule totals reconcile exactly
 - Current 2026 Box 3 mixed-asset estimate using investments, bank deposits and Box 3 debt, including the modeled actual-return rebuttal
 - Separate 2026 deemed-return parameters for bank deposits, investments / other assets and Box 3 debt, including the per-person debt threshold
 - Transition scenario from current rules to a proposed future actual-return / unrealized-gain regime
@@ -25,7 +26,9 @@ A browser-based planning tool for comparing multi-stage investment contributions
 
 ## Calculation architecture
 
-`finance-core.js` is the single source of truth for shared financial calculations. It contains pure calculation functions for mortgage amortisation, extra repayments, 2026 eigenwoningforfait, mortgage-interest tax benefit / Hillen approximation, current and proposed Box 3, the mid-year first-Jan-1 portfolio override, investment growth, cash-flow equalisation, and the combined Investment + Mortgage simulation.
+`finance-core.js` is the single source of truth for shared financial calculations. It contains pure calculation functions for mortgage amortisation, extra repayments, 2026 eigenwoningforfait, mortgage-interest tax benefit / Hillen approximation, annual mortgage-tax allocation, current and proposed Box 3, the mid-year first-Jan-1 portfolio override, investment growth, cash-flow equalisation, and the combined Investment + Mortgage simulation.
+
+For HRA, R2 makes the annual calculation authoritative. Interest is aggregated per calendar year over active mortgage months, the annual HRA/EWF/Hillen result is calculated once, and that exact result is allocated back across those monthly rows. The allocation is proportional to monthly interest when interest exists, with the final row absorbing any floating-point remainder. The displayed monthly values are therefore allocations of the annual estimate, not separate monthly tax-return calculations.
 
 The current Box 3 function accepts three household categories: the modeled investment portfolio, bank deposits, and Box 3 debt. For the 2026 deemed method it applies separate category percentages, the Box 3 debt threshold and the tax-free wealth allowance. For the actual-return rebuttal it combines modeled investment growth, savings interest and Box 3 debt interest and compares that result with the deemed calculation.
 
@@ -35,9 +38,9 @@ The current Box 3 function accepts three household categories: the modeled inves
 
 `app.js` is responsible for the main planner UI and delegates financial calculations to `finance-core.js`.
 
-`scenario-engine.js` has a pure, Node-testable scenario layer plus the browser UI. The five scenario types all assemble their outcomes from the shared functions in `finance-core.js`, so the same production path can be exercised in automated tests.
+`scenario-engine.js` has a pure, Node-testable scenario layer plus the browser UI. The five scenario types all assemble their outcomes from the shared functions in `finance-core.js`, including the reconciled mortgage-tax cash flows.
 
-`purchase-costs.js` renders the purchase-rule controls and editable fee lines and delegates rule calculations to `purchase-rules.js`. It no longer loads dependency scripts at runtime.
+`purchase-costs.js` renders the purchase-rule controls and editable fee lines and delegates rule calculations to `purchase-rules.js`. It does not load dependency scripts at runtime.
 
 ### Deterministic browser bootstrap
 
@@ -54,9 +57,9 @@ No application module dynamically injects another dependency script. Required de
 
 ## Regression and scenario validation tests
 
-The dependency-free Node test suite covers low-level financial formulas, end-to-end strategy assembly, 2026 purchase rules, mixed-asset Box 3, browser bootstrap integrity, and external sanity checks.
+The dependency-free Node test suite covers low-level financial formulas, end-to-end strategy assembly, 2026 purchase rules, mixed-asset Box 3, annual-vs-monthly HRA reconciliation, browser bootstrap integrity, and external sanity checks.
 
-`tests/finance-core.test.js` covers mortgage, HRA/EWF/Hillen, investment-only Box 3 parity, mid-year starts, and cash-flow equalisation.
+`tests/finance-core.test.js` covers mortgage, HRA/EWF/Hillen, annual HRA allocation, zero-interest Hillen reconciliation, main-plan schedule reconciliation, Box 3 parity, mid-year starts, and cash-flow equalisation.
 
 `tests/box3-household.test.js` covers:
 
@@ -78,9 +81,9 @@ The dependency-free Node test suite covers low-level financial formulas, end-to-
 - the default €350,000 purchase-cost case
 - NHG fee / mortgage circularity
 - mortgage amortisation against the displayed mortgagecalc.nl 2026 example
-- WhatTheMortgage-style Gross = Principal + Interest and Net = Gross - Tax Return schedule identities
+- WhatTheMortgage-style Gross = Principal + Interest and Net = Gross - allocated tax benefit schedule identities
 
-`tests/runtime-integrity.test.js` validates the declared browser script order, required local modules, absence of dynamic dependency injection/polling, fail-fast dependency checks, the visible R1 build marker, and static mixed-asset Box 3 copy.
+`tests/runtime-integrity.test.js` validates the declared browser script order, required local modules, absence of dynamic dependency injection/polling, fail-fast dependency checks, the visible calculation-build marker, static mixed-asset Box 3 copy, and the R2 allocation wording.
 
 Run all tests locally with Node 20+:
 
@@ -123,6 +126,7 @@ The app is intended for scenario planning, not tax filing, mortgage underwriting
 Important limitations include:
 
 - Investment returns are assumptions, not forecasts.
+- The HRA model still uses a simplified planning deduction rate rather than a full Box 1 income-tax calculation. Monthly schedule values are allocations of the annual estimate, not predictions of monthly Belastingdienst payments.
 - The Box 3 model now includes bank deposits, the modeled investment portfolio and Box 3 debt, but it is still not a full Dutch tax-return engine. It does not yet model every possible Box 3 asset class, exemption or allocation choice between fiscal partners.
 - The additional savings and Box 3 debt balances are held constant as Jan 1 planning values across the plan. They do not automatically change when cash is used for a home purchase, a down payment or another Scenario decision.
 - For a plan that starts after January, `firstJan1Portfolio` corrects the investment value used by the deemed method, but the modeled actual-return calculation still covers only the portion of the year simulated by the planner.
@@ -144,8 +148,8 @@ These sites are sanity references, not legal authorities. 2026 Dutch rule parame
 ## Revision sequence
 
 - **R1 Runtime integrity — complete:** deterministic module order, no runtime dependency injection, visible calculation-build marker, bootstrap regression tests.
-- **R2 HRA reconciliation — next:** make annual HRA authoritative and allocate it consistently back to schedule rows.
-- **R3 Household balance sheet:** dynamic savings and Box 3 debt balances plus explicit tax-payment accounting.
+- **R2 HRA reconciliation — complete:** annual HRA/EWF/Hillen is authoritative and reconciles exactly to monthly schedule allocations.
+- **R3 Household balance sheet — next:** dynamic savings and Box 3 debt balances plus explicit tax-payment accounting.
 - **R4 Scenario realism:** connect household cash events to scenarios, improve owner-cost inputs and assumption framing, then revalidate all five comparisons.
 - **R5 Next € optimizer:** calculate the investment return required to beat extra mortgage repayment for a marginal monthly amount.
 - **R6 Product hardening:** persistence, reset, methodology/version visibility, and broader golden-case/UI tests before external user testing.
