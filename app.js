@@ -56,6 +56,7 @@ function renderPhases(){
     const end=new Date(Date.UTC(cursor.getUTCFullYear(),cursor.getUTCMonth()+months-1,1));
     const card=document.createElement('div');
     card.className='phase-card';
+    const extraMortgageLabel=p.mortgageFreq==='yearly'?'Yearly extra mortgage repayment':'Monthly extra mortgage repayment';
     card.innerHTML=`
       <div class="phase-head">
         <p class="phase-title"><span class="dot" style="background:${COLORS[i]}"></span>Phase ${i+1}</p>
@@ -64,7 +65,7 @@ function renderPhases(){
       <div class="phase-fields">
         <div><label class="mini">Duration, years</label><input data-i="${i}" data-field="years" type="number" min="1" max="30" step="1" value="${p.years}"></div>
         <div><label class="mini">Monthly investment</label><input data-i="${i}" data-field="monthlyInvest" type="number" min="0" step="50" value="${p.monthlyInvest}"></div>
-        <div><label class="mini">Extra mortgage repayment</label><input data-i="${i}" data-field="mortgageExtra" type="number" min="0" step="50" value="${p.mortgageExtra}"></div>
+        <div><label class="mini">${extraMortgageLabel}</label><input data-i="${i}" data-field="mortgageExtra" type="number" min="0" step="50" value="${p.mortgageExtra}"></div>
         <div><label class="mini">Frequency</label><select data-i="${i}" data-field="mortgageFreq"><option value="monthly" ${p.mortgageFreq==='monthly'?'selected':''}>Monthly</option><option value="yearly" ${p.mortgageFreq==='yearly'?'selected':''}>Yearly</option></select></div>
         <div><label class="mini">Annual bonus / lump sum</label><input data-i="${i}" data-field="annualBonus" type="number" min="0" step="100" value="${p.annualBonus}"></div>
         <div><label class="mini">Bonus allocation</label><select data-i="${i}" data-field="bonusDest"><option value="invest" ${p.bonusDest==='invest'?'selected':''}>Invest 100%</option><option value="mortgage" ${p.bonusDest==='mortgage'?'selected':''}>Mortgage 100%</option><option value="split" ${p.bonusDest==='split'?'selected':''}>Split 50 / 50</option></select></div>
@@ -340,11 +341,39 @@ function updateMortgageMode(){
   updatePurchaseSummary();
 }
 
+function planEndDate(s){
+  const start=new Date(Date.UTC(s.startYear,s.startMonth-1,1));
+  return new Date(Date.UTC(start.getUTCFullYear(),start.getUTCMonth()+Math.max(0,s.horizonMonths-1),1));
+}
+
+function regimeShortLabel(regime){
+  if(regime==='current')return '2026 rules';
+  if(regime==='future')return 'Proposed regime';
+  return 'No Box 3';
+}
+
+function updateBox3YearTable(s){
+  const body=$('box3YearBody');
+  if(!body)return;
+  body.innerHTML='';
+  Object.values(s.yearBuckets).sort((a,b)=>a.year-b.year).forEach(b=>{
+    const tr=document.createElement('tr');
+    tr.innerHTML=`<td>${b.year}</td><td>${regimeShortLabel(b.regime)}</td><td>${fmt(b.endBeforeTax)}</td><td>${fmt(b.box3Tax)}</td><td>${fmt(b.endAfterTax ?? b.endBeforeTax)}</td>`;
+    body.appendChild(tr);
+  });
+}
+
 function updateMortgage(s){
   $('deductionDisplay').textContent=(s.deductRate*100).toFixed(2)+'%';
   $('deductionWhy').textContent=$('deductionMode').value==='manual'
     ?'Manual planning rate.'
     :(num('grossIncome',0)>78426?'2026 maximum deduction-rate proxy.':num('grossIncome',0)>38883?'2026 second-bracket proxy.':'2026 first-bracket proxy.');
+  const ewf=ewf2026(s.wozValue);
+  if($('wozImpact')){
+    $('wozImpact').innerHTML=s.wozValue>0
+      ?`<strong>WOZ effect:</strong> ${fmt(s.wozValue)} gives an estimated 2026 eigenwoningforfait of <strong>${fmt(ewf)}/year</strong>. In this planner that amount offsets deductible mortgage interest before the deduction rate is applied, so a higher WOZ generally means a smaller mortgage-interest tax benefit. It does not change the mortgage payment, principal balance, or Box 3 calculation.`
+      :'<strong>WOZ effect:</strong> Enter a WOZ value to include eigenwoningforfait in the mortgage-interest tax estimate. It does not change the mortgage payment, principal balance, or Box 3 calculation.';
+  }
   $('mGrossInterest').textContent=fmt(s.grossInterest);
   $('mTaxBenefit').textContent=fmtSigned(s.mortTax);
   $('mNetInterest').textContent=fmt(s.netInterest);
@@ -398,20 +427,29 @@ function regimeCopy(mode){
 function updateBox3(s){
   const noTax=simulate(s.annualReturn,true);
   const info=regimeCopy(s.box3Mode);
+  const end=planEndDate(s);
+  const endLabel=`${MONTHS[end.getUTCMonth()].slice(0,3)} ${end.getUTCFullYear()}`;
+  const startLabel=`${MONTHS[s.startMonth-1].slice(0,3)} ${s.startYear}`;
 
   $('regimeExplanation').textContent=info.text;
   $('futureLawWarning').classList.toggle('hidden',!info.future);
+
+  if($('taxSummaryPeriod'))$('taxSummaryPeriod').textContent=`End of plan: ${endLabel} · tax accumulated from ${startLabel} to ${endLabel}`;
+  if($('bBeforeTaxLabel'))$('bBeforeTaxLabel').textContent=`Portfolio before Box 3 · ${endLabel}`;
+  if($('sBox3Label'))$('sBox3Label').textContent=`Cumulative Box 3 tax · ${s.startYear}–${end.getUTCFullYear()}`;
+  if($('bAfterTaxLabel'))$('bAfterTaxLabel').textContent=`Portfolio after Box 3 · ${endLabel}`;
 
   $('bBeforeTax').textContent=fmt(noTax.portfolio);
   $('sBox3').textContent=fmt(s.box3Tax);
   $('sBox3Sub').textContent=s.box3Mode==='none'
     ?'Box 3 ignored'
-    :s.box3PaySource==='portfolio'?'cumulative modeled tax paid from portfolio':'cumulative modeled tax paid from external cash';
+    :s.box3PaySource==='portfolio'?'total modeled tax withdrawn over the plan':'total modeled tax paid from external cash';
   $('bAfterTax').textContent=fmt(s.portfolio);
   $('bAfterTaxSub').textContent=s.box3PaySource==='portfolio'
-    ?'includes lower future compounding after tax withdrawals'
-    :'portfolio unchanged by tax payments made from external cash';
+    ?'includes the lost future compounding caused by earlier tax withdrawals'
+    :'portfolio is not reduced because modeled tax is paid from external cash';
   $('bLoss').textContent=fmt(s.lossCarry);
+  updateBox3YearTable(s);
 }
 
 function updateScenarios(){
@@ -533,13 +571,14 @@ $('phaseList').addEventListener('input',e=>{
   const i=Number(e.target.dataset.i),f=e.target.dataset.field;
   if(!Number.isInteger(i)||!f)return;
   phases[i][f]=(f==='mortgageFreq'||f==='bonusDest')?e.target.value:Math.max(0,Number(e.target.value)||0);
-  if(f==='years')renderPhases();
+  if(f==='years'||f==='mortgageFreq')renderPhases();
   update();
 });
 $('phaseList').addEventListener('change',e=>{
   const i=Number(e.target.dataset.i),f=e.target.dataset.field;
   if(!Number.isInteger(i)||!f)return;
   phases[i][f]=(f==='mortgageFreq'||f==='bonusDest')?e.target.value:Math.max(0,Number(e.target.value)||0);
+  if(f==='mortgageFreq')renderPhases();
   update();
 });
 
