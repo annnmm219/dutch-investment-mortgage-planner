@@ -8,7 +8,7 @@ const path=require('node:path');
 const ROOT=path.resolve(__dirname,'..');
 const read=file=>fs.readFileSync(path.join(ROOT,file),'utf8');
 
-const EXPECTED_LOCAL_SCRIPTS=['finance-core.js','box3-household.js','purchase-rules.js','app.js','purchase-costs.js','scenario-engine.js','next-euro.js'];
+const EXPECTED_LOCAL_SCRIPTS=['finance-core.js','box3-household.js','purchase-rules.js','app.js','purchase-costs.js','scenario-engine.js','next-euro.js','app-state.js'];
 
 test('index.html declares the complete browser module order explicitly',()=>{
   const html=read('index.html');
@@ -22,11 +22,13 @@ test('every explicitly loaded local browser module exists in the repository',()=
 });
 
 test('runtime modules do not inject dependency scripts or poll for them',()=>{
-  const purchase=read('purchase-costs.js'),household=read('box3-household.js');
+  const purchase=read('purchase-costs.js'),household=read('box3-household.js'),state=read('app-state.js');
   assert.doesNotMatch(purchase,/createElement\(['"]script['"]\)/i);
   assert.doesNotMatch(purchase,/\.src\s*=\s*['"](?:purchase-rules|box3-household)\.js['"]/i);
   assert.doesNotMatch(household,/createElement\(['"]script['"]\)/i);
   assert.doesNotMatch(household,/setTimeout\s*\(/);
+  assert.doesNotMatch(state,/createElement\(['"]script['"]\)/i);
+  assert.doesNotMatch(state,/setInterval\s*\(/);
 });
 
 test('browser modules fail fast when required dependencies are missing',()=>{
@@ -36,12 +38,15 @@ test('browser modules fail fast when required dependencies are missing',()=>{
   assert.match(next,/ScenarioCore is required by NextEuro/);
 });
 
-test('public page exposes a calculation build marker and mixed-asset Box 3 copy',()=>{
+test('public page exposes R6, mixed-asset Box 3, and conservative static defaults',()=>{
   const html=read('index.html');
   assert.match(html,/id="modelVersion"/);
-  assert.match(html,/Calculation build R\d+/);
+  assert.match(html,/Calculation build R6/);
   assert.match(html,/2026 current rules, mixed-asset estimate/);
   assert.doesNotMatch(html,/2026 current rules, investment-only estimate/);
+  assert.match(html,/id="annualReturn"[^>]*value="5"/);
+  assert.match(html,/option value="current" selected/);
+  assert.match(html,/option value="savings" selected>Savings \/ cash/);
 });
 
 test('R2 labels monthly mortgage tax values as allocations from the annual calculation',()=>{
@@ -66,4 +71,13 @@ test('R5 loads Next Euro after ScenarioCore and exposes the break-even UI',()=>{
   assert.match(next,/R5 · Next €/);
   assert.match(next,/Break-even investment return/);
   assert.match(next,/Quick amounts: €250 \/ €500 \/ €1,000 per month/);
+});
+
+test('R6 loads browser persistence last and explains local-only storage',()=>{
+  const html=read('index.html'),state=read('app-state.js');
+  assert.ok(html.indexOf('next-euro.js')<html.indexOf('app-state.js'));
+  assert.match(state,/Private browser save/);
+  assert.match(state,/stored only in this browser/);
+  assert.match(state,/Reset examples/);
+  assert.match(state,/How to read the model/);
 });
