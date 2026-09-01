@@ -41,6 +41,31 @@ A browser-based planning tool for comparing multi-stage investment contributions
 
 This separation is intentional so the Investment, Mortgage, and Scenario views cannot silently drift onto different versions of the same tax formula.
 
+## Regression tests
+
+The financial core has a dependency-free Node regression suite in `tests/finance-core.test.js`. It currently covers:
+
+- automatic and manual 2026 mortgage-deduction rates
+- 2026 eigenwoningforfait
+- normal HRA/EWF offset behavior
+- Hillen approximation behavior
+- known annuity and linear mortgage values
+- recurring extra mortgage repayments
+- Box 3 below the allowance
+- deemed-return versus actual-return rebuttal selection
+- proposed Box 3 loss carryforward and exemption handling
+- the mid-year `firstJan1Portfolio` override
+- reconciliation between the main-plan and investment-flow engines
+- cash-flow equalisation between two strategies
+
+Run the tests locally with Node 20+:
+
+```bash
+npm test
+```
+
+The repository also runs the same suite automatically in GitHub Actions on pushes to `main` and on pull requests. New calculation features should add or update a regression case before being considered complete.
+
 ## Scenario cash-flow treatment
 
 Scenario comparisons use the same starting wealth and equalise monthly cash-flow capacity. The lower-cash-outflow strategy invests the difference.
@@ -55,7 +80,7 @@ Tax parameters are separate from those example inputs. This version contains Dut
 
 ## Run locally
 
-No installation is required.
+No installation is required to use the calculator.
 
 1. Download `index.html`, `styles.css`, `finance-core.js`, `app.js`, `purchase-costs.js`, and `scenario-engine.js` into the same folder.
 2. Open `index.html` in a modern browser.
@@ -91,7 +116,7 @@ Important limitations include:
 
 ## Next engineering step
 
-The next priority is regression testing of `finance-core.js` with hand-checked mortgage, HRA/EWF, Box 3, mid-year-start, and scenario-equalisation cases before adding further financial features.
+With the shared calculation core and first regression suite in place, the next priority is to validate the five end-to-end Scenario comparisons against hand-worked cases: Buy vs Rent, larger vs smaller down payment, extra mortgage repayment vs invest, Linear vs Annuity, and Keep vs Sell + Rent.
 
 ## Sources referenced in the calculator
 
