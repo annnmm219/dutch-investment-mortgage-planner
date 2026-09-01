@@ -15,7 +15,8 @@ A browser-based planning tool for comparing multi-stage investment contributions
 - Side-by-side Linear vs Annuity comparison
 - Monthly or yearly mortgage payment schedule
 - Dutch mortgage-interest deduction estimate with eigenwoningforfait / Hillen approximation
-- Current 2026 Box 3 investment-only estimate, including the modeled actual-return rebuttal
+- Current 2026 Box 3 mixed-asset estimate using investments, bank deposits and Box 3 debt, including the modeled actual-return rebuttal
+- Separate 2026 deemed-return parameters for bank deposits, investments / other assets and Box 3 debt, including the per-person debt threshold
 - Transition scenario from current rules to a proposed future actual-return / unrealized-gain regime
 - Portfolio before Box 3 / cumulative Box 3 tax / portfolio after Box 3 flow with year-by-year breakdown
 - Scenario decision engine for Buy vs Rent, larger vs smaller down payment, mortgage repayment vs investing, Linear vs Annuity, and Keep vs Sell + Rent
@@ -26,19 +27,31 @@ A browser-based planning tool for comparing multi-stage investment contributions
 
 `finance-core.js` is the single source of truth for shared financial calculations. It contains pure calculation functions for mortgage amortisation, extra repayments, 2026 eigenwoningforfait, mortgage-interest tax benefit / Hillen approximation, current and proposed Box 3, the mid-year first-Jan-1 portfolio override, investment growth, cash-flow equalisation, and the combined Investment + Mortgage simulation.
 
+The current Box 3 function now accepts three household categories: the modeled investment portfolio, bank deposits, and Box 3 debt. For the 2026 deemed method it applies separate category percentages, the Box 3 debt threshold and the tax-free wealth allowance. For the actual-return rebuttal it combines modeled investment growth, savings interest and Box 3 debt interest and compares that result with the deemed calculation.
+
+`box3-household.js` is the browser context adapter. It renders the additional savings/debt inputs and injects those values into the same `finance-core.js` methods used by the main plan and Scenario engine. It does not contain a second tax formula.
+
 `purchase-rules.js` is a separate pure 2026 Dutch purchase-rule module. It calculates transfer tax, simplified NHG eligibility/fee, LTV, and the combined purchase-cost result.
 
 `app.js` is responsible for the main planner UI and delegates financial calculations to `finance-core.js`.
 
 `scenario-engine.js` has a pure, Node-testable scenario layer plus the browser UI. The five scenario types all assemble their outcomes from the shared functions in `finance-core.js`, so the same production path can be exercised in automated tests.
 
-`purchase-costs.js` is UI-only. It renders the purchase-rule controls and editable fee lines, then delegates rule calculations to `purchase-rules.js`.
+`purchase-costs.js` renders the purchase-rule controls and editable fee lines, delegates rule calculations to `purchase-rules.js`, and loads the Box 3 household context adapter.
 
 ## Regression and scenario validation tests
 
-The dependency-free Node test suite covers low-level financial formulas, end-to-end strategy assembly, 2026 purchase rules, and external sanity checks.
+The dependency-free Node test suite covers low-level financial formulas, end-to-end strategy assembly, 2026 purchase rules, mixed-asset Box 3, and external sanity checks.
 
-`tests/finance-core.test.js` covers mortgage, HRA/EWF/Hillen, Box 3, mid-year starts, and cash-flow equalisation.
+`tests/finance-core.test.js` covers mortgage, HRA/EWF/Hillen, investment-only Box 3 parity, mid-year starts, and cash-flow equalisation.
+
+`tests/box3-household.test.js` covers:
+
+- mixed 2026 deemed-return calculations across savings, investments and Box 3 debt
+- the €3,800 per-person 2026 debt threshold
+- mixed-asset actual-return rebuttal treatment
+- proposed actual-return treatment with savings interest and debt interest
+- injection of the same household Box 3 context into the shared investment-flow calculation path
 
 `tests/scenario-engine.test.js` validates Buy vs Rent, larger vs smaller down payment, extra mortgage repayment vs invest, Linear vs Annuity, Keep vs Sell + Rent, and transaction-cost treatment with hand-worked cases.
 
@@ -68,17 +81,21 @@ Scenario comparisons use the same starting wealth and equalise monthly cash-flow
 
 The **Monthly housing + investing budget** is an affordability warning only. It does not alter Box 3 or create extra investment returns common to both strategies.
 
+The added Box 3 savings and debt balances are tax-context inputs. They are not automatically included in the Scenario cards as strategy wealth, because they are common household balances rather than a consequence of the decision being compared.
+
 ## Default values
 
 All financial inputs shown when the page first opens are **illustrative examples**. They are not based on a specific person's finances and are not recommendations.
 
 Tax parameters are separate from those example inputs. This version contains Dutch tax assumptions labeled for 2026 and a proposed future Box 3 regime. Tax law changes over time, so those parameters and legal-status notes should be reviewed before relying on the model.
 
+The default actual savings-interest and Box 3 debt-interest percentages are planning placeholders. They should be changed when the user wants the actual-return rebuttal or proposed future regime to reflect a particular household situation.
+
 ## Run locally
 
 No installation is required to use the calculator.
 
-1. Download `index.html`, `styles.css`, `finance-core.js`, `purchase-rules.js`, `app.js`, `purchase-costs.js`, and `scenario-engine.js` into the same folder.
+1. Download `index.html`, `styles.css`, `finance-core.js`, `box3-household.js`, `purchase-rules.js`, `app.js`, `purchase-costs.js`, and `scenario-engine.js` into the same folder.
 2. Open `index.html` in a modern browser.
 3. Change the inputs to your own assumptions.
 
@@ -91,7 +108,9 @@ The app is intended for scenario planning, not tax filing, mortgage underwriting
 Important limitations include:
 
 - Investment returns are assumptions, not forecasts.
-- Box 3 treatment depends on the user's complete tax position and this version remains focused on ordinary investments rather than a complete mixed-asset Box 3 return.
+- The Box 3 model now includes bank deposits, the modeled investment portfolio and Box 3 debt, but it is still not a full Dutch tax-return engine. It does not yet model every possible Box 3 asset class, exemption or allocation choice between fiscal partners.
+- The additional savings and Box 3 debt balances are held constant as Jan 1 planning values across the plan. They do not automatically change when cash is used for a home purchase, a down payment or another Scenario decision.
+- For a plan that starts after January, `firstJan1Portfolio` corrects the investment value used by the deemed method, but the modeled actual-return calculation still covers only the portion of the year simulated by the planner.
 - Future Box 3 rules may change before implementation.
 - The proposed future Box 3 regime is a scenario, not enacted law.
 - Mortgage-interest deduction eligibility depends on the specific mortgage and home situation.
@@ -109,7 +128,7 @@ These sites are sanity references, not legal authorities. 2026 Dutch rule parame
 
 ## Next product step
 
-The next major model improvement is broader Box 3 household assets: separate savings/deposits, investments and Box 3 debt instead of the current investment-only treatment. After that, the highest-value decision feature is the marginal “next euro” invest-versus-repay comparison.
+With mixed-asset Box 3 context in place, the next highest-value decision feature is the marginal **“next euro” invest-versus-repay comparison**: given an additional monthly amount, compare the effective after-tax return from mortgage repayment with the modeled after-Box-3 investment return and show the break-even investment return.
 
 ## Sources referenced in the calculator
 
