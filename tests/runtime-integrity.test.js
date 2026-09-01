@@ -8,7 +8,7 @@ const path=require('node:path');
 const ROOT=path.resolve(__dirname,'..');
 const read=file=>fs.readFileSync(path.join(ROOT,file),'utf8');
 
-const EXPECTED_LOCAL_SCRIPTS=['finance-core.js','box3-household.js','purchase-rules.js','app.js','purchase-costs.js','scenario-engine.js'];
+const EXPECTED_LOCAL_SCRIPTS=['finance-core.js','box3-household.js','purchase-rules.js','app.js','purchase-costs.js','scenario-engine.js','next-euro.js'];
 
 test('index.html declares the complete browser module order explicitly',()=>{
   const html=read('index.html');
@@ -30,9 +30,10 @@ test('runtime modules do not inject dependency scripts or poll for them',()=>{
 });
 
 test('browser modules fail fast when required dependencies are missing',()=>{
-  const purchase=read('purchase-costs.js'),household=read('box3-household.js');
+  const purchase=read('purchase-costs.js'),household=read('box3-household.js'),next=read('next-euro.js');
   assert.match(purchase,/PurchaseRules must load before purchase-costs\.js/);
   assert.match(household,/FinanceCore must load before box3-household\.js/);
+  assert.match(next,/ScenarioCore is required by NextEuro/);
 });
 
 test('public page exposes a calculation build marker and mixed-asset Box 3 copy',()=>{
@@ -57,4 +58,12 @@ test('household balance UI exposes dynamic balances and defaults browser tax pay
   assert.match(household,/Net financial assets/);
   assert.match(household,/select\.value='savings'/);
   assert.match(household,/Calculation build R\d+/);
+});
+
+test('R5 loads Next Euro after ScenarioCore and exposes the break-even UI',()=>{
+  const html=read('index.html'),next=read('next-euro.js');
+  assert.ok(html.indexOf('scenario-engine.js')<html.indexOf('next-euro.js'));
+  assert.match(next,/R5 · Next €/);
+  assert.match(next,/Break-even investment return/);
+  assert.match(next,/Quick amounts: €250 \/ €500 \/ €1,000 per month/);
 });

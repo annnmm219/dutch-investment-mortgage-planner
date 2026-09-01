@@ -140,7 +140,7 @@ function injectBrowserUI(){
     <p class="subsection-title">Household financial balances</p>
     <p class="subsection-copy">Savings and Box 3 debt evolve through the plan. Savings earns the entered interest rate, Box 3 debt can be repaid, and the next calendar year's Box 3 calculation uses the resulting Jan 1 balances.</p>
     <div class="grid3 advanced-grid">
-      <div class="field"><label for="box3Savings">Starting savings / bank deposits</label><input id="box3Savings" type="number" min="0" step="100" value="50000"><p class="inline">A real balance in the household ledger. R4 purchase scenarios use this as their starting cash instead of a separate cash pot.</p></div>
+      <div class="field"><label for="box3Savings">Starting savings / bank deposits</label><input id="box3Savings" type="number" min="0" step="100" value="50000"><p class="inline">A real balance in the household ledger. Purchase scenarios use this as their starting cash instead of a separate cash pot.</p></div>
       <div class="field"><label for="box3Debt">Starting Box 3 debt</label><input id="box3Debt" type="number" min="0" step="100" value="0"><p class="inline">Only debt that belongs in Box 3. Keep the owner-occupied home mortgage separate.</p></div>
       <div class="field"><label for="box3SavingsReturn">Savings interest % / year</label><input id="box3SavingsReturn" type="number" min="-10" max="30" step="0.01" value="1.28"><p class="inline">Savings interest is credited to cash and included in actual-return Box 3.</p></div>
       <div class="field"><label for="box3DebtInterest">Box 3 debt interest % / year</label><input id="box3DebtInterest" type="number" min="0" max="30" step="0.01" value="2.70"><p class="inline">Interest is modeled for Box 3 actual return. Its payment is external household cash flow.</p></div>
@@ -197,7 +197,7 @@ function bootBrowser(){
   injectBrowserUI();
   decorateCore(window.FinanceCore,browserContext);
   const marker=document.getElementById('modelVersion');
-  if(marker)marker.textContent='Calculation build R4 · 2026 rules · updated 1 Sep 2026';
+  if(marker)marker.textContent='Calculation build R5 · 2026 rules · updated 1 Sep 2026';
 }
 
 return{DEFAULTS,normalizeContext,decorateCore,browserContext,configureTaxSource,configureR4Defaults,injectBrowserUI,renderBalanceSummary,bootBrowser};

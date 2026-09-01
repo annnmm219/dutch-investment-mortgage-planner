@@ -26,11 +26,11 @@ test('R4 adds owner-only cost inputs and a conservative scenario return range',(
   assert.match(js,/12–14%/);
 });
 
-test('R4 browser boot changes untouched illustrative defaults to 5% and current 2026 Box 3',()=>{
+test('R4 conservative defaults remain present in later calculation builds',()=>{
   const js=read('box3-household.js');
   assert.match(js,/annualReturn\.value==='7'/);
   assert.match(js,/annualReturn\.value='5'/);
   assert.match(js,/mode\.value==='transition'/);
   assert.match(js,/mode\.value='current'/);
-  assert.match(js,/Calculation build R4/);
+  assert.match(js,/Calculation build R\d+/);
 });
