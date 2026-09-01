@@ -33,6 +33,7 @@ function result(name,v={}){
     purchase:Number(v.purchase)||0,
     selling:Number(v.selling)||0,
     box3:Number(v.box3)||0,
+    unsettledBox3:Number(v.unsettledBox3)||0,
     externalTax:Number(v.externalTax)||0,
     externalDebtRepayment:Number(v.externalDebtRepayment)||0,
     box3DebtInterest:Number(v.box3DebtInterest)||0,
@@ -68,6 +69,14 @@ function normalize(config={}){
     futureExempt:nonNegative(rawBox3.futureExempt??1800),
     futureLossThreshold:nonNegative(rawBox3.futureLossThreshold??500)
   };
+  const rawTax=config.tax||{};
+  const tax={
+    enabled:rawTax.enabled!==false,
+    deductionRate:Math.max(0,Number(rawTax.deductionRate)||0),
+    wozValue:nonNegative(rawTax.wozValue),
+    hraRemainingMonths:rawTax.hraRemainingMonths==null?null:Math.max(0,Math.round(Number(rawTax.hraRemainingMonths)||0)),
+    qualifyingInterestFraction:FC.clamp(Number(rawTax.qualifyingInterestFraction??1)||0,0,1)
+  };
   return{
     mode:config.mode||'buy-rent',
     months,
@@ -82,11 +91,7 @@ function normalize(config={}){
       ratePct:Math.max(0,Number(config.mortgage?.ratePct)||0),
       years:Math.max(1,Number(config.mortgage?.years)||30)
     },
-    tax:{
-      enabled:config.tax?.enabled!==false,
-      deductionRate:Math.max(0,Number(config.tax?.deductionRate)||0),
-      wozValue:nonNegative(config.tax?.wozValue)
-    },
+    tax,
     box3,
     upfrontCashTreatment:config.upfrontCashTreatment==='savings'?'savings':'invest',
     homeGrowthPct:Number(config.homeGrowthPct)||0,
@@ -103,7 +108,8 @@ function normalize(config={}){
       downPayment:nonNegative(config.buyRent?.downPayment),
       monthlyRent:nonNegative(config.buyRent?.monthlyRent),
       mortgageRatePct:Math.max(0,Number(config.buyRent?.mortgageRatePct)||0),
-      mortgageYears:Math.max(1,Number(config.buyRent?.mortgageYears)||30)
+      mortgageYears:Math.max(1,Number(config.buyRent?.mortgageYears)||30),
+      wozValue:config.buyRent?.wozValue==null?nonNegative(config.buyRent?.price):nonNegative(config.buyRent.wozValue)
     },
     downpayment:{
       price:nonNegative(config.downpayment?.price),
@@ -111,14 +117,20 @@ function normalize(config={}){
       downA:nonNegative(config.downpayment?.downA),
       downB:nonNegative(config.downpayment?.downB),
       mortgageRatePct:Math.max(0,Number(config.downpayment?.mortgageRatePct)||0),
-      mortgageYears:Math.max(1,Number(config.downpayment?.mortgageYears)||30)
+      mortgageYears:Math.max(1,Number(config.downpayment?.mortgageYears)||30),
+      wozValue:config.downpayment?.wozValue==null?nonNegative(config.downpayment?.price):nonNegative(config.downpayment.wozValue)
     },
     mortgageInvest:{extraMonthly:nonNegative(config.mortgageInvest?.extraMonthly)},
-    sellRent:{homeValue:nonNegative(config.sellRent?.homeValue),monthlyRent:nonNegative(config.sellRent?.monthlyRent)}
+    sellRent:{
+      homeValue:nonNegative(config.sellRent?.homeValue),
+      monthlyRent:nonNegative(config.sellRent?.monthlyRent),
+      wozValue:config.sellRent?.wozValue==null?(tax.wozValue||nonNegative(config.sellRent?.homeValue)):nonNegative(config.sellRent.wozValue)
+    }
   };
 }
 
-function mortgage(S,balance,ratePct,years,type,extraMonthly=0){
+function mortgage(S,balance,ratePct,years,type,extraMonthly=0,taxOverride={}){
+  const tax={...S.tax,...taxOverride};
   return FC.mortgageSchedule({
     balance,
     annualRatePct:ratePct,
@@ -128,7 +140,7 @@ function mortgage(S,balance,ratePct,years,type,extraMonthly=0){
     extraMonthly,
     startYear:S.startYear,
     startMonth:S.startMonth,
-    tax:S.tax
+    tax
   });
 }
 
@@ -169,6 +181,7 @@ function investment(S,{initialPortfolio=S.startPortfolio,flows=[],startingSaving
     debt:x.box3Debt,
     netFinancialAssets:x.netFinancialAssets,
     tax:x.totalTax,
+    unsettledTax:x.unsettledTaxEstimate,
     externalTax:x.externalTax,
     externalDebtRepayment:x.externalDebtRepayment,
     debtInterest:x.totalDebtInterest
@@ -178,9 +191,10 @@ function investment(S,{initialPortfolio=S.startPortfolio,flows=[],startingSaving
 function upfrontAllocation(S,cash,spend){
   const starting=nonNegative(cash),needed=nonNegative(spend);
   const used=Math.min(starting,needed),remaining=Math.max(0,starting-used),short=Math.max(0,needed-starting);
-  return S.upfrontCashTreatment==='savings'
-    ?{portfolioAdd:0,startingSavings:remaining,short}
-    :{portfolioAdd:remaining,startingSavings:0,short};
+  const allocation=S.upfrontCashTreatment==='savings'
+    ?{portfolioAdd:0,startingSavings:remaining}
+    :{portfolioAdd:remaining,startingSavings:0};
+  return{...allocation,starting,needed,used,remaining,short,valid:short<=.005};
 }
 
 function ownerCosts(S){
@@ -200,7 +214,11 @@ function rentSeries(S,start){
 function futureHomeValue(S,price){return nonNegative(price)*Math.pow(1+S.homeGrowthPct/100/12,S.months)}
 function finalize(A,B,note,cashA,cashB){
   const eq=FC.equalizeCashFlows(cashA,cashB);
-  return{A,B,note:note||'',cashA,cashB,budgetSeries:eq.budget,peakRequirement:Math.max(0,...eq.budget),firstRequirement:eq.budget[0]||0};
+  return{valid:true,A,B,note:note||'',cashA,cashB,budgetSeries:eq.budget,peakRequirement:Math.max(0,...eq.budget),firstRequirement:eq.budget[0]||0};
+}
+function invalidComparison(reason,names=['Strategy A','Strategy B'],cashA=[],cashB=[]){
+  const eq=FC.equalizeCashFlows(cashA,cashB);
+  return{valid:false,reason,A:result(names[0]),B:result(names[1]),note:reason,cashA,cashB,budgetSeries:eq.budget,peakRequirement:Math.max(0,...eq.budget),firstRequirement:eq.budget[0]||0};
 }
 
 function financialResult(ledger){
@@ -210,10 +228,16 @@ function financialResult(ledger){
     box3Debt:ledger.debt,
     financial:ledger.wealth,
     box3:ledger.tax,
+    unsettledBox3:ledger.unsettledTax,
     externalTax:ledger.externalTax,
     externalDebtRepayment:ledger.externalDebtRepayment,
     box3DebtInterest:ledger.debtInterest
   };
+}
+
+function addFlows(a=[],b=[]){
+  const length=Math.max(a.length,b.length);
+  return Array.from({length},(_,i)=>(Number(a[i])||0)+(Number(b[i])||0));
 }
 
 function runScenario(config={}){
@@ -222,44 +246,53 @@ function runScenario(config={}){
 
   if(S.mode==='buy-rent'){
     const d=S.buyRent,price=d.price,down=Math.min(price,d.downPayment),loan=Math.max(0,price-down);
-    const m=mortgage(S,loan,d.mortgageRatePct,d.mortgageYears,S.mortgageType);
+    const purchaseTax={wozValue:d.wozValue||price,hraRemainingMonths:Math.min(Math.round(d.mortgageYears*12),360),qualifyingInterestFraction:1};
+    const m=mortgage(S,loan,d.mortgageRatePct,d.mortgageYears,S.mortgageType,0,purchaseTax);
     cashA=m.rows.map(r=>r.cash+owner.monthly);
     cashB=rentSeries(S,d.monthlyRent);
-    const eq=FC.equalizeCashFlows(cashA,cashB);
     const needed=S.purchaseCosts+down;
     const buyerCash=upfrontAllocation(S,d.cash,needed),renterCash=upfrontAllocation(S,d.cash,0);
+    if(!buyerCash.valid)return invalidComparison(`Comparison unavailable: starting savings are ${buyerCash.short.toFixed(2)} below the required down payment and purchase costs. Add a funded cash source before comparing.`,['Buy home','Rent + invest'],cashA,cashB);
+    const eq=FC.equalizeCashFlows(cashA,cashB);
     const ia=investment(S,{initialPortfolio:S.startPortfolio+buyerCash.portfolioAdd,startingSavings:buyerCash.startingSavings,flows:eq.a});
     const ib=investment(S,{initialPortfolio:S.startPortfolio+renterCash.portfolioAdd,startingSavings:renterCash.startingSavings,flows:eq.b});
     const home=futureHomeValue(S,price),selling=home*S.sellingCostPct/100,equity=home-m.balance-selling;
-    A=result('Buy home',{net:ia.wealth+equity-buyerCash.short,...financialResult(ia),equity,mortgage:m.balance,interest:m.totalInterest,mortTax:m.totalTaxBenefit,owner:owner.total,
-      vve:owner.vve,maintenance:owner.maintenance,ownerTaxes:owner.ownerTaxes,insurance:owner.insurance,groundLease:owner.groundLease,purchase:S.purchaseCosts,selling,short:buyerCash.short});
+    A=result('Buy home',{net:ia.wealth+equity,...financialResult(ia),equity,mortgage:m.balance,interest:m.totalInterest,mortTax:m.totalTaxBenefit,owner:owner.total,
+      vve:owner.vve,maintenance:owner.maintenance,ownerTaxes:owner.ownerTaxes,insurance:owner.insurance,groundLease:owner.groundLease,purchase:S.purchaseCosts,selling});
     B=result('Rent + invest',{net:ib.wealth,...financialResult(ib),equity:0,rent:sum(cashB)});
-    note=buyerCash.short>0?'Household starting savings do not cover down payment + purchase costs; the uncovered amount is treated as external upfront cash.':'Household starting savings fund the purchase cash event before the remaining balance is kept in savings or invested according to the selected upfront-cash treatment.';
+    note='Household starting savings fund the purchase cash event before the remaining balance is kept in savings or invested according to the selected upfront-cash treatment.';
   }else if(S.mode==='downpayment'){
     const d=S.downpayment,price=d.price,da=Math.min(price,d.downA),db=Math.min(price,d.downB);
-    const ma=mortgage(S,price-da,d.mortgageRatePct,d.mortgageYears,S.mortgageType),mb=mortgage(S,price-db,d.mortgageRatePct,d.mortgageYears,S.mortgageType);
+    const purchaseTax={wozValue:d.wozValue||price,hraRemainingMonths:Math.min(Math.round(d.mortgageYears*12),360),qualifyingInterestFraction:1};
+    const ma=mortgage(S,price-da,d.mortgageRatePct,d.mortgageYears,S.mortgageType,0,purchaseTax),mb=mortgage(S,price-db,d.mortgageRatePct,d.mortgageYears,S.mortgageType,0,purchaseTax);
     cashA=ma.rows.map(r=>r.cash+owner.monthly);cashB=mb.rows.map(r=>r.cash+owner.monthly);
-    const eq=FC.equalizeCashFlows(cashA,cashB),needA=S.purchaseCosts+da,needB=S.purchaseCosts+db;
+    const needA=S.purchaseCosts+da,needB=S.purchaseCosts+db;
     const cashA0=upfrontAllocation(S,d.cash,needA),cashB0=upfrontAllocation(S,d.cash,needB);
+    if(!cashA0.valid||!cashB0.valid){
+      const short=Math.max(cashA0.short,cashB0.short);
+      return invalidComparison(`Comparison unavailable: at least one strategy is ${short.toFixed(2)} short of funded upfront cash. Increase starting savings or reduce the down payment before comparing.`,['Larger down payment','Smaller down payment'],cashA,cashB);
+    }
+    const eq=FC.equalizeCashFlows(cashA,cashB);
     const ia=investment(S,{initialPortfolio:S.startPortfolio+cashA0.portfolioAdd,startingSavings:cashA0.startingSavings,flows:eq.a});
     const ib=investment(S,{initialPortfolio:S.startPortfolio+cashB0.portfolioAdd,startingSavings:cashB0.startingSavings,flows:eq.b});
     const home=futureHomeValue(S,price),selling=home*S.sellingCostPct/100,equityA=home-ma.balance-selling,equityB=home-mb.balance-selling;
-    A=result('Larger down payment',{net:ia.wealth+equityA-cashA0.short,...financialResult(ia),equity:equityA,mortgage:ma.balance,interest:ma.totalInterest,mortTax:ma.totalTaxBenefit,owner:owner.total,
-      vve:owner.vve,maintenance:owner.maintenance,ownerTaxes:owner.ownerTaxes,insurance:owner.insurance,groundLease:owner.groundLease,purchase:S.purchaseCosts,selling,short:cashA0.short});
-    B=result('Smaller down payment',{net:ib.wealth+equityB-cashB0.short,...financialResult(ib),equity:equityB,mortgage:mb.balance,interest:mb.totalInterest,mortTax:mb.totalTaxBenefit,owner:owner.total,
-      vve:owner.vve,maintenance:owner.maintenance,ownerTaxes:owner.ownerTaxes,insurance:owner.insurance,groundLease:owner.groundLease,purchase:S.purchaseCosts,selling,short:cashB0.short});
-    note=(cashA0.short||cashB0.short)?'At least one down-payment strategy needs more upfront cash than the household starting-savings balance; the uncovered amount is treated as external cash.':'Both strategies draw purchase costs and their selected down payment from the same household starting-savings balance.';
+    A=result('Larger down payment',{net:ia.wealth+equityA,...financialResult(ia),equity:equityA,mortgage:ma.balance,interest:ma.totalInterest,mortTax:ma.totalTaxBenefit,owner:owner.total,
+      vve:owner.vve,maintenance:owner.maintenance,ownerTaxes:owner.ownerTaxes,insurance:owner.insurance,groundLease:owner.groundLease,purchase:S.purchaseCosts,selling});
+    B=result('Smaller down payment',{net:ib.wealth+equityB,...financialResult(ib),equity:equityB,mortgage:mb.balance,interest:mb.totalInterest,mortTax:mb.totalTaxBenefit,owner:owner.total,
+      vve:owner.vve,maintenance:owner.maintenance,ownerTaxes:owner.ownerTaxes,insurance:owner.insurance,groundLease:owner.groundLease,purchase:S.purchaseCosts,selling});
+    note='Both strategies draw purchase costs and their selected down payment from the same household starting-savings balance.';
   }else if(S.mode==='mortgage-invest'){
     const extra=S.mortgageInvest.extraMonthly,m=S.mortgage;
     const ma=mortgage(S,m.balance,m.ratePct,m.years,S.mortgageType,extra),mb=mortgage(S,m.balance,m.ratePct,m.years,S.mortgageType,0);
-    cashA=ma.rows.map(r=>r.cash+owner.monthly);cashB=mb.rows.map(r=>r.cash+owner.monthly);
+    cashA=ma.rows.map(r=>r.net+r.requestedExtra+owner.monthly);cashB=mb.rows.map(r=>r.net+owner.monthly);
     const eq=FC.equalizeCashFlows(cashA,cashB);
-    const ia=investment(S,{flows:eq.a}),ib=investment(S,{flows:eq.b});
+    const unused=ma.rows.map(r=>r.unusedExtra||0);
+    const ia=investment(S,{flows:addFlows(eq.a,unused)}),ib=investment(S,{flows:eq.b});
     A=result('Repay mortgage',{net:ia.wealth-ma.balance,...financialResult(ia),mortgage:ma.balance,interest:ma.totalInterest,mortTax:ma.totalTaxBenefit,owner:owner.total,
       vve:owner.vve,maintenance:owner.maintenance,ownerTaxes:owner.ownerTaxes,insurance:owner.insurance,groundLease:owner.groundLease,label:'Comparable wealth*'});
     B=result('Invest instead',{net:ib.wealth-mb.balance,...financialResult(ib),mortgage:mb.balance,interest:mb.totalInterest,mortTax:mb.totalTaxBenefit,owner:owner.total,
       vve:owner.vve,maintenance:owner.maintenance,ownerTaxes:owner.ownerTaxes,insurance:owner.insurance,groundLease:owner.groundLease,label:'Comparable wealth*'});
-    note='*The home value is identical in both strategies, so it is excluded. Comparable wealth = household financial wealth − remaining Box 1 mortgage.';
+    note='*The home value is identical in both strategies, so it is excluded. Any planned repayment left after the mortgage is cleared is invested rather than discarded.';
   }else if(S.mode==='linear-annuity'){
     const m=S.mortgage,ma=mortgage(S,m.balance,m.ratePct,m.years,'linear'),mb=mortgage(S,m.balance,m.ratePct,m.years,'annuity');
     cashA=ma.rows.map(r=>r.cash+owner.monthly);cashB=mb.rows.map(r=>r.cash+owner.monthly);
@@ -271,20 +304,22 @@ function runScenario(config={}){
       vve:owner.vve,maintenance:owner.maintenance,ownerTaxes:owner.ownerTaxes,insurance:owner.insurance,groundLease:owner.groundLease,label:'Comparable wealth*'});
     note='*The same home is owned under both strategies, so its value is excluded. Monthly payment differences are invested; common household savings and Box 3 debt remain in both strategies.';
   }else{
-    const d=S.sellRent,m=S.mortgage,keep=mortgage(S,m.balance,m.ratePct,m.years,S.mortgageType);
+    const d=S.sellRent,m=S.mortgage,keep=mortgage(S,m.balance,m.ratePct,m.years,S.mortgageType,0,{wozValue:d.wozValue||S.tax.wozValue||d.homeValue});
     cashA=keep.rows.map(r=>r.cash+owner.monthly);cashB=rentSeries(S,d.monthlyRent);
-    const eq=FC.equalizeCashFlows(cashA,cashB),sellingNow=d.homeValue*S.sellingCostPct/100,proceeds=d.homeValue-m.balance-sellingNow,short=Math.max(0,-proceeds);
+    const sellingNow=d.homeValue*S.sellingCostPct/100,proceeds=d.homeValue-m.balance-sellingNow;
+    if(proceeds<-.005)return invalidComparison(`Comparison unavailable: selling proceeds are ${Math.abs(proceeds).toFixed(2)} below the mortgage plus selling costs. Add a funded source for that shortfall before comparing.`,['Keep home','Sell now + rent/invest'],cashA,cashB);
+    const eq=FC.equalizeCashFlows(cashA,cashB);
     const ia=investment(S,{flows:eq.a}),ib=investment(S,{initialPortfolio:S.startPortfolio+Math.max(0,proceeds),flows:eq.b});
     const futureHome=futureHomeValue(S,d.homeValue),sellingFuture=futureHome*S.sellingCostPct/100,equity=futureHome-keep.balance-sellingFuture;
     A=result('Keep home',{net:ia.wealth+equity,...financialResult(ia),equity,mortgage:keep.balance,interest:keep.totalInterest,mortTax:keep.totalTaxBenefit,owner:owner.total,
       vve:owner.vve,maintenance:owner.maintenance,ownerTaxes:owner.ownerTaxes,insurance:owner.insurance,groundLease:owner.groundLease,selling:sellingFuture});
-    B=result('Sell now + rent/invest',{net:ib.wealth-short,...financialResult(ib),equity:0,rent:sum(cashB),selling:sellingNow,short});
-    note=proceeds>=0?'Net sale proceeds are invested at the start of Strategy B; the household savings and Box 3 debt ledgers continue alongside the investment portfolio.':'Sale proceeds do not fully repay mortgage + selling costs; the uncovered amount is treated as external upfront cash.';
+    B=result('Sell now + rent/invest',{net:ib.wealth,...financialResult(ib),equity:0,rent:sum(cashB),selling:sellingNow});
+    note='Net sale proceeds are invested at the start of Strategy B; the household savings and Box 3 debt ledgers continue alongside the investment portfolio.';
   }
   return finalize(A,B,note,cashA,cashB);
 }
 
-return{runScenario,normalize};
+return{runScenario,normalize,upfrontAllocation};
 });
 
 if(typeof window!=='undefined'&&window.document){(()=>{
@@ -310,7 +345,7 @@ if(divider){divider.querySelector('h2').textContent='Scenarios';divider.querySel
 const engine=document.createElement('div');
 engine.id='decisionEngine';
 engine.innerHTML=`
-<div class="card scenario-builder"><div class="section-head"><div><p class="section-label">1 · Choose the decision</p><p class="section-note">Purchase decisions now draw directly from the Household starting-savings balance in Investment, so spending cash changes future Box 3.</p></div></div><div class="grid3"><div class="field"><label for="comparisonType">What do you want to compare?</label><select id="comparisonType"><option value="buy-rent" selected>Buy a home vs Rent + invest</option><option value="downpayment">Larger down payment vs Smaller down payment</option><option value="mortgage-invest">Extra mortgage repayment vs Invest</option><option value="linear-annuity">Linear vs Annuity + invest cash-flow difference</option><option value="sell-rent">Keep home vs Sell now + rent/invest</option></select></div><div class="field"><label for="scenarioHorizonNew">Comparison horizon, years</label><input id="scenarioHorizonNew" type="number" min="1" max="40" step="1" value="10"></div><div class="field"><label for="scenarioReturnNew">Investment return %</label><input id="scenarioReturnNew" type="number" min="-30" max="30" step="0.5" value="5"><p class="inline">5% is a neutral planning starting point, not a forecast.</p></div></div><div id="scenarioQuestionNoteNew" class="callout"></div><div id="scenarioCashSourceNoteNew" class="callout"></div>
+<div class="card scenario-builder"><div class="section-head"><div><p class="section-label">1 · Choose the decision</p><p class="section-note">Purchase decisions draw directly from household starting savings, so spending cash changes future Box 3.</p></div></div><div class="grid3"><div class="field"><label for="comparisonType">What do you want to compare?</label><select id="comparisonType"><option value="buy-rent" selected>Buy a home vs Rent + invest</option><option value="downpayment">Larger down payment vs Smaller down payment</option><option value="mortgage-invest">Extra mortgage repayment vs Invest</option><option value="linear-annuity">Linear vs Annuity + invest cash-flow difference</option><option value="sell-rent">Keep home vs Sell now + rent/invest</option></select></div><div class="field"><label for="scenarioHorizonNew">Comparison horizon, years</label><input id="scenarioHorizonNew" type="number" min="1" max="40" step="1" value="10"></div><div class="field"><label for="scenarioReturnNew">Investment return %</label><input id="scenarioReturnNew" type="number" min="-30" max="30" step="0.5" value="5"><p class="inline">5% is a neutral planning starting point, not a forecast.</p></div></div><div id="scenarioQuestionNoteNew" class="callout"></div><div id="scenarioCashSourceNoteNew" class="callout"></div>
 <div class="scenario-specific-new" data-scenario="buy-rent"><div class="grid3 scenario-specific-grid-new"><div class="field"><label for="scenarioBuyPriceNew">House price</label><input id="scenarioBuyPriceNew" type="number" min="0" step="1000" value="350000"></div><div class="field"><label for="scenarioDownPaymentNew">Down payment</label><input id="scenarioDownPaymentNew" type="number" min="0" step="1000" value="35000"></div><div class="field"><label for="scenarioRentNew">Monthly rent at scenario start</label><input id="scenarioRentNew" type="number" min="0" step="25" value="1600"><p class="inline">Use current rent or realistic comparable rent at the scenario start.</p></div><div class="field"><label for="scenarioBuyRateNew">Mortgage interest rate %</label><input id="scenarioBuyRateNew" type="number" min="0" max="20" step="0.01" value="4.00"></div><div class="field"><label for="scenarioBuyYearsNew">Mortgage term, years</label><input id="scenarioBuyYearsNew" type="number" min="1" max="40" step="1" value="30"></div></div></div>
 <div class="scenario-specific-new hidden" data-scenario="downpayment"><div class="grid3 scenario-specific-grid-new"><div class="field"><label for="scenarioDpPriceNew">House price</label><input id="scenarioDpPriceNew" type="number" min="0" step="1000" value="350000"></div><div class="field"><label for="scenarioDownANew">Strategy A down payment</label><input id="scenarioDownANew" type="number" min="0" step="1000" value="35000"></div><div class="field"><label for="scenarioDownBNew">Strategy B down payment</label><input id="scenarioDownBNew" type="number" min="0" step="1000" value="15000"></div><div class="field"><label for="scenarioDpRateNew">Mortgage interest rate %</label><input id="scenarioDpRateNew" type="number" min="0" max="20" step="0.01" value="4.00"></div><div class="field"><label for="scenarioDpYearsNew">Mortgage term, years</label><input id="scenarioDpYearsNew" type="number" min="1" max="40" step="1" value="30"></div></div></div>
 <div class="scenario-specific-new hidden" data-scenario="mortgage-invest"><div class="grid2 scenario-specific-grid-new"><div class="field"><label for="scenarioExtraMonthlyNew">Extra amount available each month</label><input id="scenarioExtraMonthlyNew" type="number" min="0" step="50" value="500"></div><div class="callout"><strong>Uses your Mortgage tab.</strong><br><span>Balance, rate, term, selected repayment method and mortgage-interest deduction are reused.</span></div></div></div>
@@ -322,72 +357,43 @@ engine.innerHTML=`
 if(divider)divider.insertAdjacentElement('afterend',engine);else panel.prepend(engine);
 
 const style=document.createElement('style');
-style.textContent=`.scenario-legacy-hidden{display:none!important}.scenario-builder .scenario-specific-new{margin-top:14px;padding-top:14px;border-top:.5px solid var(--border)}.scenario-principle{margin-top:4px}.scenario-budget-status{margin-top:10px}.scenario-budget-status.warn{background:var(--amberbg);color:var(--amber)}.scenario-budget-warning{color:var(--amber)!important;font-weight:600}.scenario-verdict-new{background:var(--accentbg);border-radius:var(--small);padding:15px 17px;margin-bottom:12px;color:var(--secondary);font-size:13px;line-height:1.55}.scenario-verdict-new strong{display:block;color:var(--text);font-size:15px;margin-bottom:3px}.scenario-verdict-new small{display:block;color:var(--muted);margin-top:7px;font-size:11px}.scenario-result-grid-new{margin-top:4px}.strategy-result-new{border:1px solid var(--border);border-radius:var(--radius);padding:17px;background:var(--alt);min-width:0}.strategy-result-new.leader{border-color:var(--accent);box-shadow:inset 0 0 0 1px var(--accent)}.strategy-name-new{font-size:14px;font-weight:600}.strategy-label-new{font-size:11px;color:var(--muted);margin-top:3px}.strategy-value-new{font-size:24px;font-weight:600;letter-spacing:-.02em;margin:5px 0 12px}.strategy-mini-new{display:flex;justify-content:space-between;gap:12px;padding:6px 0;border-top:.5px solid var(--border);font-size:11px}.strategy-mini-new span{color:var(--muted)}.strategy-mini-new strong{text-align:right}.scenario-table-wrap-new,.sensitivity-wrap-new{margin-top:10px;max-height:430px}.scenario-table-new{min-width:620px}.scenario-table-new th:first-child,.scenario-table-new td:first-child{text-align:left}@media(max-width:800px){.scenario-specific-grid-new{grid-template-columns:1fr}}`;
+style.textContent=`.scenario-legacy-hidden{display:none!important}.scenario-builder .scenario-specific-new{margin-top:14px;padding-top:14px;border-top:.5px solid var(--border)}.scenario-principle{margin-top:4px}.scenario-budget-status{margin-top:10px}.scenario-budget-status.warn{background:var(--amberbg);color:var(--amber)}.scenario-budget-warning{color:var(--amber)!important;font-weight:600}.scenario-verdict-new{background:var(--accentbg);border-radius:var(--small);padding:15px 17px;margin-bottom:12px;color:var(--secondary);font-size:13px;line-height:1.55}.scenario-verdict-new.invalid{background:var(--amberbg);color:var(--amber)}.scenario-verdict-new strong{display:block;color:var(--text);font-size:15px;margin-bottom:3px}.scenario-verdict-new small{display:block;color:var(--muted);margin-top:7px;font-size:11px}.scenario-result-grid-new{margin-top:4px}.strategy-result-new{border:1px solid var(--border);border-radius:var(--radius);padding:17px;background:var(--alt);min-width:0}.strategy-result-new.leader{border-color:var(--accent);box-shadow:inset 0 0 0 1px var(--accent)}.strategy-name-new{font-size:14px;font-weight:600}.strategy-label-new{font-size:11px;color:var(--muted);margin-top:3px}.strategy-value-new{font-size:24px;font-weight:600;letter-spacing:-.02em;margin:5px 0 12px}.strategy-mini-new{display:flex;justify-content:space-between;gap:12px;padding:6px 0;border-top:.5px solid var(--border);font-size:11px}.strategy-mini-new span{color:var(--muted)}.strategy-mini-new strong{text-align:right}.scenario-table-wrap-new,.sensitivity-wrap-new{margin-top:10px;max-height:430px}.scenario-table-new{min-width:620px}.scenario-table-new th:first-child,.scenario-table-new td:first-child{text-align:left}@media(max-width:800px){.scenario-specific-grid-new{grid-template-columns:1fr}}`;
 document.head.appendChild(style);
 
 function selectedMortType(){const v=$('scenarioMortgageMethodNew').value;if(v==='linear'||v==='annuity')return v;return document.querySelector('.compare-card.active[data-mort-type]')?.dataset.mortType||'annuity'}
 function mainMortgage(){if($('mortgageMode')?.value==='purchase'){const price=Math.max(0,num('housePrice',0)),savings=Math.max(0,num('ownSavings',0)),cost=Math.max(0,num('purchaseCosts',0));return{balance:Math.max(0,price-Math.max(0,savings-cost)),ratePct:clamp(num('purchaseRate',4),0,20),years:clamp(num('purchaseYears',30),1,40)}}return{balance:Math.max(0,num('mortBalance',0)),ratePct:clamp(num('mortRate',4),0,20),years:clamp(num('mortYears',25),1,40)}}
+function hraContext(){return window.LogicIntegrityUI?.mortgageTaxContext?.()||{hraRemainingMonths:360,qualifyingInterestFraction:1}}
 function householdBox3(){
   return{
-    mode:$('box3Mode')?.value||'none',
-    taxPartners:clamp(num('taxPartners',1),1,2),
-    paySource:$('box3PaySource')?.value||'savings',
-    currentTaxRate:clamp(num('currentTaxRate',36),0,100)/100,
-    currentAllowance:Math.max(0,num('currentAllowance',59357)),
-    currentNotional:clamp(num('currentNotional',6),0,30)/100,
-    currentSavingsNotional:clamp(num('currentSavingsNotional',1.28),0,30)/100,
-    currentDebtNotional:clamp(num('currentDebtNotional',2.70),0,30)/100,
-    currentDebtThreshold:Math.max(0,num('currentDebtThreshold',3800)),
-    firstJan1Portfolio:Math.max(0,num('firstJan1Portfolio',0)),
-    firstJan1Savings:optional('firstJan1Savings'),
-    firstJan1Debt:optional('firstJan1Debt'),
-    savings:Math.max(0,num('box3Savings',0)),
-    debt:Math.max(0,num('box3Debt',0)),
-    savingsReturnPct:clamp(num('box3SavingsReturn',1.28),-10,30),
-    debtInterestPct:clamp(num('box3DebtInterest',2.70),0,30),
-    debtMonthlyRepayment:Math.max(0,num('box3DebtMonthlyRepayment',0)),
-    debtRepaymentSource:$('box3DebtRepaymentSource')?.value==='savings'?'savings':'external',
-    futureStart:clamp(num('futureStart',2028),2027,2100),
-    futureTaxRate:clamp(num('futureTaxRate',36),0,100)/100,
-    futureExempt:Math.max(0,num('futureExempt',1800)),
-    futureLossThreshold:Math.max(0,num('futureLossThreshold',500))
+    mode:$('box3Mode')?.value||'none',taxPartners:clamp(num('taxPartners',1),1,2),paySource:$('box3PaySource')?.value||'savings',
+    currentTaxRate:clamp(num('currentTaxRate',36),0,100)/100,currentAllowance:Math.max(0,num('currentAllowance',59357)),currentNotional:clamp(num('currentNotional',6),0,30)/100,
+    currentSavingsNotional:clamp(num('currentSavingsNotional',1.28),0,30)/100,currentDebtNotional:clamp(num('currentDebtNotional',2.70),0,30)/100,currentDebtThreshold:Math.max(0,num('currentDebtThreshold',3800)),
+    firstJan1Portfolio:Math.max(0,num('firstJan1Portfolio',0)),firstJan1Savings:optional('firstJan1Savings'),firstJan1Debt:optional('firstJan1Debt'),
+    savings:Math.max(0,num('box3Savings',0)),debt:Math.max(0,num('box3Debt',0)),savingsReturnPct:clamp(num('box3SavingsReturn',1.28),-10,30),debtInterestPct:clamp(num('box3DebtInterest',2.70),0,30),
+    debtMonthlyRepayment:Math.max(0,num('box3DebtMonthlyRepayment',0)),debtRepaymentSource:$('box3DebtRepaymentSource')?.value==='savings'?'savings':'external',
+    futureStart:clamp(num('futureStart',2028),2027,2100),futureTaxRate:clamp(num('futureTaxRate',36),0,100)/100,futureExempt:Math.max(0,num('futureExempt',1800)),futureLossThreshold:Math.max(0,num('futureLossThreshold',500))
   };
 }
 function config(retOverride){
-  const box3=householdBox3();
+  const box3=householdBox3(),hra=hraContext();
   return{
-    mode:$('comparisonType').value,
-    horizonYears:clamp(num('scenarioHorizonNew',10),1,40),
-    investmentReturnPct:retOverride??clamp(num('scenarioReturnNew',5),-30,30),
-    startYear:clamp(num('startYear',2026),2020,2100),
-    startMonth:clamp(num('startMonth',1),1,12),
-    startPortfolio:Math.max(0,num('startPortfolio',0)),
-    purchaseCosts:Math.max(0,num('purchaseCosts',0)),
-    mortgageType:selectedMortType(),
-    mortgage:mainMortgage(),
-    tax:{enabled:$('mortTaxEnabled')?.checked!==false,deductionRate:FC.deductionRate2026({mode:$('deductionMode')?.value||'auto',manualRatePct:num('manualDeduction',37.56),grossIncome:num('grossIncome',0)}),wozValue:Math.max(0,num('wozValue',0))},
-    box3,
-    upfrontCashTreatment:$('scenarioUpfrontCashTreatmentNew')?.value==='savings'?'savings':'invest',
-    homeGrowthPct:clamp(num('scenarioHomeGrowthNew',2),-20,20),
-    rentGrowthPct:clamp(num('scenarioRentGrowthNew',2.5),-10,20),
-    sellingCostPct:clamp(num('scenarioSellingCostNew',2),0,15),
-    vveMonthly:Math.max(0,num('scenarioVveNew',250)),
-    maintenanceAnnual:Math.max(0,num('scenarioMaintenanceNew',1500)),
-    ownerTaxesAnnual:Math.max(0,num('scenarioOwnerTaxesNew',0)),
-    insuranceAnnual:Math.max(0,num('scenarioInsuranceNew',0)),
-    groundLeaseAnnual:Math.max(0,num('scenarioGroundLeaseNew',0)),
+    mode:$('comparisonType').value,horizonYears:clamp(num('scenarioHorizonNew',10),1,40),investmentReturnPct:retOverride??clamp(num('scenarioReturnNew',5),-30,30),
+    startYear:clamp(num('startYear',2026),2020,2100),startMonth:clamp(num('startMonth',1),1,12),startPortfolio:Math.max(0,num('startPortfolio',0)),purchaseCosts:Math.max(0,num('purchaseCosts',0)),
+    mortgageType:selectedMortType(),mortgage:mainMortgage(),
+    tax:{enabled:$('mortTaxEnabled')?.checked!==false,deductionRate:FC.deductionRate2026({mode:$('deductionMode')?.value||'auto',manualRatePct:num('manualDeduction',37.56),grossIncome:num('grossIncome',0)}),wozValue:Math.max(0,num('wozValue',0)),hraRemainingMonths:hra.hraRemainingMonths,qualifyingInterestFraction:hra.qualifyingInterestFraction},
+    box3,upfrontCashTreatment:$('scenarioUpfrontCashTreatmentNew')?.value==='savings'?'savings':'invest',homeGrowthPct:clamp(num('scenarioHomeGrowthNew',2),-20,20),rentGrowthPct:clamp(num('scenarioRentGrowthNew',2.5),-10,20),sellingCostPct:clamp(num('scenarioSellingCostNew',2),0,15),
+    vveMonthly:Math.max(0,num('scenarioVveNew',250)),maintenanceAnnual:Math.max(0,num('scenarioMaintenanceNew',1500)),ownerTaxesAnnual:Math.max(0,num('scenarioOwnerTaxesNew',0)),insuranceAnnual:Math.max(0,num('scenarioInsuranceNew',0)),groundLeaseAnnual:Math.max(0,num('scenarioGroundLeaseNew',0)),
     buyRent:{price:Math.max(0,num('scenarioBuyPriceNew',350000)),downPayment:Math.max(0,num('scenarioDownPaymentNew',35000)),monthlyRent:Math.max(0,num('scenarioRentNew',1600)),mortgageRatePct:clamp(num('scenarioBuyRateNew',4),0,20),mortgageYears:clamp(num('scenarioBuyYearsNew',30),1,40)},
     downpayment:{price:Math.max(0,num('scenarioDpPriceNew',350000)),downA:Math.max(0,num('scenarioDownANew',35000)),downB:Math.max(0,num('scenarioDownBNew',15000)),mortgageRatePct:clamp(num('scenarioDpRateNew',4),0,20),mortgageYears:clamp(num('scenarioDpYearsNew',30),1,40)},
-    mortgageInvest:{extraMonthly:Math.max(0,num('scenarioExtraMonthlyNew',500))},
-    sellRent:{homeValue:Math.max(0,num('scenarioHomeValueNew',400000)),monthlyRent:Math.max(0,num('scenarioSellRentNew',1600))}
+    mortgageInvest:{extraMonthly:Math.max(0,num('scenarioExtraMonthlyNew',500))},sellRent:{homeValue:Math.max(0,num('scenarioHomeValueNew',400000)),monthlyRent:Math.max(0,num('scenarioSellRentNew',1600))}
   };
 }
 function question(mode){
-  if(mode==='buy-rent')return'Buying spends down payment + purchase costs from Household starting savings. Renting keeps that cash and then follows your unused-cash treatment.';
-  if(mode==='downpayment')return'Both strategies start with the same Household savings. The larger down payment leaves less financial wealth but a smaller mortgage.';
-  if(mode==='mortgage-invest')return'Compares directing the same extra monthly amount to mortgage principal or investments while carrying the same household balances.';
+  if(mode==='buy-rent')return'Buying spends down payment + purchase costs from household starting savings. The comparison is unavailable when those costs are not fully funded.';
+  if(mode==='downpayment')return'Both strategies start with the same household savings. Each strategy must have enough funded cash for its own down payment and purchase costs.';
+  if(mode==='mortgage-invest')return'Compares directing the same extra monthly amount to mortgage principal or investments. Money left after mortgage payoff is invested, not discarded.';
   if(mode==='linear-annuity')return'Compares total wealth, including mortgage tax relief, household balances and investing payment differences.';
-  return'Compares keeping the current home with selling now, investing net proceeds and renting.';
+  return'Compares keeping the current home with selling now, investing net proceeds and renting. A sale shortfall must be funded before comparison.';
 }
 function visibility(){
   const mode=$('comparisonType').value;
@@ -395,43 +401,17 @@ function visibility(){
   const purchaseMode=mode==='buy-rent'||mode==='downpayment';
   document.querySelectorAll('.scenario-upfront-field').forEach(el=>el.classList.toggle('hidden',!purchaseMode));
   $('scenarioQuestionNoteNew').textContent=question(mode);
-  const note=$('scenarioCashSourceNoteNew');
-  if(note){
-    note.classList.toggle('hidden',!purchaseMode);
-    if(purchaseMode)note.innerHTML=`<strong>Starting savings used by this comparison: ${fmt(Math.max(0,num('box3Savings',0)))}</strong><br><span>Change this in Investment → Household financial balances. It is not added twice.</span>`;
-  }
+  const note=$('scenarioCashSourceNoteNew');if(note){note.classList.toggle('hidden',!purchaseMode);if(purchaseMode)note.innerHTML=`<strong>Starting savings used by this comparison: ${fmt(Math.max(0,num('box3Savings',0)))}</strong><br><span>Change this in Investment → Savings / cash. It is not added twice.</span>`;}
 }
-function card(el,r,lead){
+function card(el,r,lead,valid=true){
   el.className='strategy-result-new'+(lead?' leader':'');
+  if(!valid){el.innerHTML=`<p class="strategy-name-new">${r.name}</p><p class="strategy-label-new">Comparison unavailable</p><p class="strategy-value-new">—</p>`;return;}
   el.innerHTML=`<p class="strategy-name-new">${r.name}</p><p class="strategy-label-new">${r.label}</p><p class="strategy-value-new">${fmt(r.net)}</p><div class="strategy-mini-new"><span>Investment portfolio</span><strong>${fmt(r.invest)}</strong></div><div class="strategy-mini-new"><span>Savings / cash</span><strong>${fmt(r.savings)}</strong></div><div class="strategy-mini-new"><span>Box 3 debt</span><strong>${fmt(r.box3Debt)}</strong></div><div class="strategy-mini-new"><span>Mortgage remaining</span><strong>${fmt(r.mortgage)}</strong></div>${r.equity!==undefined&&r.equity!==null?`<div class="strategy-mini-new"><span>Home equity after sale costs</span><strong>${fmt(r.equity)}</strong></div>`:''}`;
 }
 function breakdown(A,B){
   $('strategyAHeadNew').textContent=A.name;$('strategyBHeadNew').textContent=B.name;
-  const rows=[
-    ['Final comparable wealth',A.net,B.net],
-    ['Investment portfolio',A.invest,B.invest],
-    ['Savings / cash',A.savings,B.savings],
-    ['Box 3 debt',A.box3Debt,B.box3Debt],
-    ['Household financial wealth',A.financial,B.financial],
-    ['Home equity after selling costs',A.equity,B.equity],
-    ['Mortgage remaining',A.mortgage,B.mortgage],
-    ['Gross mortgage interest',A.interest,B.interest],
-    ['Mortgage tax benefit',A.mortTax,B.mortTax],
-    ['Rent paid',A.rent,B.rent],
-    ['VVE / service charges',A.vve,B.vve],
-    ['Other maintenance',A.maintenance,B.maintenance],
-    ['OZB / owner taxes',A.ownerTaxes,B.ownerTaxes],
-    ['Homeowner insurance',A.insurance,B.insurance],
-    ['Ground lease / erfpacht',A.groundLease,B.groundLease],
-    ['Purchase costs',A.purchase,B.purchase],
-    ['Selling costs used in comparison',A.selling,B.selling],
-    ['Box 3 tax',A.box3,B.box3],
-    ['Box 3 tax paid externally',A.externalTax,B.externalTax],
-    ['External Box 3 debt repayment',A.externalDebtRepayment,B.externalDebtRepayment],
-    ['Box 3 debt interest',A.box3DebtInterest,B.box3DebtInterest],
-    ['Upfront cash shortfall',A.short,B.short]
-  ],body=$('scenarioBreakdownBodyNew');
-  body.innerHTML='';
+  const rows=[['Final comparable wealth',A.net,B.net],['Investment portfolio',A.invest,B.invest],['Savings / cash',A.savings,B.savings],['Box 3 debt',A.box3Debt,B.box3Debt],['Household financial wealth',A.financial,B.financial],['Home equity after selling costs',A.equity,B.equity],['Mortgage remaining',A.mortgage,B.mortgage],['Gross mortgage interest',A.interest,B.interest],['Mortgage tax benefit',A.mortTax,B.mortTax],['Rent paid',A.rent,B.rent],['VVE / service charges',A.vve,B.vve],['Other maintenance',A.maintenance,B.maintenance],['OZB / owner taxes',A.ownerTaxes,B.ownerTaxes],['Homeowner insurance',A.insurance,B.insurance],['Ground lease / erfpacht',A.groundLease,B.groundLease],['Purchase costs',A.purchase,B.purchase],['Selling costs used in comparison',A.selling,B.selling],['Settled Box 3 tax',A.box3,B.box3],['Unsettled final-year Box 3 estimate',A.unsettledBox3,B.unsettledBox3],['Box 3 tax paid externally',A.externalTax,B.externalTax],['External Box 3 debt repayment',A.externalDebtRepayment,B.externalDebtRepayment],['Box 3 debt interest',A.box3DebtInterest,B.box3DebtInterest]];
+  const body=$('scenarioBreakdownBodyNew');body.innerHTML='';
   rows.forEach(([l,a,b])=>{if((a===undefined||a===null)&&(b===undefined||b===null))return;const tr=document.createElement('tr');tr.innerHTML=`<td>${l}</td><td>${a===undefined||a===null?'—':fmt(a)}</td><td>${b===undefined||b===null?'—':fmt(b)}</td>`;body.appendChild(tr)});
 }
 function budgetStatus(x){
@@ -441,31 +421,23 @@ function budgetStatus(x){
   return gap;
 }
 function sensitivity(){
-  let low=clamp(num('sensitivityLowNew',2),-30,30),high=clamp(num('sensitivityHighNew',10),-30,30),step=clamp(num('sensitivityStepNew',2),.5,10);
-  if(high<low)[low,high]=[high,low];
+  let low=clamp(num('sensitivityLowNew',2),-30,30),high=clamp(num('sensitivityHighNew',10),-30,30),step=clamp(num('sensitivityStepNew',2),.5,10);if(high<low)[low,high]=[high,low];
   const rows=[];let prev=null,cross=null;
-  for(let r=low;r<=high+1e-9&&rows.length<61;r+=step){
-    const x=SC.runScenario(config(r)),d=x.A.net-x.B.net;
-    if(prev&&Math.sign(prev.d)!==Math.sign(d)&&prev.d!==0&&d!==0)cross=prev.r+(r-prev.r)*(Math.abs(prev.d)/(Math.abs(prev.d)+Math.abs(d)));
-    else if(d===0)cross=r;
-    rows.push({r,A:x.A.net,B:x.B.net,d});prev={r,d};
-  }
-  const body=$('sensitivityBodyNew');body.innerHTML='';
-  rows.forEach(x=>{const tr=document.createElement('tr');tr.innerHTML=`<td>${pct(x.r)}</td><td>${fmt(x.A)}</td><td>${fmt(x.B)}</td><td>${Math.abs(x.d)<1?'Tie':x.d>0?'A':'B'}</td>`;body.appendChild(tr)});
+  for(let r=low;r<=high+1e-9&&rows.length<61;r+=step){const x=SC.runScenario(config(r));if(!x.valid){$('sensitivityBodyNew').innerHTML='';$('sensitivitySummaryNew').innerHTML='<strong>Sensitivity unavailable.</strong> Fund the upfront cash requirement first.';return;}const d=x.A.net-x.B.net;if(prev&&Math.sign(prev.d)!==Math.sign(d)&&prev.d!==0&&d!==0)cross=prev.r+(r-prev.r)*(Math.abs(prev.d)/(Math.abs(prev.d)+Math.abs(d)));else if(d===0)cross=r;rows.push({r,A:x.A.net,B:x.B.net,d});prev={r,d};}
+  const body=$('sensitivityBodyNew');body.innerHTML='';rows.forEach(x=>{const tr=document.createElement('tr');tr.innerHTML=`<td>${pct(x.r)}</td><td>${fmt(x.A)}</td><td>${fmt(x.B)}</td><td>${Math.abs(x.d)<1?'Tie':x.d>0?'A':'B'}</td>`;body.appendChild(tr)});
   $('sensitivitySummaryNew').innerHTML=cross===null?'<strong>No crossover found in this return range.</strong> One strategy leads throughout the tested range.':`<strong>Approximate crossover: ${pct(cross)} investment return.</strong> Around this point the modeled advantage changes sides.`;
 }
 function updateEngine(){
-  visibility();
-  const x=SC.runScenario(config()),d=x.A.net-x.B.net,a=d>1,b=d<-1;
-  card($('strategyAResultNew'),x.A,a);card($('strategyBResultNew'),x.B,b);
-  const lead=a?x.A.name:b?x.B.name:'Neither strategy',years=clamp(num('scenarioHorizonNew',10),1,40),gap=budgetStatus(x);
-  $('scenarioVerdictNew').innerHTML=`<strong>${lead}${a||b?' leads by '+fmt(Math.abs(d)):' is clearly ahead'} after ${years} years.</strong><span> Based on ${pct(clamp(num('scenarioReturnNew',5),-30,30))} investment return and selected tax/mortgage assumptions.</span>${x.note?`<small>${x.note}</small>`:''}${gap>.01?`<small class="scenario-budget-warning">Affordability warning: peak monthly requirement exceeds budget by ${fmt(gap)}.</small>`:''}`;
-  const midYear=clamp(num('startMonth',1),1,12)>1;
-  $('scenarioTaxNoteNew').textContent=`Box 3: ${$('box3Mode')?.selectedOptions?.[0]?.textContent||'not set'}. Mortgage-interest deduction: ${$('mortTaxEnabled')?.checked?'included':'ignored'}.${midYear?' For first-year Box 3 accuracy, use the Jan 1 overrides in advanced settings when needed.':''}`;
+  visibility();const x=SC.runScenario(config()),gap=budgetStatus(x),verdict=$('scenarioVerdictNew');
+  if(!x.valid){card($('strategyAResultNew'),x.A,false,false);card($('strategyBResultNew'),x.B,false,false);verdict.classList.add('invalid');verdict.innerHTML=`<strong>Comparison unavailable.</strong><span> ${x.reason}</span>`;$('scenarioBreakdownBodyNew').innerHTML='';sensitivity();return;}
+  verdict.classList.remove('invalid');const d=x.A.net-x.B.net,a=d>1,b=d<-1;card($('strategyAResultNew'),x.A,a,true);card($('strategyBResultNew'),x.B,b,true);
+  const lead=a?x.A.name:b?x.B.name:'Neither strategy',years=clamp(num('scenarioHorizonNew',10),1,40);
+  verdict.innerHTML=`<strong>${lead}${a||b?' leads by '+fmt(Math.abs(d)):' is clearly ahead'} after ${years} years.</strong><span> Based on ${pct(clamp(num('scenarioReturnNew',5),-30,30))} investment return and selected tax/mortgage assumptions.</span>${x.note?`<small>${x.note}</small>`:''}${gap>.01?`<small class="scenario-budget-warning">Affordability warning: peak monthly requirement exceeds budget by ${fmt(gap)}.</small>`:''}`;
+  const midYear=clamp(num('startMonth',1),1,12)>1,endMonth=((clamp(num('startMonth',1),1,12)-1+years*12-1)%12)+1;
+  $('scenarioTaxNoteNew').textContent=`Box 3: ${$('box3Mode')?.selectedOptions?.[0]?.textContent||'not set'}. Mortgage-interest deduction: ${$('mortTaxEnabled')?.checked?'included':'ignored'}.${midYear?' First partial year uses the deemed method only.':''}${endMonth!==12?' Final partial year remains an unsettled estimate.':''}`;
   breakdown(x.A,x.B);sensitivity();
 }
-engine.addEventListener('input',updateEngine);
-engine.addEventListener('change',updateEngine);
+engine.addEventListener('input',updateEngine);engine.addEventListener('change',updateEngine);
 document.querySelectorAll('#tab-investment input,#tab-investment select,#tab-mortgage input,#tab-mortgage select').forEach(el=>{el.addEventListener('input',updateEngine);el.addEventListener('change',updateEngine)});
 updateEngine();
 })();}
