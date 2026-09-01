@@ -42,12 +42,19 @@ function regimeForYear({mode='none',year,futureStart=2028}={}){
 function box3TaxForYear({
   regime='none',
   jan1Portfolio=0,
+  jan1Savings=0,
+  jan1Debt=0,
   marketGain=0,
+  savingsIncome=0,
+  debtInterest=0,
   lossCarry=0,
   taxPartners=1,
   currentTaxRate=.36,
   currentAllowance=59357,
   currentNotional=.06,
+  currentSavingsNotional=.0128,
+  currentDebtNotional=.027,
+  currentDebtThreshold=3800,
   futureTaxRate=.36,
   futureExempt=1800,
   futureLossThreshold=500
@@ -56,20 +63,58 @@ function box3TaxForYear({
   let nextLossCarry=nonNegative(lossCarry);
   let method='none';
 
+  const partners=clamp(Number(taxPartners)||1,1,2);
+  const investmentValue=nonNegative(jan1Portfolio);
+  const savingsValue=nonNegative(jan1Savings);
+  const debtValue=nonNegative(jan1Debt);
+  const actualReturn=(Number(marketGain)||0)+(Number(savingsIncome)||0)-nonNegative(debtInterest);
+
   if(regime==='current'){
-    const partners=clamp(Number(taxPartners)||1,1,2);
     const allowance=nonNegative(currentAllowance)*partners;
-    const notionalIncome=Math.max(0,nonNegative(jan1Portfolio)-allowance)*clamp(Number(currentNotional)||0,0,1);
-    const notionalTax=notionalIncome*clamp(Number(currentTaxRate)||0,0,1);
-    const actualTax=Math.max(0,Number(marketGain)||0)*clamp(Number(currentTaxRate)||0,0,1);
+    const debtThreshold=nonNegative(currentDebtThreshold)*partners;
+    const deductibleDebt=Math.max(0,debtValue-debtThreshold);
+    const assets=savingsValue+investmentValue;
+    const rendementsgrondslag=Math.max(0,assets-deductibleDebt);
+    const taxableBase=Math.max(0,rendementsgrondslag-allowance);
+    const share=rendementsgrondslag>0?clamp(taxableBase/rendementsgrondslag,0,1):0;
+
+    const savingsDeemed=savingsValue*clamp(Number(currentSavingsNotional)||0,0,1);
+    const investmentDeemed=investmentValue*clamp(Number(currentNotional)||0,0,1);
+    const debtDeemed=deductibleDebt*clamp(Number(currentDebtNotional)||0,0,1);
+    const deemedReturn=savingsDeemed+investmentDeemed-debtDeemed;
+    const deemedIncome=Math.max(0,deemedReturn*share);
+    const notionalTax=deemedIncome*clamp(Number(currentTaxRate)||0,0,1);
+
+    const actualTax=Math.max(0,actualReturn)*clamp(Number(currentTaxRate)||0,0,1);
     tax=Math.min(notionalTax,actualTax);
     method=actualTax<=notionalTax?'actual-return rebuttal':'deemed return';
-    return{tax,lossCarry:nextLossCarry,method,notionalTax,actualTax};
+
+    return{
+      tax,
+      lossCarry:nextLossCarry,
+      method,
+      notionalTax,
+      actualTax,
+      deemedIncome,
+      deemedReturn,
+      actualReturn,
+      deductibleDebt,
+      rendementsgrondslag,
+      taxableBase,
+      share,
+      components:{
+        savingsDeemed,
+        investmentDeemed,
+        debtDeemed,
+        savingsIncome:Number(savingsIncome)||0,
+        marketGain:Number(marketGain)||0,
+        debtInterest:nonNegative(debtInterest)
+      }
+    };
   }
 
   if(regime==='future'){
-    const partners=clamp(Number(taxPartners)||1,1,2);
-    const result=Number(marketGain)||0;
+    const result=actualReturn;
     if(result<0){
       nextLossCarry+=Math.max(0,-result-nonNegative(futureLossThreshold));
       method='proposed actual return · loss';
@@ -80,9 +125,10 @@ function box3TaxForYear({
       tax=Math.max(0,afterLoss-nonNegative(futureExempt)*partners)*clamp(Number(futureTaxRate)||0,0,1);
       method='proposed actual return';
     }
+    return{tax,lossCarry:nextLossCarry,method,actualReturn:result};
   }
 
-  return{tax,lossCarry:nextLossCarry,method};
+  return{tax,lossCarry:nextLossCarry,method,actualReturn};
 }
 
 function mortgageSchedule({
@@ -183,19 +229,30 @@ function simulateInvestmentFlows({
   currentTaxRate=.36,
   currentAllowance=59357,
   currentNotional=.06,
+  currentSavingsNotional=.0128,
+  currentDebtNotional=.027,
+  currentDebtThreshold=3800,
   firstJan1Portfolio=0,
+  box3Savings=0,
+  box3Debt=0,
+  savingsReturnPct=0,
+  debtInterestPct=0,
   futureStart=2028,
   futureTaxRate=.36,
   futureExempt=1800,
   futureLossThreshold=500
 }={}){
   const monthlyReturn=(Number(annualReturnPct)||0)/100/12;
+  const monthlySavingsRate=(Number(savingsReturnPct)||0)/100/12;
+  const monthlyDebtRate=(Number(debtInterestPct)||0)/100/12;
+  const savingsJan1=nonNegative(box3Savings);
+  const debtJan1=nonNegative(box3Debt);
   let portfolio=nonNegative(initialPortfolio);
   let totalTax=0,currentTax=0,futureTax=0,externalTax=0,lossCarry=0;
   let year=Number(startYear)||2026;
   let month=clamp(Number(startMonth)||1,1,12);
   let yearStartPortfolio=portfolio;
-  let marketGain=0;
+  let marketGain=0,savingsIncome=0,debtInterest=0;
   const yearBuckets={};
   const series=[];
 
@@ -205,6 +262,8 @@ function simulateInvestmentFlows({
     portfolio+=growth;
     marketGain+=growth;
     portfolio+=nonNegative(monthlyFlows[i]);
+    savingsIncome+=savingsJan1*monthlySavingsRate;
+    debtInterest+=debtJan1*monthlyDebtRate;
 
     const nextMonth=month===12?1:month+1;
     const nextYear=month===12?year+1:year;
@@ -215,7 +274,26 @@ function simulateInvestmentFlows({
       const jan1Value=(year===Number(startYear)&&Number(startMonth)>1)
         ?nonNegative(firstJan1Portfolio)
         :nonNegative(yearStartPortfolio);
-      const taxResult=box3TaxForYear({regime,jan1Portfolio:jan1Value,marketGain,lossCarry,taxPartners,currentTaxRate,currentAllowance,currentNotional,futureTaxRate,futureExempt,futureLossThreshold});
+      const taxResult=box3TaxForYear({
+        regime,
+        jan1Portfolio:jan1Value,
+        jan1Savings:savingsJan1,
+        jan1Debt:debtJan1,
+        marketGain,
+        savingsIncome,
+        debtInterest,
+        lossCarry,
+        taxPartners,
+        currentTaxRate,
+        currentAllowance,
+        currentNotional,
+        currentSavingsNotional,
+        currentDebtNotional,
+        currentDebtThreshold,
+        futureTaxRate,
+        futureExempt,
+        futureLossThreshold
+      });
       lossCarry=taxResult.lossCarry;
       totalTax+=taxResult.tax;
       if(regime==='current')currentTax+=taxResult.tax;
@@ -223,17 +301,44 @@ function simulateInvestmentFlows({
       const beforeTax=portfolio;
       if(paySource==='portfolio')portfolio=Math.max(0,portfolio-taxResult.tax);
       else externalTax+=taxResult.tax;
-      yearBuckets[year]={year,regime,jan1Portfolio:jan1Value,marketGain,endBeforeTax:beforeTax,box3Tax:taxResult.tax,endAfterTax:portfolio,method:taxResult.method};
+      yearBuckets[year]={
+        year,
+        regime,
+        jan1Portfolio:jan1Value,
+        jan1Savings:savingsJan1,
+        jan1Debt:debtJan1,
+        marketGain,
+        savingsIncome,
+        debtInterest,
+        endBeforeTax:beforeTax,
+        box3Tax:taxResult.tax,
+        endAfterTax:portfolio,
+        method:taxResult.method,
+        notionalTax:taxResult.notionalTax,
+        actualTax:taxResult.actualTax
+      };
       series.push({year,month,portfolio,box3Tax:totalTax});
       yearStartPortfolio=portfolio;
       marketGain=0;
+      savingsIncome=0;
+      debtInterest=0;
     }
 
     year=nextYear;
     month=nextMonth;
   }
 
-  return{portfolio,totalTax,currentTax,futureTax,externalTax,comparableWealth:portfolio-externalTax,lossCarry,yearBuckets,series};
+  return{
+    portfolio,
+    totalTax,
+    currentTax,
+    futureTax,
+    externalTax,
+    comparableWealth:portfolio-externalTax,
+    lossCarry,
+    yearBuckets,
+    series
+  };
 }
 
 function equalizeCashFlows(a=[],b=[]){
@@ -266,6 +371,11 @@ function simulatePlan(config={}){
   const annuityPayment=monthlyMortRate===0?initialMort/mortTermMonths:initialMort*monthlyMortRate/(1-Math.pow(1+monthlyMortRate,-mortTermMonths));
   const totalMonths=phases.reduce((sum,p)=>sum+Math.max(0,Math.round((Number(p.years)||0)*12)),0);
 
+  const savingsJan1=nonNegative(config.box3Savings);
+  const debtJan1=nonNegative(config.box3Debt);
+  const monthlySavingsRate=(Number(config.savingsReturnPct)||0)/100/12;
+  const monthlyDebtRate=(Number(config.debtInterestPct)||0)/100/12;
+
   let portfolio=nonNegative(config.startPortfolio);
   let invested=portfolio;
   let mort=initialMort;
@@ -275,7 +385,24 @@ function simulatePlan(config={}){
   let year=startYear,month=startMonth,global=0;
 
   function bucket(y){
-    if(!yearBuckets[y])yearBuckets[y]={year:y,startPortfolio:null,endBeforeTax:0,endAfterTax:0,marketGain:0,contrib:0,mortInterest:0,mortMonths:0,mortTax:0,box3Tax:0,regime:'none',method:'none'};
+    if(!yearBuckets[y])yearBuckets[y]={
+      year:y,
+      startPortfolio:null,
+      endBeforeTax:0,
+      endAfterTax:0,
+      marketGain:0,
+      savingsIncome:0,
+      debtInterest:0,
+      jan1Savings:savingsJan1,
+      jan1Debt:debtJan1,
+      contrib:0,
+      mortInterest:0,
+      mortMonths:0,
+      mortTax:0,
+      box3Tax:0,
+      regime:'none',
+      method:'none'
+    };
     return yearBuckets[y];
   }
 
@@ -289,6 +416,8 @@ function simulatePlan(config={}){
       const growth=portfolio*monthlyReturn;
       portfolio+=growth;
       b.marketGain+=growth;
+      b.savingsIncome+=savingsJan1*monthlySavingsRate;
+      b.debtInterest+=debtJan1*monthlyDebtRate;
 
       let investContrib=nonNegative(phase.monthlyInvest);
       let bonusInvest=0,bonusMort=0;
@@ -338,10 +467,32 @@ function simulatePlan(config={}){
         const regime=regimeForYear({mode:config.box3Mode,year,futureStart:config.futureStart});
         b.regime=regime;
         const jan1Value=(year===startYear&&startMonth>1)?nonNegative(config.firstJan1Portfolio):Math.max(0,b.startPortfolio||0);
-        const taxResult=box3TaxForYear({regime,jan1Portfolio:jan1Value,marketGain:b.marketGain,lossCarry,taxPartners:config.taxPartners,currentTaxRate:config.currentTaxRate,currentAllowance:config.currentAllowance,currentNotional:config.currentNotional,futureTaxRate:config.futureTaxRate,futureExempt:config.futureExempt,futureLossThreshold:config.futureLossThreshold});
+        const taxResult=box3TaxForYear({
+          regime,
+          jan1Portfolio:jan1Value,
+          jan1Savings:savingsJan1,
+          jan1Debt:debtJan1,
+          marketGain:b.marketGain,
+          savingsIncome:b.savingsIncome,
+          debtInterest:b.debtInterest,
+          lossCarry,
+          taxPartners:config.taxPartners,
+          currentTaxRate:config.currentTaxRate,
+          currentAllowance:config.currentAllowance,
+          currentNotional:config.currentNotional,
+          currentSavingsNotional:config.currentSavingsNotional,
+          currentDebtNotional:config.currentDebtNotional,
+          currentDebtThreshold:config.currentDebtThreshold,
+          futureTaxRate:config.futureTaxRate,
+          futureExempt:config.futureExempt,
+          futureLossThreshold:config.futureLossThreshold
+        });
         lossCarry=taxResult.lossCarry;
         b.method=taxResult.method;
         b.box3Tax=taxResult.tax;
+        b.notionalTax=taxResult.notionalTax;
+        b.actualTax=taxResult.actualTax;
+        b.jan1Portfolio=jan1Value;
         box3Tax+=taxResult.tax;
         if(regime==='current')currentTax+=taxResult.tax;
         if(regime==='future')futureTax+=taxResult.tax;
