@@ -79,15 +79,20 @@ test('NHG fee is solved consistently with the mortgage amount it helps create',(
   approx(x.totalCosts,8000+7000+x.nhgFee,.02,'total costs');
 });
 
-test('mortgagecalc.nl displayed 2026 mortgage example matches our standard amortisation within rounding',()=>{
-  // mortgagecalc.nl currently shows a €320k, 30-year example with €1,597 annuity and €2,054 linear month-1 payments.
-  // A 4.37% nominal rate reproduces those displayed rounded values.
+test('mortgagecalc.nl displayed 2026 mortgage example matches our gross and net amortisation within rounding',()=>{
+  // mortgagecalc.nl currently displays a €320k loan over 30 years with a 4.37% rate,
+  // approximately €1,597 annuity / €2,054 linear month-one gross payments,
+  // and about €1,206 net monthly cost for the annuity example after HRA + EWF.
   const ann=FC.mortgageSchedule({balance:320000,annualRatePct:4.37,termYears:30,type:'annuity',months:360,tax:{enabled:false}});
   const lin=FC.mortgageSchedule({balance:320000,annualRatePct:4.37,termYears:30,type:'linear',months:360,tax:{enabled:false}});
   approx(ann.firstScheduled,1596.77,.01,'mortgagecalc annuity month 1');
   approx(lin.firstScheduled,2054.22,.01,'mortgagecalc linear month 1');
   approx(ann.totalInterest,254837,2,'mortgagecalc annuity total interest');
   assert.ok(Math.abs(lin.totalInterest-210000)<1500,'mortgagecalc linear total interest should round to about €210k');
+
+  const firstYear=FC.mortgageSchedule({balance:320000,annualRatePct:4.37,termYears:30,type:'annuity',months:12,tax:{enabled:true,deductionRate:.3756,wozValue:400000}});
+  const averageNetMonth=(firstYear.firstScheduled*12-firstYear.totalTaxBenefit)/12;
+  approx(averageNetMonth,1206.18,.05,'mortgagecalc first-year net monthly cost');
 });
 
 test('WhatTheMortgage-style schedule identities reconcile every row',()=>{
