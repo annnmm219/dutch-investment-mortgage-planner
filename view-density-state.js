@@ -8,7 +8,8 @@
 const LATE_CONTROL_IDS=[
   'hillenOverrideEnabled','hillenOverridePct',
   'scenarioBuyWozNew','scenarioDpWozNew','scenarioSellWozNew',
-  'nextEuroHraTreatment','nextEuroBox3Treatment'
+  'nextEuroHraTreatment','nextEuroBox3Treatment',
+  'scenarioReturnOverrideEnabled'
 ];
 
 function restoreEntry(el,entry){
@@ -69,7 +70,10 @@ function bootBrowser(){
   let refreshQueued=false;
 
   function near(a,b,tolerance=1e-9){return Math.abs((Number(a)||0)-(Number(b)||0))<=tolerance;}
-  function fireInput(el){el?.dispatchEvent(new Event('input',{bubbles:true}));}
+  function fire(el){
+    el?.dispatchEvent(new Event('input',{bubbles:true}));
+    el?.dispatchEvent(new Event('change',{bubbles:true}));
+  }
   function selectedMortgageType(){return document.querySelector('.compare-card.active[data-mort-type]')?.dataset.mortType||'annuity';}
   function isMainPlanConfig(config={}){
     if(!Array.isArray(config.phases)||!config.phases.length)return false;
@@ -86,14 +90,19 @@ function bootBrowser(){
   function ensureNextEuroControls(){
     const card=$('nextEuroCard');
     if(!card||$('nextEuroTaxTreatmentControls'))return;
-    const block=document.createElement('div');
-    block.id='nextEuroTaxTreatmentControls';
-    block.className='grid2 advanced-grid density-advanced-only';
-    block.innerHTML=`
-      <div class="field"><label for="nextEuroHraTreatment">Next € mortgage-interest relief</label><select id="nextEuroHraTreatment"><option value="planner" selected>Use planner setting</option><option value="on">Include HRA</option><option value="off">Ignore HRA</option></select><p class="inline">Affects the Next € calculation only. It does not rewrite the Mortgage tab.</p></div>
-      <div class="field"><label for="nextEuroBox3Treatment">Next € Box 3 treatment</label><select id="nextEuroBox3Treatment"><option value="planner" selected>Use planner setting</option><option value="current">Use 2026 current rules</option><option value="none">Ignore Box 3</option></select><p class="inline">Use this to compare the break-even with and without modeled Box 3.</p></div>`;
+    const details=document.createElement('details');
+    details.id='nextEuroTaxTreatmentDetails';
+    details.className='inner-fold r65-local-fold';
+    details.innerHTML=`
+      <summary>Advanced Next € assumptions</summary>
+      <div class="inner-fold-body">
+        <div id="nextEuroTaxTreatmentControls" class="grid2 advanced-grid">
+          <div class="field"><label for="nextEuroHraTreatment">Mortgage-interest relief</label><select id="nextEuroHraTreatment"><option value="planner" selected>Use planner setting</option><option value="on">Include HRA</option><option value="off">Ignore HRA</option></select><p class="inline">Changes this break-even calculation only.</p></div>
+          <div class="field"><label for="nextEuroBox3Treatment">Box 3 treatment</label><select id="nextEuroBox3Treatment"><option value="planner" selected>Use planner setting</option><option value="current">Use 2026 current rules</option><option value="none">Ignore Box 3</option></select><p class="inline">Changes this break-even calculation only.</p></div>
+        </div>
+      </div>`;
     const summary=card.querySelector('.next-euro-summary');
-    if(summary)summary.insertAdjacentElement('beforebegin',block);else card.appendChild(block);
+    if(summary)summary.insertAdjacentElement('beforebegin',details);else card.appendChild(details);
   }
 
   function decorateNextEuro(){
@@ -147,13 +156,12 @@ function bootBrowser(){
   }
 
   function restoreLateControls(){
-    if(!payload)return false;
-    let restored=false;
+    if(!payload)return[];
+    const restored=[];
     LATE_CONTROL_IDS.forEach(id=>{
       const el=$(id);
       const entry=payload.controls[`id:${id}`];
-      if(!el||!entry)return;
-      restored=restoreEntry(el,entry)||restored;
+      if(el&&entry&&restoreEntry(el,entry))restored.push(el);
     });
     const hillenEnabled=$('hillenOverrideEnabled');
     const hillenRate=$('hillenOverridePct');
@@ -161,36 +169,14 @@ function bootBrowser(){
     return restored;
   }
 
-  function syncTaxTreatmentChips(){
-    const summary=$('advancedStateSummary');
-    const list=summary?.querySelector('[data-density-chips]');
-    if(!summary||!list)return;
-    list.querySelectorAll('[data-density-state-chip]').forEach(el=>el.remove());
-    const chips=[];
-    const hra=$('nextEuroHraTreatment')?.value||'planner';
-    const box3=$('nextEuroBox3Treatment')?.value||'planner';
-    if(hra!=='planner')chips.push(`Next € HRA: ${hra==='on'?'included':'ignored'}`);
-    if(box3!=='planner')chips.push(`Next € Box 3: ${box3==='current'?'2026 current rules':'ignored'}`);
-    if(!chips.length)return;
-    chips.forEach(label=>{
-      const chip=document.createElement('span');
-      chip.className='density-chip';
-      chip.dataset.densityStateChip='';
-      chip.textContent=label;
-      list.appendChild(chip);
-    });
-    if(document.documentElement.dataset.viewDensity==='standard')summary.classList.remove('hidden');
-  }
-
   function setModelMarker(){
     const meta=window.MODEL_META;
     const marker=$('modelVersion');
-    if(meta&&marker)marker.textContent=`Calculation build ${meta.version} · ${meta.ruleYear} rules · updated 2 Sep 2026`;
+    if(meta&&marker)marker.textContent=window.OutputIntegrity?.releaseLabel?.(meta)||`Calculation build ${meta.version} · ${meta.ruleYear} rules`;
   }
 
   function refresh(){
     ensureMethodColumn();
-    syncTaxTreatmentChips();
     setModelMarker();
   }
   function queueRefresh(){
@@ -207,12 +193,13 @@ function bootBrowser(){
   decorateFinanceCapture();
   const restored=restoreLateControls();
 
+  restored.forEach(fire);
   document.addEventListener('input',queueRefresh);
   document.addEventListener('change',queueRefresh);
   window.addEventListener('load',refresh,{once:true});
 
-  fireInput($('annualReturn'));
-  if(restored||$('nextEuroTaxTreatmentControls'))fireInput($('nextEuroAmount'));
+  fire($('annualReturn'));
+  if(restored.length||$('nextEuroTaxTreatmentControls'))fire($('nextEuroAmount'));
   queueRefresh();
 }
 
