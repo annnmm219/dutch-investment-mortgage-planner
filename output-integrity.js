@@ -6,11 +6,11 @@
 'use strict';
 
 const RELEASE_META=Object.freeze({
-  version:'R6.4.2',
+  version:'R6.5',
   ruleYear:2026,
   updated:'2026-09-02',
   stateSchema:4,
-  releaseName:'Output Integrity'
+  releaseName:'Interface Simplification'
 });
 
 function finiteOrNull(value){

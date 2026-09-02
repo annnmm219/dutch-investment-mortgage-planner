@@ -40,7 +40,7 @@ function baseScenario(overrides={}){
 }
 
 test('R6.4 uses one public model identity and state schema',()=>{
-  assert.equal(Gate.MODEL_META.version,'R6.4.2');
+  assert.equal(Gate.MODEL_META.version,'R6.5');
   assert.equal(Gate.MODEL_META.ruleYear,2026);
   assert.equal(Gate.MODEL_META.stateSchema,4);
 });

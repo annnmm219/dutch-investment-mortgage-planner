@@ -25,10 +25,10 @@ function blocked(status='missing-jan1-snapshot'){
   };
 }
 
-test('R6.4.2 is the single final output release identity',()=>{
-  assert.equal(OI.RELEASE_META.version,'R6.4.2');
+test('R6.5 is the single final output release identity',()=>{
+  assert.equal(OI.RELEASE_META.version,'R6.5');
   assert.equal(OI.RELEASE_META.ruleYear,2026);
-  assert.match(OI.releaseLabel(),/Calculation build R6\.4\.2/);
+  assert.match(OI.releaseLabel(),/Calculation build R6\.5/);
 });
 
 test('money formatting never converts null or undefined into €0',()=>{
@@ -119,7 +119,7 @@ test('browser renderer includes all release-blocking output surfaces',()=>{
   assert.match(source,/Tax-adjusted comparison unavailable/);
 });
 
-test('R6.4.2 interpretation warnings remain visible without expanding the engine',()=>{
+test('R6.5 interpretation warnings remain visible without expanding the engine',()=>{
   const source=read('output-integrity.js');
   assert.match(source,/Modeled HRA sensitivity estimate/);
   assert.match(source,/constant-rules scenario/);

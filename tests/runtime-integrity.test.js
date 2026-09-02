@@ -45,8 +45,8 @@ test('browser modules fail fast when required dependencies are missing',()=>{
 test('public page exposes R6.4, mixed-asset Box 3, and conservative static defaults',()=>{
   const html=read('index.html'),gate=read('logic-integrity-ui.js');
   assert.match(html,/id="modelVersion"/);
-  assert.match(html,/Calculation build R6\.4\.2/);
-  assert.match(gate,/version:'R6\.4\.2'/);
+  assert.match(html,/Calculation build R6\.5/);
+  assert.match(gate,/version:'R6\.5'/);
   assert.match(html,/2026 current rules, mixed-asset estimate/);
   assert.doesNotMatch(html,/2026 current rules, investment-only estimate/);
   assert.match(html,/id="annualReturn"[^>]*value="5"/);
@@ -93,10 +93,10 @@ test('R6 persistence and late density restoration load in deterministic order',(
   assert.match(late,/scenarioBuyWozNew/);
 });
 
-test('R6.4.2 cache-busts every local browser asset',()=>{
+test('R6.5 cache-busts every local browser asset',()=>{
   const html=read('index.html');
   const local=[...html.matchAll(/<script\s+src="((?!https?:\/\/)[^"]+)"/g)].map(m=>m[1]);
   assert.equal(local.length,EXPECTED_LOCAL_SCRIPTS.length);
-  local.forEach(src=>assert.match(src,/\?v=R6\.4\.2$/));
-  assert.match(html,/styles\.css\?v=R6\.4\.2/);
+  local.forEach(src=>assert.match(src,/\?v=R6\.5$/));
+  assert.match(html,/styles\.css\?v=R6\.5/);
 });
