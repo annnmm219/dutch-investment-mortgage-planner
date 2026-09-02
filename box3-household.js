@@ -165,8 +165,8 @@ function injectBrowserUI(){
       <div class="field"><label for="currentSavingsNotional">Deemed return on bank deposits %</label><input id="currentSavingsNotional" type="number" min="0" max="30" step="0.01" value="1.28"><p class="inline">2026 provisional bank-deposit percentage.</p></div>
       <div class="field"><label for="currentDebtNotional">Deemed return on Box 3 debt %</label><input id="currentDebtNotional" type="number" min="0" max="30" step="0.01" value="2.70"><p class="inline">2026 provisional debt percentage.</p></div>
       <div class="field"><label for="currentDebtThreshold">Debt threshold / person</label><input id="currentDebtThreshold" type="number" min="0" step="100" value="3800"><p class="inline">€3,800 per person in 2026; €7,600 for two fiscal partners.</p></div>
-      <div class="field"><label for="firstJan1Savings">Jan 1 savings · first plan year</label><input id="firstJan1Savings" type="number" min="0" step="100" placeholder="Use starting savings"><p class="inline">Optional override when the plan starts after January.</p></div>
-      <div class="field"><label for="firstJan1Debt">Jan 1 Box 3 debt · first plan year</label><input id="firstJan1Debt" type="number" min="0" step="100" placeholder="Use starting debt"><p class="inline">Optional override when the plan starts after January.</p></div>`;
+      <div class="field"><label for="firstJan1Savings">Jan 1 savings · first plan year</label><input id="firstJan1Savings" type="number" min="0" step="100" placeholder="Required for a mid-year Box 3 plan"><p class="inline">Historical 1 January value. Enter 0 explicitly if none.</p></div>
+      <div class="field"><label for="firstJan1Debt">Jan 1 Box 3 debt · first plan year</label><input id="firstJan1Debt" type="number" min="0" step="100" placeholder="Required for a mid-year Box 3 plan"><p class="inline">Historical 1 January value. Enter 0 explicitly if none.</p></div>`;
     currentGrid.insertAdjacentElement('afterend',advanced);
   }
 
@@ -177,7 +177,7 @@ function injectBrowserUI(){
     const currentTitle=foldBody.querySelector('.subsection-title');
     const currentCopy=foldBody.querySelector('.subsection-copy');
     if(currentTitle)currentTitle.textContent='2026 current rules, dynamic mixed-asset estimate';
-    if(currentCopy)currentCopy.textContent='Uses the investment portfolio plus the household savings and Box 3 debt ledgers. Each calendar year takes the modeled Jan 1 balances, then compares the deemed-return method with the modeled actual-return rebuttal.';
+    if(currentCopy)currentCopy.textContent='Uses the investment portfolio plus the household savings and Box 3 debt ledgers. Each complete calendar year takes the modeled Jan 1 balances, then compares the deemed-return method with the modeled actual-return rebuttal.';
   }
 
   const trigger=()=>{const el=document.getElementById('currentNotional')||document.getElementById('box3Mode');if(el)el.dispatchEvent(new Event('input',{bubbles:true}));};
@@ -196,8 +196,6 @@ function bootBrowser(){
   configureR4Defaults();
   injectBrowserUI();
   decorateCore(window.FinanceCore,browserContext);
-  const marker=document.getElementById('modelVersion');
-  if(marker)marker.textContent='Calculation build R5 · 2026 rules · updated 1 Sep 2026';
 }
 
 return{DEFAULTS,normalizeContext,decorateCore,browserContext,configureTaxSource,configureR4Defaults,injectBrowserUI,renderBalanceSummary,bootBrowser};
