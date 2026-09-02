@@ -76,7 +76,8 @@ async function responsivePing(label){
       version:document.getElementById('modelVersion')?.textContent||'',
       callbacks:window.__r642MutationCallbacks||0,
       phases:document.getElementById('phaseList')?.children.length||0,
-      scenario:document.getElementById('comparisonType')?.value||''
+      scenario:document.getElementById('comparisonType')?.value||'',
+      view:document.documentElement.dataset.viewDensity||''
     }),100))),
     delay(5000).then(()=>{throw new Error(`${label}: browser main thread did not answer within 5 seconds`);})
   ]);
@@ -84,6 +85,11 @@ async function responsivePing(label){
   if(result.phases<1)throw new Error(`${label}: phase UI did not initialize`);
   if(result.callbacks>1000)throw new Error(`${label}: excessive MutationObserver callbacks (${result.callbacks})`);
   return result;
+}
+
+async function selectDensity(text,expected){
+  await page.getByText(text,{exact:true}).click();
+  await page.waitForFunction(view=>document.documentElement.dataset.viewDensity===view,expected);
 }
 
 try{
@@ -98,10 +104,10 @@ try{
   await delay(750);
   const scenario=await responsivePing('scenario rerender');
 
-  await page.locator('#viewAdvanced').check();
+  await selectDensity('Advanced','advanced');
   await delay(300);
   const advanced=await responsivePing('Advanced view');
-  await page.locator('#viewStandard').check();
+  await selectDensity('Standard','standard');
   await delay(300);
   const standard=await responsivePing('Standard view');
 
