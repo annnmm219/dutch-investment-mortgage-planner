@@ -56,3 +56,5 @@ print("R6.5 interface release patch applied.")
 print("Updated tracked files:")
 for path in sorted(updated):
     print(f"- {path}")
+
+# This script is intentionally one-shot for the R6.5 release branch.
