@@ -53,11 +53,18 @@ replace_once(
 
 # A new query-string version is required so browsers do not reuse the hanging R6.4.1 assets.
 text_extensions = {".js", ".html", ".md", ".json", ".yml", ".yaml"}
+version_pairs = (
+    ("R6.4.1", "R6.4.2"),
+    (r"R6\.4\.1", r"R6\.4\.2"),
+    (r"R6\\.4\\.1", r"R6\\.4\\.2"),
+)
 for file in ROOT.rglob("*"):
     if not file.is_file() or ".git" in file.parts or file.suffix.lower() not in text_extensions:
         continue
     text = file.read_text(encoding="utf-8")
-    revised = text.replace("R6.4.1", "R6.4.2").replace(r"R6\.4\.1", r"R6\.4\.2")
+    revised = text
+    for old, new in version_pairs:
+        revised = revised.replace(old, new)
     if revised != text:
         file.write_text(revised, encoding="utf-8")
 
