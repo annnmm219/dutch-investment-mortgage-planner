@@ -197,17 +197,10 @@ function bootBrowser(){
     const reset=$('plannerReset');
     if(reset){reset.textContent='Start fresh';reset.title='Clear the saved plan in this browser and restore the example values.';}
     const status=$('plannerSaveStatus');
-    if(!status||status.dataset.r65Normalized==='1')return;
-    status.dataset.r65Normalized='1';
-    let normalizing=false;
-    const normalize=()=>{
-      if(normalizing)return;
-      const raw=String(status.textContent||'');
-      const desired=/Restored/i.test(raw)?'Previous plan restored':/Saved locally/i.test(raw)?'Saved in this browser':/Not saved/i.test(raw)?'Example values':raw;
-      if(desired!==raw){normalizing=true;status.textContent=desired;normalizing=false;}
-    };
-    normalize();
-    new MutationObserver(normalize).observe(status,{childList:true,subtree:true,characterData:true});
+    if(!status)return;
+    const raw=String(status.textContent||'');
+    const desired=/Restored/i.test(raw)?'Previous plan restored':/Saved locally/i.test(raw)?'Saved in this browser':/Not saved/i.test(raw)?'Example values':raw;
+    if(desired!==raw)status.textContent=desired;
   }
 
   function simplifyStaticCopy(){
@@ -273,7 +266,7 @@ function bootBrowser(){
 
   function ensureBox3Simple(){
     if(document.querySelector('[data-r65-role="box3-simple"]'))return;
-    const mode=$('box3Mode'),card=mode?.closest('.card');
+    const mode=$('box3Mode'),card=$('sBox3')?.closest('.card')||mode?.closest('.card');
     if(!mode||!card)return;
     const row=document.createElement('div');
     row.className='r65-simple-row';row.dataset.r65Role='box3-simple';
@@ -543,7 +536,7 @@ function bootBrowser(){
   }
   function queueRefresh(){if(refreshQueued)return;refreshQueued=true;requestAnimationFrame(()=>{refreshQueued=false;refresh();});}
 
-  injectStyle();compactSaveBar();simplifyStaticCopy();ensurePlanTiming();ensureBox3Advanced();ensureBox3Simple();ensureJan1Gate();ensurePurchaseLight();ensureHillenAdvanced();ensureMortgageAdvanced();ensureScenarioReturn();ensureOwnerLight();ensureScenarioWozFields();ensureScenarioAdvanced();ensureScenarioHow();ensureAuditTools();decorateFinanceForHillen();decorateScenarioForWoz();
+  injectStyle();compactSaveBar();simplifyStaticCopy();ensurePlanTiming();ensureBox3Simple();ensureBox3Advanced();ensureJan1Gate();ensurePurchaseLight();ensureHillenAdvanced();ensureMortgageAdvanced();ensureScenarioReturn();ensureOwnerLight();ensureScenarioWozFields();ensureScenarioAdvanced();ensureScenarioHow();ensureAuditTools();decorateFinanceForHillen();decorateScenarioForWoz();
   document.addEventListener('input',queueRefresh);
   document.addEventListener('change',queueRefresh);
   window.addEventListener('load',refresh,{once:true});
