@@ -27,10 +27,13 @@ test('R4 adds owner-only cost inputs and a conservative scenario return range',(
 });
 
 test('R4 conservative defaults remain present in later calculation builds',()=>{
-  const js=read('box3-household.js');
-  assert.match(js,/annualReturn\.value==='7'/);
-  assert.match(js,/annualReturn\.value='5'/);
-  assert.match(js,/mode\.value==='transition'/);
-  assert.match(js,/mode\.value='current'/);
-  assert.match(js,/Calculation build R\d+/);
+  const household=read('box3-household.js');
+  const gate=read('logic-integrity-ui.js');
+  assert.match(household,/annualReturn\.value==='7'/);
+  assert.match(household,/annualReturn\.value='5'/);
+  assert.match(household,/mode\.value==='transition'/);
+  assert.match(household,/mode\.value='current'/);
+  assert.match(gate,/version:'R6\.4'/);
+  assert.match(gate,/MODEL_META/);
+  assert.doesNotMatch(household,/Calculation build R\d+/);
 });
