@@ -21,6 +21,8 @@ jobs:
           node-version: 24
       - name: Apply deterministic source patch
         run: python3 scripts/apply-r641-source-patch.py
+      - name: Apply release follow-up fixes
+        run: python3 scripts/apply-r641-followup.py
       - name: Run complete regression suite
         run: npm test
       - name: Run 50-scenario reconciliation matrix
@@ -28,7 +30,7 @@ jobs:
       - name: Commit verified release sources
         shell: bash
         run: |
-          rm -f scripts/apply-r641-source-patch.py
+          rm -f scripts/apply-r641-source-patch.py scripts/apply-r641-followup.py
           rm -f .github/workflows/build-r641-release.yml
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
