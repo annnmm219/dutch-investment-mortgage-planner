@@ -41,7 +41,7 @@ details.innerHTML=`
   <div class="inner-fold-body">
     <p class="subsection-copy">Transfer tax and NHG are calculated automatically from the settings below. Other costs remain editable planning inputs.</p>
     <div class="grid3 advanced-grid" id="purchaseRuleGrid">
-      <div class="field"><label for="purchaseTransferTaxMode">Transfer-tax treatment</label><select id="purchaseTransferTaxMode"><option value="main" selected>Main residence · 2%</option><option value="starter">Starter exemption · 0% if eligible</option><option value="other-home">Not main residence · 8%</option><option value="manual">Manual amount</option></select><p class="inline">Starter exemption assumes you are 18–34, will use the home as your main residence, have not used the exemption before, and the full home value is ≤ €555,000.</p></div>
+      <div class="field"><label for="purchaseTransferTaxMode">Transfer-tax treatment</label><select id="purchaseTransferTaxMode"><option value="main" selected>Main residence · 2%</option><option value="starter">Starter exemption · 0% if eligible</option><option value="other-home">Residential property, not main residence · 8%</option><option value="other-real-estate">Other real estate · 10.4%</option><option value="manual">Manual amount</option></select><p class="inline">Starter exemption assumes you are 18–34, will use the home as your main residence, have not used the exemption before, and the full home value is ≤ €555,000.</p></div>
       <div class="field"><label for="purchaseAppraisedValue">Estimated market / appraised value</label><input id="purchaseAppraisedValue" type="number" min="0" step="1000" value="350000"><p class="inline">Defaults to house price until you edit it. Used for the LTV planning check and NHG sanity check.</p></div>
       <div class="field"><label for="purchaseNhgMode">NHG</label><select id="purchaseNhgMode"><option value="none" selected>No NHG</option><option value="standard">Standard NHG · 2026 limit €470,000</option><option value="energy">NHG with qualifying energy measures · up to €498,200</option></select><p class="inline">The planner applies the 0.4% NHG fee when the simplified eligibility check passes.</p></div>
     </div>
@@ -103,7 +103,10 @@ function sync(){
   const status=document.getElementById('purchaseRuleStatus');
   const transferLabel=transferMode.value==='starter'
     ?(result.transferTax.starterEligible?'Starter exemption passes the €555,000 value test.':'Starter exemption value test fails; 2% is used.')
-    :transferMode.value==='main'?'Main-residence transfer tax: 2%.':transferMode.value==='other-home'?'Non-main-residence residential transfer tax: 8%.':'Manual transfer-tax amount.';
+    :transferMode.value==='main'?'Main-residence transfer tax: 2%.'
+    :transferMode.value==='other-home'?'Residential property not used as the main residence: 8%.'
+    :transferMode.value==='other-real-estate'?'Other real estate transfer tax: 10.4%.'
+    :'Manual transfer-tax amount.';
   const ltvText=result.appraisedValue>0
     ?`Estimated LTV: <strong>${pct(result.ltv.percentage)}</strong> of entered market value${result.ltv.overStandardLimit?' · above the normal 100% LTV limit.':' · within the normal 100% LTV limit.'}`
     :'Enter an appraised value for an LTV check.';
