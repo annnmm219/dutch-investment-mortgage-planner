@@ -33,11 +33,11 @@ const context=await browser.newContext();
 
 await context.addInitScript(()=>{
   const NativeMutationObserver=window.MutationObserver;
-  window.__r642MutationCallbacks=0;
+  window.__r65MutationCallbacks=0;
   window.MutationObserver=class CountingMutationObserver extends NativeMutationObserver{
     constructor(callback){
       super((records,observer)=>{
-        window.__r642MutationCallbacks++;
+        window.__r65MutationCallbacks++;
         return callback(records,observer);
       });
     }
@@ -74,46 +74,61 @@ async function responsivePing(label){
   const result=await Promise.race([
     page.evaluate(()=>new Promise(resolve=>setTimeout(()=>resolve({
       version:document.getElementById('modelVersion')?.textContent||'',
-      callbacks:window.__r642MutationCallbacks||0,
+      callbacks:window.__r65MutationCallbacks||0,
       phases:document.getElementById('phaseList')?.children.length||0,
       scenario:document.getElementById('comparisonType')?.value||'',
-      view:document.documentElement.dataset.viewDensity||''
+      globalSwitchVisible:Boolean(document.getElementById('viewDensityBar')&&getComputedStyle(document.getElementById('viewDensityBar')).display!=='none'),
+      globalBannerVisible:Boolean(document.getElementById('advancedStateSummary')&&getComputedStyle(document.getElementById('advancedStateSummary')).display!=='none'),
+      box3Fold:Boolean(document.getElementById('r65Box3Advanced')),
+      mortgageFold:Boolean(document.getElementById('r65MortgageAdvanced')),
+      scenarioFold:Boolean(document.getElementById('r65ScenarioAdvanced')),
+      howFold:Boolean(document.getElementById('r65ScenarioHow')),
+      saveText:document.getElementById('plannerSaveStatus')?.textContent||'',
+      scenarioReturn:document.getElementById('scenarioReturnNew')?.value||'',
+      returnLabel:document.querySelector('[data-r65-role="scenario-return-label"]')?.textContent||''
     }),100))),
     delay(5000).then(()=>{throw new Error(`${label}: browser main thread did not answer within 5 seconds`);})
   ]);
-  if(!result.version.includes('R6.4.2'))throw new Error(`${label}: wrong model version: ${result.version}`);
+  if(!result.version.includes('R6.5'))throw new Error(`${label}: wrong model version: ${result.version}`);
   if(result.phases<1)throw new Error(`${label}: phase UI did not initialize`);
   if(result.callbacks>1000)throw new Error(`${label}: excessive MutationObserver callbacks (${result.callbacks})`);
+  if(result.globalSwitchVisible||result.globalBannerVisible)throw new Error(`${label}: obsolete global density UI is visible`);
+  if(!result.box3Fold||!result.mortgageFold||!result.scenarioFold||!result.howFold)throw new Error(`${label}: one or more local assumption folds are missing`);
   return result;
-}
-
-async function selectDensity(text,expected){
-  await page.getByText(text,{exact:true}).click();
-  await page.waitForFunction(view=>document.documentElement.dataset.viewDensity===view,expected);
 }
 
 try{
   await page.goto(`http://127.0.0.1:${port}/`,{waitUntil:'domcontentloaded',timeout:15000});
-  await page.waitForFunction(()=>document.getElementById('phaseList')?.children.length>=1);
+  await page.waitForFunction(()=>document.getElementById('phaseList')?.children.length>=1&&document.getElementById('r65ScenarioAdvanced'));
   await delay(750);
   const initial=await responsivePing('initial load');
 
+  await page.locator('#annualReturn').fill('7');
+  await page.locator('#annualReturn').dispatchEvent('input');
+  await page.waitForFunction(()=>document.getElementById('scenarioReturnNew')?.value==='7');
+  const inherited=await responsivePing('inherited investment return');
+  if(!/7.*from Investment/i.test(inherited.returnLabel))throw new Error(`scenario return did not clearly inherit Investment: ${inherited.returnLabel}`);
+
   await page.locator('.tab[data-tab="scenarios"]').click();
-  await page.waitForSelector('#comparisonType');
   await page.selectOption('#comparisonType','mortgage-invest');
-  await delay(750);
+  await delay(500);
   const scenario=await responsivePing('scenario rerender');
 
-  await selectDensity('Advanced','advanced');
+  await page.locator('#r65ScenarioAdvanced > summary').click();
+  await page.locator('#r65ScenarioHow > summary').click();
+  await page.locator('[data-r65-role="owner-total"]').fill('491.33');
+  await page.locator('[data-r65-role="owner-total"]').dispatchEvent('input');
+  await delay(500);
+  const localFolds=await responsivePing('local advanced folds');
+
+  await page.locator('.tab[data-tab="mortgage"]').click();
+  await page.locator('#r65MortgageAdvanced > summary').click();
   await delay(300);
-  const advanced=await responsivePing('Advanced view');
-  await selectDensity('Standard','standard');
-  await delay(300);
-  const standard=await responsivePing('Standard view');
+  const mortgage=await responsivePing('mortgage assumptions fold');
 
   if(pageErrors.length)throw new Error(`Browser page errors:\n${pageErrors.join('\n\n')}`);
-  console.log(JSON.stringify({release:'R6.4.2',responsive:true,initial,scenario,advanced,standard,pageErrors:0},null,2));
-  console.log('R6.4.2 Chromium responsiveness smoke test passed.');
+  console.log(JSON.stringify({release:'R6.5',responsive:true,initial,inherited,scenario,localFolds,mortgage,pageErrors:0},null,2));
+  console.log('R6.5 Chromium interface and responsiveness smoke test passed.');
 }finally{
   await browser.close();
   await new Promise(resolve=>server.close(resolve));
