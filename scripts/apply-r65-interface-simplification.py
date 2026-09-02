@@ -22,7 +22,7 @@ for file in ROOT.rglob("*"):
     if file.suffix.lower() not in text_extensions:
         continue
     text = file.read_text(encoding="utf-8")
-    revised = text.replace("R6.4.2", "R6.5")
+    revised = text.replace("R6.4.2", "R6.5").replace(r"R6\.4\.2", r"R6\.5")
     if revised != text:
         file.write_text(revised, encoding="utf-8")
         updated.append(str(file.relative_to(ROOT)))
@@ -50,6 +50,32 @@ replace_once(
     "const mode=$('box3Mode'),card=mode?.closest('.card');",
     "const mode=$('box3Mode'),card=$('sBox3')?.closest('.card')||mode?.closest('.card');",
     "Box 3 tax-card fallback",
+)
+
+# The save status is already refreshed after every input. Avoid adding another
+# MutationObserver solely to shorten its copy.
+replace_once(
+    "view-density.js",
+    """    const status=$('plannerSaveStatus');
+    if(!status||status.dataset.r65Normalized==='1')return;
+    status.dataset.r65Normalized='1';
+    let normalizing=false;
+    const normalize=()=>{
+      if(normalizing)return;
+      const raw=String(status.textContent||'');
+      const desired=/Restored/i.test(raw)?'Previous plan restored':/Saved locally/i.test(raw)?'Saved in this browser':/Not saved/i.test(raw)?'Example values':raw;
+      if(desired!==raw){normalizing=true;status.textContent=desired;normalizing=false;}
+    };
+    normalize();
+    new MutationObserver(normalize).observe(status,{childList:true,subtree:true,characterData:true});
+""",
+    """    const status=$('plannerSaveStatus');
+    if(!status)return;
+    const raw=String(status.textContent||'');
+    const desired=/Restored/i.test(raw)?'Previous plan restored':/Saved locally/i.test(raw)?'Saved in this browser':/Not saved/i.test(raw)?'Example values':raw;
+    if(desired!==raw)status.textContent=desired;
+""",
+    "compact save status without a new observer",
 )
 
 print("R6.5 interface release patch applied.")
