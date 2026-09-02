@@ -10,6 +10,18 @@ const VD=require('../view-density.js');
 const PS=require('../app-state.js');
 const read=file=>fs.readFileSync(path.join(ROOT,file),'utf8');
 
+function safeDefaults(){
+  return{
+    phaseCount:3,bonusMonth:12,box3Mode:'current',box3PaySource:'savings',box3Debt:0,box3DebtInterest:2.70,box3DebtMonthlyRepayment:0,box3DebtRepaymentSource:'external',
+    currentTaxRate:36,currentAllowance:59357,currentNotional:6,currentSavingsNotional:1.28,currentDebtNotional:2.70,currentDebtThreshold:3800,
+    futureStart:2028,futureTaxRate:36,futureExempt:1800,futureLossThreshold:500,
+    jan1Assumption:false,jan1SnapshotEntered:false,deductionMode:'auto',hraRemainingMonths:300,defaultHraMonths:300,qualifyingShare:100,
+    hillenOverrideEnabled:false,hillenOverridePct:71.867,unusedMortgageDestination:'invest',mortgageReportHorizon:'investment',
+    transferTaxMode:'main',appraisedValue:350000,housePrice:350000,nhgMode:'none',upfrontCashTreatment:'invest',scenarioMortgageMethod:'selected',scenarioMode:'buy-rent',scenarioWoz:null,
+    sensitivityLow:2,sensitivityHigh:10,sensitivityStep:2,vveMonthly:250,maintenanceAnnual:1500,ownerTaxesAnnual:0,insuranceAnnual:0,groundLeaseAnnual:0
+  };
+}
+
 test('Standard is the default and Advanced is only restored explicitly',()=>{
   assert.equal(VD.DEFAULT_VIEW,'standard');
   assert.equal(VD.normalizeView(undefined),'standard');
@@ -19,28 +31,20 @@ test('Standard is the default and Advanced is only restored explicitly',()=>{
 });
 
 test('safe hidden defaults create no Advanced-state warning chips',()=>{
-  const defaults={
-    phaseCount:3,bonusMonth:12,box3Mode:'current',box3PaySource:'savings',box3Debt:0,box3DebtMonthlyRepayment:0,
-    currentTaxRate:36,currentAllowance:59357,currentNotional:6,currentSavingsNotional:1.28,currentDebtNotional:2.70,currentDebtThreshold:3800,
-    jan1Assumption:false,jan1SnapshotEntered:false,deductionMode:'auto',hraRemainingMonths:300,defaultHraMonths:300,qualifyingShare:100,
-    unusedMortgageDestination:'invest',mortgageReportHorizon:'investment',transferTaxMode:'main',appraisedValue:350000,housePrice:350000,nhgMode:'none',
-    upfrontCashTreatment:'invest',scenarioMortgageMethod:'selected',scenarioMode:'buy-rent',sensitivityLow:2,sensitivityHigh:10,sensitivityStep:2,
-    vveMonthly:250,maintenanceAnnual:1500,ownerTaxesAnnual:0,insuranceAnnual:0,groundLeaseAnnual:0
-  };
-  assert.deepEqual(VD.collectAdvancedState(defaults),[]);
+  assert.deepEqual(VD.collectAdvancedState(safeDefaults()),[]);
 });
 
 test('non-default hidden values are surfaced in the Standard summary',()=>{
-  const items=VD.collectAdvancedState({
-    phaseCount:5,bonusMonth:6,box3Mode:'future',box3PaySource:'portfolio',box3Debt:20000,box3DebtMonthlyRepayment:250,
-    currentTaxRate:36,currentAllowance:59357,currentNotional:6,currentSavingsNotional:1.28,currentDebtNotional:2.70,currentDebtThreshold:3800,
-    jan1Assumption:true,deductionMode:'manual',hraRemainingMonths:96,defaultHraMonths:300,qualifyingShare:80,
+  const items=VD.collectAdvancedState({...safeDefaults(),
+    phaseCount:5,bonusMonth:6,box3Mode:'future',box3PaySource:'portfolio',box3Debt:20000,box3DebtInterest:4.1,box3DebtMonthlyRepayment:250,box3DebtRepaymentSource:'savings',
+    futureStart:2029,futureTaxRate:38,futureExempt:2000,futureLossThreshold:600,
+    jan1Assumption:true,deductionMode:'manual',hraRemainingMonths:96,defaultHraMonths:300,qualifyingShare:80,hillenOverrideEnabled:true,hillenOverridePct:50,
     unusedMortgageDestination:'savings',mortgageReportHorizon:'mortgage',transferTaxMode:'other-home',appraisedValue:380000,housePrice:350000,nhgMode:'energy',
-    upfrontCashTreatment:'savings',scenarioMortgageMethod:'linear',scenarioMode:'sell-rent',sensitivityLow:1,sensitivityHigh:14,sensitivityStep:1,
+    upfrontCashTreatment:'savings',scenarioMortgageMethod:'linear',scenarioMode:'sell-rent',scenarioWoz:390000,sensitivityLow:1,sensitivityHigh:14,sensitivityStep:1,
     vveMonthly:300,maintenanceAnnual:2400,ownerTaxesAnnual:600,insuranceAnnual:240,groundLeaseAnnual:1200
   });
   const keys=new Set(items.map(x=>x.key));
-  ['phase-count','bonus-month','box3-mode','box3-source','box3-debt','box3-debt-payment','jan1','deduction-mode','hra-remaining','qualifying-share','unused-mortgage','mortgage-horizon','transfer-tax','appraisal','nhg','upfront-cash','scenario-mortgage-method','scenario','sensitivity','owner-costs'].forEach(key=>assert.ok(keys.has(key),`missing ${key}`));
+  ['phase-count','bonus-month','box3-mode','box3-source','box3-debt','box3-debt-payment','box3-debt-interest','box3-debt-source','future-box3','jan1','deduction-mode','hra-remaining','qualifying-share','hillen-override','unused-mortgage','mortgage-horizon','transfer-tax','appraisal','nhg','upfront-cash','scenario-mortgage-method','scenario','scenario-woz','sensitivity','owner-costs'].forEach(key=>assert.ok(keys.has(key),`missing ${key}`));
 });
 
 test('combined Standard owner cost equals the Advanced monthly-equivalent split',()=>{
@@ -89,5 +93,31 @@ test('Standard retains the required model-boundary callouts',()=>{
   assert.match(source,/EWF after payoff/);
   assert.match(source,/last Box 3 year remains unsettled/i);
   assert.match(source,/Cash at closing/);
+  assert.match(source,/1 January Box 3 values are required/);
   assert.match(read('next-euro.js'),/not a risk-adjusted/i);
+});
+
+test('Advanced exposes Hillen override, scenario WOZ, audit log and CSV export without another engine',()=>{
+  const source=read('view-density.js');
+  assert.match(source,/hillenOverrideEnabled/);
+  assert.match(source,/scenarioBuyWozNew/);
+  assert.match(source,/Assumption log and CSV export/);
+  assert.match(source,/exportAssumptionsCsv/);
+  assert.match(source,/Interest-only boundary/);
+});
+
+test('scenario-specific WOZ is added only to the selected scenario branch',()=>{
+  const base={mode:'buy-rent',buyRent:{price:350000},downpayment:{price:300000},sellRent:{homeValue:400000}};
+  const buy=VD.applyScenarioWoz(base,{buyRentWoz:330000,downpaymentWoz:290000,sellRentWoz:390000});
+  assert.equal(buy.buyRent.wozValue,330000);
+  assert.equal(buy.downpayment.wozValue,undefined);
+  assert.equal(buy.sellRent.wozValue,undefined);
+  assert.equal(base.buyRent.wozValue,undefined,'source config must not be mutated');
+});
+
+test('CSV export quotes commas, quotes and line breaks safely',()=>{
+  const csv=VD.assumptionsToCsv([{section:'Mortgage',label:'Rate, manual',value:'He said "4,00%"\nconfirmed'}]);
+  assert.match(csv,/Section,Assumption,Value/);
+  assert.match(csv,/"Rate, manual"/);
+  assert.match(csv,/"He said ""4,00%""\nconfirmed"/);
 });
