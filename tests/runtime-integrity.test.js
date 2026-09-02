@@ -8,7 +8,7 @@ const path=require('node:path');
 const ROOT=path.resolve(__dirname,'..');
 const read=file=>fs.readFileSync(path.join(ROOT,file),'utf8');
 
-const EXPECTED_LOCAL_SCRIPTS=['finance-core.js','logic-integrity-ui.js','box3-household.js','purchase-rules.js','app.js','purchase-costs.js','scenario-engine.js','next-euro.js','app-state.js','view-density.js'];
+const EXPECTED_LOCAL_SCRIPTS=['finance-core.js','logic-integrity-ui.js','box3-household.js','purchase-rules.js','app.js','purchase-costs.js','scenario-engine.js','next-euro.js','app-state.js','view-density.js','view-density-state.js'];
 
 test('index.html declares the complete browser module order explicitly',()=>{
   const html=read('index.html');
@@ -22,7 +22,7 @@ test('every explicitly loaded local browser module exists in the repository',()=
 });
 
 test('runtime modules do not inject dependency scripts or poll for them',()=>{
-  const purchase=read('purchase-costs.js'),household=read('box3-household.js'),state=read('app-state.js'),density=read('view-density.js');
+  const purchase=read('purchase-costs.js'),household=read('box3-household.js'),state=read('app-state.js'),density=read('view-density.js'),late=read('view-density-state.js');
   assert.doesNotMatch(purchase,/createElement\(['"]script['"]\)/i);
   assert.doesNotMatch(purchase,/\.src\s*=\s*['"](?:purchase-rules|box3-household)\.js['"]/i);
   assert.doesNotMatch(household,/createElement\(['"]script['"]\)/i);
@@ -31,6 +31,7 @@ test('runtime modules do not inject dependency scripts or poll for them',()=>{
   assert.doesNotMatch(state,/setInterval\s*\(/);
   assert.doesNotMatch(density,/createElement\(['"]script['"]\)/i);
   assert.doesNotMatch(density,/MutationObserver/);
+  assert.doesNotMatch(late,/createElement\(['"]script['"]\)/i);
 });
 
 test('browser modules fail fast when required dependencies are missing',()=>{
@@ -77,12 +78,16 @@ test('R5 loads Next Euro after ScenarioCore and exposes the break-even UI',()=>{
   assert.match(next,/not a risk-adjusted/i);
 });
 
-test('R6 persistence loads before the density layer and explains local-only storage',()=>{
-  const html=read('index.html'),state=read('app-state.js');
+test('R6 persistence and late density restoration load in deterministic order',()=>{
+  const html=read('index.html'),state=read('app-state.js'),late=read('view-density-state.js');
   assert.ok(html.indexOf('next-euro.js')<html.indexOf('app-state.js'));
   assert.ok(html.indexOf('app-state.js')<html.indexOf('view-density.js'));
+  assert.ok(html.indexOf('view-density.js')<html.indexOf('view-density-state.js'));
   assert.match(state,/Private browser save/);
   assert.match(state,/stored only in this browser/);
   assert.match(state,/Reset examples/);
   assert.match(state,/How to read the model/);
+  assert.match(late,/LATE_CONTROL_IDS/);
+  assert.match(late,/hillenOverrideEnabled/);
+  assert.match(late,/scenarioBuyWozNew/);
 });
