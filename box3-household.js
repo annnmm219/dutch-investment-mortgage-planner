@@ -12,6 +12,7 @@ const DEFAULTS={
   debtInterestPct:2.70,
   debtMonthlyRepayment:0,
   debtRepaymentSource:'external',
+  debtFallbackDestination:'invest',
   currentSavingsNotional:.0128,
   currentDebtNotional:.027,
   currentDebtThreshold:3800,
@@ -31,6 +32,7 @@ function normalizeContext(context={}){
     debtInterestPct:Number(context.debtInterestPct??DEFAULTS.debtInterestPct)||0,
     box3DebtMonthlyRepayment:nonNegative(context.box3DebtMonthlyRepayment??context.debtMonthlyRepayment??DEFAULTS.debtMonthlyRepayment),
     debtRepaymentSource:context.debtRepaymentSource==='savings'?'savings':'external',
+    box3DebtFallbackDestination:['invest','savings','consume'].includes(context.box3DebtFallbackDestination??context.debtFallbackDestination)?(context.box3DebtFallbackDestination??context.debtFallbackDestination):DEFAULTS.debtFallbackDestination,
     currentSavingsNotional:Number(context.currentSavingsNotional??DEFAULTS.currentSavingsNotional),
     currentDebtNotional:Number(context.currentDebtNotional??DEFAULTS.currentDebtNotional),
     currentDebtThreshold:nonNegative(context.currentDebtThreshold??DEFAULTS.currentDebtThreshold),
@@ -66,6 +68,7 @@ function decorateCore(FC,getContext){
       debtInterestPct:config.debtInterestPct??c.debtInterestPct,
       box3DebtMonthlyRepayment:config.box3DebtMonthlyRepayment??c.box3DebtMonthlyRepayment,
       debtRepaymentSource:config.debtRepaymentSource??c.debtRepaymentSource,
+      box3DebtFallbackDestination:config.box3DebtFallbackDestination??c.box3DebtFallbackDestination,
       currentSavingsNotional:config.currentSavingsNotional??c.currentSavingsNotional,
       currentDebtNotional:config.currentDebtNotional??c.currentDebtNotional,
       currentDebtThreshold:config.currentDebtThreshold??c.currentDebtThreshold,
@@ -94,6 +97,7 @@ function browserContext(){
     debtInterestPct:val('box3DebtInterest',DEFAULTS.debtInterestPct),
     box3DebtMonthlyRepayment:val('box3DebtMonthlyRepayment',0),
     debtRepaymentSource:$('box3DebtRepaymentSource')?.value||'external',
+    box3DebtFallbackDestination:$('box3DebtFallbackDestination')?.value||DEFAULTS.debtFallbackDestination,
     currentSavingsNotional:val('currentSavingsNotional',DEFAULTS.currentSavingsNotional*100)/100,
     currentDebtNotional:val('currentDebtNotional',DEFAULTS.currentDebtNotional*100)/100,
     currentDebtThreshold:val('currentDebtThreshold',DEFAULTS.currentDebtThreshold),
@@ -146,6 +150,7 @@ function injectBrowserUI(){
       <div class="field"><label for="box3DebtInterest">Box 3 debt interest % / year</label><input id="box3DebtInterest" type="number" min="0" max="30" step="0.01" value="2.70"><p class="inline">Interest is modeled for Box 3 actual return. Its payment is external household cash flow.</p></div>
       <div class="field"><label for="box3DebtMonthlyRepayment">Monthly Box 3 debt repayment</label><input id="box3DebtMonthlyRepayment" type="number" min="0" step="50" value="0"><p class="inline">Optional. Reduces the debt balance each month.</p></div>
       <div class="field"><label for="box3DebtRepaymentSource">Debt repayment comes from</label><select id="box3DebtRepaymentSource"><option value="external" selected>External cash flow</option><option value="savings">Savings / cash balance</option></select><p class="inline">Savings-funded repayment reduces cash and debt together. External repayment is tracked separately.</p></div>
+      <div class="field"><label for="box3DebtFallbackDestination">After Box 3 debt payoff, redirect the monthly budget to</label><select id="box3DebtFallbackDestination"><option value="invest" selected>Investments</option><option value="savings">Savings / cash</option><option value="consume">Stop allocating / spending</option></select><p class="inline">Also applies to the unused portion of the final repayment. The repayment budget is never left without a destination.</p></div>
     </div>
     <div class="summary">
       <div class="summary-item"><p class="k">Ending savings / cash</p><p class="v" id="householdSavingsEnd">—</p></div>

@@ -18,6 +18,7 @@ const DEFAULTS=Object.freeze({
   box3DebtInterest:2.70,
   box3DebtMonthlyRepayment:0,
   box3DebtRepaymentSource:'external',
+  box3DebtFallbackDestination:'invest',
   currentTaxRate:36,
   currentAllowance:59357,
   currentNotional:6,
@@ -104,6 +105,7 @@ function collectAdvancedState(values={}){
   if(number(values.box3DebtMonthlyRepayment)>0)add('box3-debt-payment',`Box 3 debt repayment: ${money(values.box3DebtMonthlyRepayment)}/mo`);
   if(number(values.box3Debt)>0&&!near(values.box3DebtInterest,DEFAULTS.box3DebtInterest))add('box3-debt-interest',`Box 3 debt interest: ${percent(values.box3DebtInterest)}`);
   if(number(values.box3Debt)>0&&values.box3DebtRepaymentSource&&values.box3DebtRepaymentSource!==DEFAULTS.box3DebtRepaymentSource)add('box3-debt-source','Box 3 debt repayment uses savings');
+  if(values.box3DebtFallbackDestination&&values.box3DebtFallbackDestination!==DEFAULTS.box3DebtFallbackDestination)add('box3-debt-fallback',`After Box 3 debt payoff: ${values.box3DebtFallbackDestination}`);
   const customBox3=!near(values.currentTaxRate,DEFAULTS.currentTaxRate)||!near(values.currentAllowance,DEFAULTS.currentAllowance)||
     !near(values.currentNotional,DEFAULTS.currentNotional)||!near(values.currentSavingsNotional,DEFAULTS.currentSavingsNotional)||
     !near(values.currentDebtNotional,DEFAULTS.currentDebtNotional)||!near(values.currentDebtThreshold,DEFAULTS.currentDebtThreshold);
@@ -438,7 +440,7 @@ function bootBrowser(){
     markAdvanced(field('bonusMonth'));
     markAdvanced(field('box3Mode'));
     markAdvanced(field('box3PaySource'));
-    ['box3Debt','box3DebtInterest','box3DebtMonthlyRepayment','box3DebtRepaymentSource'].forEach(id=>markAdvanced(field(id)));
+    ['box3Debt','box3DebtInterest','box3DebtMonthlyRepayment','box3DebtRepaymentSource','box3DebtFallbackDestination'].forEach(id=>markAdvanced(field(id)));
     markAdvanced(detailsBySummary(/^Optional: other Box 3 debt/i));
     markAdvanced(detailsBySummary(/^More balance-sheet results/i));
     markAdvanced(detailsBySummary(/^Box 3 assumptions and advanced settings/i));
@@ -573,6 +575,7 @@ function bootBrowser(){
       box3DebtInterest:number($('box3DebtInterest')?.value,2.70),
       box3DebtMonthlyRepayment:number($('box3DebtMonthlyRepayment')?.value),
       box3DebtRepaymentSource:$('box3DebtRepaymentSource')?.value||'external',
+      box3DebtFallbackDestination:$('box3DebtFallbackDestination')?.value||'invest',
       currentTaxRate:number($('currentTaxRate')?.value,36),
       currentAllowance:number($('currentAllowance')?.value,59357),
       currentNotional:number($('currentNotional')?.value,6),

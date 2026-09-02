@@ -38,7 +38,6 @@ if(!window.LogicIntegrityUI){
   injectLogicControls();
   const rawMortgageSchedule=FC.mortgageSchedule.bind(FC);
   FC.mortgageSchedule=function(config={}){const tax={...(config.tax||{})};if(tax.hraRemainingMonths==null)Object.assign(tax,mortgageTaxContext());return rawMortgageSchedule({...config,tax});};
-  window.addEventListener('load',()=>{const marker=$('modelVersion');if(marker)marker.textContent='Calculation build R6.3 · logic integrity · 2026 rules · updated 1 Sep 2026';});
 }
 
 const MONTHS=['January','February','March','April','May','June','July','August','September','October','November','December'];

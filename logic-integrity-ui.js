@@ -9,11 +9,11 @@
 'use strict';
 
 const MODEL_META=Object.freeze({
-  version:'R6.4',
+  version:'R6.4.1',
   ruleYear:2026,
   updated:'2026-09-02',
   stateSchema:4,
-  releaseName:'Public Beta Gate'
+  releaseName:'Output Integrity'
 });
 
 function readNumber(id,fallback=0){

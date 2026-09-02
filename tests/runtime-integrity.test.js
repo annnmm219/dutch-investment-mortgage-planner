@@ -8,12 +8,12 @@ const path=require('node:path');
 const ROOT=path.resolve(__dirname,'..');
 const read=file=>fs.readFileSync(path.join(ROOT,file),'utf8');
 
-const EXPECTED_LOCAL_SCRIPTS=['finance-core.js','logic-integrity-ui.js','box3-household.js','purchase-rules.js','app.js','purchase-costs.js','scenario-engine.js','next-euro.js','app-state.js','view-density.js','view-density-state.js'];
+const EXPECTED_LOCAL_SCRIPTS=['finance-core.js','logic-integrity-ui.js','box3-household.js','purchase-rules.js','app.js','purchase-costs.js','scenario-engine.js','next-euro.js','app-state.js','view-density.js','view-density-state.js','output-integrity.js'];
 
 test('index.html declares the complete browser module order explicitly',()=>{
   const html=read('index.html');
   const scripts=[...html.matchAll(/<script\s+src="([^"]+)"/g)].map(m=>m[1]);
-  const local=scripts.filter(src=>!/^https?:\/\//i.test(src));
+  const local=scripts.filter(src=>!/^https?:\/\//i.test(src)).map(src=>src.split('?')[0]);
   assert.deepEqual(local,EXPECTED_LOCAL_SCRIPTS);
 });
 
@@ -45,8 +45,8 @@ test('browser modules fail fast when required dependencies are missing',()=>{
 test('public page exposes R6.4, mixed-asset Box 3, and conservative static defaults',()=>{
   const html=read('index.html'),gate=read('logic-integrity-ui.js');
   assert.match(html,/id="modelVersion"/);
-  assert.match(html,/Calculation build R6\.4/);
-  assert.match(gate,/version:'R6\.4'/);
+  assert.match(html,/Calculation build R6\.4\.1/);
+  assert.match(gate,/version:'R6\.4\.1'/);
   assert.match(html,/2026 current rules, mixed-asset estimate/);
   assert.doesNotMatch(html,/2026 current rules, investment-only estimate/);
   assert.match(html,/id="annualReturn"[^>]*value="5"/);
@@ -83,6 +83,7 @@ test('R6 persistence and late density restoration load in deterministic order',(
   assert.ok(html.indexOf('next-euro.js')<html.indexOf('app-state.js'));
   assert.ok(html.indexOf('app-state.js')<html.indexOf('view-density.js'));
   assert.ok(html.indexOf('view-density.js')<html.indexOf('view-density-state.js'));
+  assert.ok(html.indexOf('view-density-state.js')<html.indexOf('output-integrity.js'));
   assert.match(state,/Private browser save/);
   assert.match(state,/stored only in this browser/);
   assert.match(state,/Reset examples/);
@@ -90,4 +91,12 @@ test('R6 persistence and late density restoration load in deterministic order',(
   assert.match(late,/LATE_CONTROL_IDS/);
   assert.match(late,/hillenOverrideEnabled/);
   assert.match(late,/scenarioBuyWozNew/);
+});
+
+test('R6.4.1 cache-busts every local browser asset',()=>{
+  const html=read('index.html');
+  const local=[...html.matchAll(/<script\s+src="((?!https?:\/\/)[^"]+)"/g)].map(m=>m[1]);
+  assert.equal(local.length,EXPECTED_LOCAL_SCRIPTS.length);
+  local.forEach(src=>assert.match(src,/\?v=R6\.4\.1$/));
+  assert.match(html,/styles\.css\?v=R6\.4\.1/);
 });
