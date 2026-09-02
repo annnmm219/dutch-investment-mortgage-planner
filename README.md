@@ -42,14 +42,19 @@ Standard is the default. It keeps the common planning path visible:
 Advanced exposes the same stored values and calculation path, including:
 
 - additional phases and annual bonus month;
-- full Box 1 eligibility controls, manual deduction rate, remaining HRA period and qualifying loan share;
+- full Box 1 eligibility controls, manual deduction rate, remaining HRA period, qualifying loan share and optional Hillen override;
 - post-payoff cash destination and mortgage report horizon;
 - Box 3 payment source, debt ledger, statutory parameters, January 1 snapshot, year audit and proposed regime;
-- full transfer-tax, appraisal, NHG and purchase-cost details;
+- full transfer-tax treatment including other residential property, other real estate and manual mode;
+- appraisal, energy-enhanced NHG and line-by-line purchase-cost details;
 - detailed VvE, maintenance, OZB, insurance and erfpacht inputs;
-- larger-versus-smaller down payment, keep-versus-sell, and return sensitivity.
+- scenario-specific WOZ inputs;
+- larger-versus-smaller down payment, keep-versus-sell, and return sensitivity;
+- a local assumption log and CSV export.
 
-Switching views does not reset or rewrite any financial control. The selected view is stored in the existing local browser snapshot. If a hidden Advanced control differs from its safe default, Standard displays a visible summary chip and a link back to Advanced rather than silently hiding the active assumption.
+Switching views does not reset or rewrite any financial control. The selected view is stored in the existing local browser snapshot. Advanced controls created after the main page is restored have a dedicated late-state adapter so their values also survive refreshes.
+
+If a hidden Advanced control differs from its safe default, Standard displays a visible summary chip and a link back to Advanced rather than silently hiding the active assumption.
 
 The Standard view retains short model-boundary notes for:
 
@@ -87,6 +92,7 @@ It is intentionally excluded from `main` and GitHub Pages. The prototype used a 
 - Return sensitivity analysis
 - Next € invest-vs-repay break-even analysis
 - Browser-local save and restore plus one-click reset
+- Local CSV export and readable assumption log
 - Dependency-free Node regression suite and GitHub Actions CI
 
 ## Architecture
@@ -103,9 +109,11 @@ It is intentionally excluded from `main` and GitHub Pages. The prototype used a 
 
 `next-euro.js` repeatedly runs the production Extra Repayment vs Invest scenario to solve for the approximate nominal break-even investment return.
 
-`app-state.js` stores editable controls in `localStorage`, restores them on refresh, preserves selected mortgage method and active tab, and provides reset-to-examples behavior. It contains no financial formulas.
+`app-state.js` stores normal editable controls in `localStorage`, restores them on refresh, preserves selected mortgage method and active tab, and provides reset-to-examples behavior. It contains no financial formulas.
 
-`view-density.js` is the visibility and proxy-control layer. It adds the Standard/Advanced switch, Standard light controls, active-Advanced-value chips, and visibility rules. It does not calculate a mortgage, tax amount, investment return or scenario result.
+`view-density.js` is the visibility and Standard proxy-control layer. It adds the Standard/Advanced switch, Standard light controls, hidden-value chips, the optional Hillen and scenario-WOZ adapters, and the local audit export. It does not create a second mortgage, tax, investment or scenario formula.
+
+`view-density-state.js` restores Advanced controls that are created after the main R6 snapshot restore has already run. It uses the same local snapshot and does not maintain a separate financial state.
 
 The deterministic browser load order is:
 
@@ -119,6 +127,7 @@ The deterministic browser load order is:
 8. `next-euro.js`
 9. `app-state.js`
 10. `view-density.js`
+11. `view-density-state.js`
 
 ## HRA treatment
 
@@ -130,9 +139,13 @@ R6.3 separated:
 - deductible-interest months, which are limited by remaining HRA eligibility and qualifying Box 1 debt;
 - mortgage balance, which may reach zero while owner-home taxation continues.
 
-Hillen uses a year-specific planning series from 2026 and reaches zero from 2041. The automatic deduction rate remains a planning approximation, not a complete Box 1 tax-delta calculation.
+Hillen uses a year-specific planning series from 2026 and reaches zero from 2041. Advanced can optionally replace that series with one explicit percentage across the selected plan, and Standard surfaces a chip whenever that override is active.
+
+The automatic deduction rate remains a planning approximation, not a complete Box 1 tax-delta calculation.
 
 For a new purchase mortgage above 30 years, R6.4 excludes modeled HRA rather than assuming that the first 30 years of a longer contractual amortisation automatically qualify.
+
+The planner models annuity and linear repayment. It does not infer an interest-only product from a long term or establish interest-only tax eligibility.
 
 ## Box 3 treatment
 
@@ -166,6 +179,8 @@ The scenario engine also rejects a purchase comparison when the entered starting
 
 A purchase occurs at the selected scenario start after the historical January 1 Box 3 snapshot. For a mid-year Buy vs Rent or Down Payment comparison, both strategies therefore use the same January 1 household position. Their balances diverge only when the purchase cash event occurs.
 
+A scenario-specific WOZ may be entered in Advanced. If left blank, the existing property-value fallback remains in use.
+
 ## Next € optimizer
 
 Next € answers:
@@ -188,6 +203,7 @@ The purchase module includes planning checks for:
 - 2026 starter exemption value cap of €555,000;
 - 2% main-residence transfer tax;
 - 8% residential property not used as the main residence;
+- 10.4% other-real-estate transfer tax;
 - standard NHG planning limit €470,000;
 - energy-enhanced NHG planning limit €498,200;
 - 0.4% NHG fee;
@@ -222,9 +238,11 @@ The suite covers:
 - browser-local state serialization and restore primitives;
 - R6.4 January 1, partial-year proposed-tax, common-snapshot and long-purchase-term gates;
 - Standard being the default view;
-- persistence of the Advanced view selection;
+- persistence of the Advanced view selection and late-created Advanced controls;
 - view changes preserving underlying values;
 - warning chips for non-default hidden assumptions;
+- scenario-specific WOZ injection without mutating source configuration;
+- CSV escaping and local audit-export structure;
 - one-page, one-engine density rules.
 
 GitHub Actions runs the same suite on pushes to `main` and pull requests.
@@ -270,5 +288,6 @@ Keep these files together and open `index.html` in a modern browser:
 - `next-euro.js`
 - `app-state.js`
 - `view-density.js`
+- `view-density-state.js`
 
 The app has no backend or account system and does not submit entered financial values to a planner server.
