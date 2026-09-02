@@ -57,13 +57,14 @@ for file in ROOT.rglob("*"):
     if not file.is_file() or ".git" in file.parts or file.suffix.lower() not in text_extensions:
         continue
     text = file.read_text(encoding="utf-8")
-    if "R6.4.1" in text:
-        file.write_text(text.replace("R6.4.1", "R6.4.2"), encoding="utf-8")
+    revised = text.replace("R6.4.1", "R6.4.2").replace(r"R6\.4\.1", r"R6\.4\.2")
+    if revised != text:
+        file.write_text(revised, encoding="utf-8")
 
 # Add a source-level regression test for the loop that made Chromium report that the page was not responding.
 test_file = ROOT / "tests" / "r642-responsiveness.test.js"
 test_file.write_text(
-    """'use strict';
+    r"""'use strict';
 
 const test=require('node:test');
 const assert=require('node:assert/strict');
