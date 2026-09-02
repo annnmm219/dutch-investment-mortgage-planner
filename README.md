@@ -6,7 +6,7 @@ The project is designed for **scenario planning**, not mortgage underwriting, ta
 
 ## Current release candidate: R6.4 Public Beta Gate
 
-R6.4 is a bounded correctness release on top of the tested R6.3 calculation kernel. It deliberately does not add an affordability engine, Monte Carlo simulation, another tax category, or a second simplified calculation path.
+R6.4 is a bounded correctness and test-readiness release on top of the tested R6.3 calculation kernel. It does not add an affordability engine, Monte Carlo simulation, another tax category, or a second simplified calculation path.
 
 ### R6.4 public-beta gates
 
@@ -17,6 +17,48 @@ R6.4 is a bounded correctness release on top of the tested R6.3 calculation kern
 - Proposed actual-return Box 3 is marked **not estimable** for incomplete calendar years. Unknown tax is not displayed or treated as €0.
 - A new purchase mortgage with a contractual term above 30 years cannot receive modeled mortgage-interest relief. Gross mortgage calculation remains available with relief switched off.
 - `MODEL_META` supplies the R6.4 public version and persistence-schema marker.
+
+## One engine, two densities
+
+The browser has one financial engine and one page. **Standard** and **Advanced** change only which controls are visible.
+
+### Standard
+
+Standard is the default. It keeps the common planning path visible:
+
+- plan date, starting investments and savings;
+- expected investment return;
+- one to three visible phases with monthly investing, monthly extra repayment and annual bonus allocation;
+- light Box 3 on/off control, fiscal-partner count, income, 30% ruling input, HRA on/off and WOZ;
+- existing mortgage or main-residence purchase inputs;
+- normal 2% or starter transfer-tax treatment and standard NHG yes/no;
+- annuity versus linear;
+- one combined monthly owner-cost input;
+- Buy versus Rent, Repay versus Invest with Next €, and Linear versus Annuity;
+- result cards, mortgage schedule and affordability warning.
+
+### Advanced
+
+Advanced exposes the same stored values and calculation path, including:
+
+- additional phases and annual bonus month;
+- full Box 1 eligibility controls, manual deduction rate, remaining HRA period and qualifying loan share;
+- post-payoff cash destination and mortgage report horizon;
+- Box 3 payment source, debt ledger, statutory parameters, January 1 snapshot, year audit and proposed regime;
+- full transfer-tax, appraisal, NHG and purchase-cost details;
+- detailed VvE, maintenance, OZB, insurance and erfpacht inputs;
+- larger-versus-smaller down payment, keep-versus-sell, and return sensitivity.
+
+Switching views does not reset or rewrite any financial control. The selected view is stored in the existing local browser snapshot. If a hidden Advanced control differs from its safe default, Standard displays a visible summary chip and a link back to Advanced rather than silently hiding the active assumption.
+
+The Standard view retains short model-boundary notes for:
+
+- EWF continuing after mortgage payoff while the user still owns and occupies the home;
+- an incomplete final Box 3 year remaining unsettled;
+- funded cash being required at closing;
+- Next € being a nominal, non-risk-adjusted break-even result.
+
+There is no `index-advanced.html` and no second formula path.
 
 ## Stage 0: R7 affordability prototype quarantined
 
@@ -30,6 +72,7 @@ It is intentionally excluded from `main` and GitHub Pages. The prototype used a 
 
 ## Main capabilities
 
+- One financial engine with persistent Standard and Advanced UI densities
 - 1 to 6 investment and repayment phases
 - Annuity and Linear mortgage schedules with extra repayments
 - 2026 HRA planning estimate after eigenwoningforfait and year-specific Hillen treatment
@@ -50,11 +93,11 @@ It is intentionally excluded from `main` and GitHub Pages. The prototype used a 
 
 `finance-core.js` is the shared calculation kernel for mortgage amortisation, HRA allocation, Box 3, household balances, investment growth, cash-flow equalisation, and combined-plan simulation.
 
+`logic-integrity-ui.js` contains the R6.3/R6.4 boundary controls. R6.4 adds public model metadata, the nullable January 1 snapshot gate, proposed partial-year tax gate, and new-purchase HRA term gate. It decorates the existing shared functions rather than creating another finance engine.
+
 `box3-household.js` is the browser adapter for the household savings and Box 3 debt ledger. It does not contain a second Box 3 formula.
 
 `purchase-rules.js` contains pure 2026 Dutch purchase-rule calculations for transfer tax, simplified NHG checks and fees, and LTV.
-
-`logic-integrity-ui.js` contains the R6.3/R6.4 boundary controls. R6.4 adds the public model metadata, nullable January 1 snapshot gate, proposed partial-year tax gate, and new-purchase HRA term gate. It decorates the existing shared functions rather than creating another finance engine.
 
 `scenario-engine.js` contains the pure five-way scenario engine plus its browser UI. Household balances are passed into the same FinanceCore functions used by the main plan.
 
@@ -62,17 +105,20 @@ It is intentionally excluded from `main` and GitHub Pages. The prototype used a 
 
 `app-state.js` stores editable controls in `localStorage`, restores them on refresh, preserves selected mortgage method and active tab, and provides reset-to-examples behavior. It contains no financial formulas.
 
-The deterministic browser load order remains:
+`view-density.js` is the visibility and proxy-control layer. It adds the Standard/Advanced switch, Standard light controls, active-Advanced-value chips, and visibility rules. It does not calculate a mortgage, tax amount, investment return or scenario result.
+
+The deterministic browser load order is:
 
 1. `finance-core.js`
-2. `box3-household.js`
-3. `purchase-rules.js`
-4. `logic-integrity-ui.js`
+2. `logic-integrity-ui.js`
+3. `box3-household.js`
+4. `purchase-rules.js`
 5. `app.js`
 6. `purchase-costs.js`
 7. `scenario-engine.js`
 8. `next-euro.js`
 9. `app-state.js`
+10. `view-density.js`
 
 ## HRA treatment
 
@@ -174,7 +220,12 @@ The suite covers:
 - Next € break-even behavior;
 - deterministic browser load order;
 - browser-local state serialization and restore primitives;
-- R6.4 January 1, partial-year proposed-tax, common-snapshot and long-purchase-term gates.
+- R6.4 January 1, partial-year proposed-tax, common-snapshot and long-purchase-term gates;
+- Standard being the default view;
+- persistence of the Advanced view selection;
+- view changes preserving underlying values;
+- warning chips for non-default hidden assumptions;
+- one-page, one-engine density rules.
 
 GitHub Actions runs the same suite on pushes to `main` and pull requests.
 
@@ -199,7 +250,7 @@ GitHub Actions runs the same suite on pushes to `main` and pull requests.
 - **R5 Next € optimizer: complete**
 - **R6 Product hardening: complete**
 - **R6.3 Logic integrity: complete**
-- **R6.4 Public Beta Gate: release candidate**
+- **R6.4 Public Beta Gate and view density: release candidate**
 
 The intended next step after R6.4 passes its release gate is controlled user testing before broader functionality is considered.
 
@@ -210,13 +261,14 @@ Keep these files together and open `index.html` in a modern browser:
 - `index.html`
 - `styles.css`
 - `finance-core.js`
+- `logic-integrity-ui.js`
 - `box3-household.js`
 - `purchase-rules.js`
-- `logic-integrity-ui.js`
 - `app.js`
 - `purchase-costs.js`
 - `scenario-engine.js`
 - `next-euro.js`
 - `app-state.js`
+- `view-density.js`
 
 The app has no backend or account system and does not submit entered financial values to a planner server.
