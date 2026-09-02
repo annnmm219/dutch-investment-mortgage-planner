@@ -254,7 +254,13 @@ function bootBrowser(){
   function scenarioAssumptions(){const mode=$('comparisonType')?.value;if(!mode)return;const relevance={'scenarioMortgageMethodNew':['buy-rent','downpayment','mortgage-invest','sell-rent'],'scenarioUpfrontCashTreatmentNew':['buy-rent','downpayment'],'scenarioHomeGrowthNew':['buy-rent','downpayment','sell-rent'],'scenarioRentGrowthNew':['buy-rent','sell-rent'],'scenarioSellingCostNew':['buy-rent','downpayment','sell-rent'],'scenarioVveNew':['buy-rent','downpayment','mortgage-invest','linear-annuity','sell-rent'],'scenarioMaintenanceNew':['buy-rent','downpayment','mortgage-invest','linear-annuity','sell-rent'],'scenarioOwnerTaxesNew':['buy-rent','downpayment','mortgage-invest','linear-annuity','sell-rent'],'scenarioInsuranceNew':['buy-rent','downpayment','mortgage-invest','linear-annuity','sell-rent'],'scenarioGroundLeaseNew':['buy-rent','downpayment','mortgage-invest','linear-annuity','sell-rent']};Object.entries(relevance).forEach(([id,modes])=>$(id)?.closest('.field')?.classList.toggle('hidden',!modes.includes(mode)));const shared=$('scenarioMonthlyBudgetNew')?.closest('.card'),head=shared?.querySelector('.section-head .section-note');if(head)head.textContent='Only assumptions used by the selected comparison are shown. Owner-only costs remain visible where they affect the affordability check.';const builder=document.querySelector('#decisionEngine .scenario-builder .section-note');if(builder)builder.textContent='Choose one decision. Purchase comparisons use the Savings / cash balance in Investment, so spending cash changes later Box 3.';const cashNote=$('scenarioCashSourceNoteNew');if(cashNote)cashNote.innerHTML=cashNote.innerHTML.replace('Investment → Household financial balances','Investment → Savings / cash');}
   function reframeComparableWealth(){const mode=$('comparisonType')?.value,resultA=$('strategyAResultNew'),resultB=$('strategyBResultNew');if(!resultA||!resultB)return;if(mode==='linear-annuity'||mode==='mortgage-invest'){[resultA,resultB].forEach(card=>{const lab=card.querySelector('.strategy-label-new');if(lab)lab.textContent='Net position excluding the home*';});const resultCard=resultA.closest('.card'),sectionNote=resultCard?.querySelector('.section-head .section-note');if(sectionNote)sectionNote.textContent='For this decision, the home is the same on both sides and is excluded. Net position = investments + savings − Box 3 debt − remaining mortgage.';let expl=$('uxPositionExplanation');if(!expl&&$('scenarioVerdictNew')){expl=document.createElement('div');expl.id='uxPositionExplanation';expl.className='callout ux-position-note';$('scenarioVerdictNew').insertAdjacentElement('afterend',expl);}if(expl){expl.classList.remove('hidden');expl.innerHTML=mode==='linear-annuity'?'<strong>Why can Annuity win even with a larger mortgage balance?</strong><br><span>An annuity mortgage usually has a lower monthly payment early on. The model invests that payment difference. So the comparison is not mortgage balance alone: a larger investment portfolio can outweigh the extra mortgage debt.</span>':'<strong>How this comparison works:</strong><br><span>The same extra monthly amount either reduces mortgage principal or is invested. The winner is based on investments + savings − other debt − remaining mortgage, with the common home value excluded.</span>';}}else{const expl=$('uxPositionExplanation');if(expl)expl.classList.add('hidden');}}
 
-  function refreshUx(){simplifyHousehold();simplifyPhasesToMonthly();explainIncomeAndDeduction();scenarioAssumptions();reframeNextEuro();reframeComparableWealth();updateMortgageReporting();}
+  let uxRefreshing=false;
+  function refreshUx(){
+    if(uxRefreshing)return;
+    uxRefreshing=true;
+    try{simplifyHousehold();simplifyPhasesToMonthly();explainIncomeAndDeduction();scenarioAssumptions();reframeNextEuro();reframeComparableWealth();updateMortgageReporting();}
+    finally{uxRefreshing=false;}
+  }
 
   prepareRound2Controls();prepareAllNumberInputs();
   const numberObserver=new MutationObserver(records=>records.forEach(r=>r.addedNodes.forEach(n=>{if(n.nodeType===1)prepareAllNumberInputs(n)})));numberObserver.observe(document.body,{childList:true,subtree:true});
@@ -266,7 +272,25 @@ function bootBrowser(){
   $('plannerReset')?.addEventListener('click',()=>{if(window.confirm('Reset all planner inputs to the illustrative examples?')){safeRemove();window.location.reload();}});
 
   restore();refreshUx();
-  const uxObserver=new MutationObserver(()=>refreshUx());['phaseList','strategyAResultNew','strategyBResultNew','scenarioVerdictNew'].forEach(id=>{const el=$(id);if(el)uxObserver.observe(el,{childList:true,subtree:true});});
+  const uxTargetIds=['phaseList','strategyAResultNew','strategyBResultNew','scenarioVerdictNew'];
+  let uxObserver=null,uxObserverQueued=false;
+  function observeUxTargets(){
+    if(!uxObserver)return;
+    uxTargetIds.forEach(id=>{const el=$(id);if(el)uxObserver.observe(el,{childList:true,subtree:true});});
+  }
+  function refreshUxFromMutation(){
+    if(uxObserverQueued)return;
+    uxObserverQueued=true;
+    const run=()=>{
+      uxObserverQueued=false;
+      uxObserver.disconnect();
+      try{refreshUx();}
+      finally{observeUxTargets();}
+    };
+    if(typeof requestAnimationFrame==='function')requestAnimationFrame(run);else setTimeout(run,0);
+  }
+  uxObserver=new MutationObserver(refreshUxFromMutation);
+  observeUxTargets();
 }
 
 return{STORAGE_KEY,SCHEMA_VERSION,controlKey,isPersistable,captureControls,normalizePayload,applyEntry,normalizeDecimalString,parseFlexibleNumber,clampFlexibleValue,estimateTaxableIncome2026,monthlyEquivalentExtra,mortgageReportingMonths,bootBrowser};

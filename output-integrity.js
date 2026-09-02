@@ -6,7 +6,7 @@
 'use strict';
 
 const RELEASE_META=Object.freeze({
-  version:'R6.4.1',
+  version:'R6.4.2',
   ruleYear:2026,
   updated:'2026-09-02',
   stateSchema:4,
