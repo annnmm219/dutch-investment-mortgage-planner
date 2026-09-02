@@ -19,8 +19,8 @@ patch(
 
 path=ROOT/'tests/r64-public-beta-gate.test.js'
 text=path.read_text(encoding='utf-8')
-text=text.replace("assert.equal(LI.MODEL_META.version,'R6.4');","assert.equal(LI.MODEL_META.version,'R6.4.1');")
-text=text.replace("assert.equal(LI.MODEL_META.releaseName,'Public Beta Gate');","assert.equal(LI.MODEL_META.releaseName,'Output Integrity');")
+text=text.replace("assert.equal(Gate.MODEL_META.version,'R6.4');","assert.equal(Gate.MODEL_META.version,'R6.4.1');")
+text=text.replace("assert.equal(Gate.MODEL_META.releaseName,'Public Beta Gate');","assert.equal(Gate.MODEL_META.releaseName,'Output Integrity');")
 path.write_text(text,encoding='utf-8')
 
 path=ROOT/'tests/scenario-r4-ui.test.js'
