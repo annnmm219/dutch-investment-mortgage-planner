@@ -8,7 +8,7 @@ const path=require('node:path');
 const ROOT=path.resolve(__dirname,'..');
 const read=file=>fs.readFileSync(path.join(ROOT,file),'utf8');
 
-const EXPECTED_LOCAL_SCRIPTS=['finance-core.js','box3-household.js','purchase-rules.js','app.js','purchase-costs.js','scenario-engine.js','next-euro.js','app-state.js'];
+const EXPECTED_LOCAL_SCRIPTS=['finance-core.js','logic-integrity-ui.js','box3-household.js','purchase-rules.js','app.js','purchase-costs.js','scenario-engine.js','next-euro.js','app-state.js','view-density.js','view-density-state.js'];
 
 test('index.html declares the complete browser module order explicitly',()=>{
   const html=read('index.html');
@@ -22,26 +22,31 @@ test('every explicitly loaded local browser module exists in the repository',()=
 });
 
 test('runtime modules do not inject dependency scripts or poll for them',()=>{
-  const purchase=read('purchase-costs.js'),household=read('box3-household.js'),state=read('app-state.js');
+  const purchase=read('purchase-costs.js'),household=read('box3-household.js'),state=read('app-state.js'),density=read('view-density.js'),late=read('view-density-state.js');
   assert.doesNotMatch(purchase,/createElement\(['"]script['"]\)/i);
   assert.doesNotMatch(purchase,/\.src\s*=\s*['"](?:purchase-rules|box3-household)\.js['"]/i);
   assert.doesNotMatch(household,/createElement\(['"]script['"]\)/i);
   assert.doesNotMatch(household,/setTimeout\s*\(/);
   assert.doesNotMatch(state,/createElement\(['"]script['"]\)/i);
   assert.doesNotMatch(state,/setInterval\s*\(/);
+  assert.doesNotMatch(density,/createElement\(['"]script['"]\)/i);
+  assert.doesNotMatch(density,/MutationObserver/);
+  assert.doesNotMatch(late,/createElement\(['"]script['"]\)/i);
 });
 
 test('browser modules fail fast when required dependencies are missing',()=>{
-  const purchase=read('purchase-costs.js'),household=read('box3-household.js'),next=read('next-euro.js');
+  const purchase=read('purchase-costs.js'),household=read('box3-household.js'),next=read('next-euro.js'),gate=read('logic-integrity-ui.js');
   assert.match(purchase,/PurchaseRules must load before purchase-costs\.js/);
   assert.match(household,/FinanceCore must load before box3-household\.js/);
   assert.match(next,/ScenarioCore is required by NextEuro/);
+  assert.match(gate,/FinanceCore must load before logic-integrity-ui\.js/);
 });
 
-test('public page exposes R6, mixed-asset Box 3, and conservative static defaults',()=>{
-  const html=read('index.html');
+test('public page exposes R6.4, mixed-asset Box 3, and conservative static defaults',()=>{
+  const html=read('index.html'),gate=read('logic-integrity-ui.js');
   assert.match(html,/id="modelVersion"/);
-  assert.match(html,/Calculation build R6/);
+  assert.match(html,/Calculation build R6\.4/);
+  assert.match(gate,/version:'R6\.4'/);
   assert.match(html,/2026 current rules, mixed-asset estimate/);
   assert.doesNotMatch(html,/2026 current rules, investment-only estimate/);
   assert.match(html,/id="annualReturn"[^>]*value="5"/);
@@ -62,7 +67,7 @@ test('household balance UI exposes dynamic balances and defaults browser tax pay
   assert.match(household,/Ending savings \/ cash/);
   assert.match(household,/Net financial assets/);
   assert.match(household,/select\.value='savings'/);
-  assert.match(household,/Calculation build R\d+/);
+  assert.doesNotMatch(household,/Calculation build R\d+/);
 });
 
 test('R5 loads Next Euro after ScenarioCore and exposes the break-even UI',()=>{
@@ -70,14 +75,19 @@ test('R5 loads Next Euro after ScenarioCore and exposes the break-even UI',()=>{
   assert.ok(html.indexOf('scenario-engine.js')<html.indexOf('next-euro.js'));
   assert.match(next,/R5 · Next €/);
   assert.match(next,/Break-even investment return/);
-  assert.match(next,/Quick amounts: €250 \/ €500 \/ €1,000 per month/);
+  assert.match(next,/not a risk-adjusted/i);
 });
 
-test('R6 loads browser persistence last and explains local-only storage',()=>{
-  const html=read('index.html'),state=read('app-state.js');
+test('R6 persistence and late density restoration load in deterministic order',()=>{
+  const html=read('index.html'),state=read('app-state.js'),late=read('view-density-state.js');
   assert.ok(html.indexOf('next-euro.js')<html.indexOf('app-state.js'));
+  assert.ok(html.indexOf('app-state.js')<html.indexOf('view-density.js'));
+  assert.ok(html.indexOf('view-density.js')<html.indexOf('view-density-state.js'));
   assert.match(state,/Private browser save/);
   assert.match(state,/stored only in this browser/);
   assert.match(state,/Reset examples/);
   assert.match(state,/How to read the model/);
+  assert.match(late,/LATE_CONTROL_IDS/);
+  assert.match(late,/hillenOverrideEnabled/);
+  assert.match(late,/scenarioBuyWozNew/);
 });
