@@ -2,13 +2,18 @@
 
 const test=require('node:test');
 const assert=require('node:assert/strict');
+const fs=require('node:fs');
+const path=require('node:path');
 const VDS=require('../view-density-state.js');
 
-test('late-created Advanced controls have explicit restoration coverage',()=>{
+const source=fs.readFileSync(path.resolve(__dirname,'..','view-density-state.js'),'utf8');
+
+test('late-created local controls have explicit restoration coverage',()=>{
   assert.deepEqual(VDS.LATE_CONTROL_IDS,[
     'hillenOverrideEnabled','hillenOverridePct',
     'scenarioBuyWozNew','scenarioDpWozNew','scenarioSellWozNew',
-    'nextEuroHraTreatment','nextEuroBox3Treatment'
+    'nextEuroHraTreatment','nextEuroBox3Treatment',
+    'scenarioReturnOverrideEnabled'
   ]);
 });
 
@@ -60,12 +65,16 @@ test('Box 3 audit method labels distinguish deemed, tegenbewijs, proposed and no
   assert.equal(VDS.box3MethodLabel({regime:'none'}),'No Box 3');
 });
 
-test('browser adapter contains the Advanced Next Euro controls and method column',()=>{
-  const fs=require('node:fs');
-  const path=require('node:path');
-  const source=fs.readFileSync(path.resolve(__dirname,'..','view-density-state.js'),'utf8');
-  assert.match(source,/nextEuroHraTreatment/);
-  assert.match(source,/nextEuroBox3Treatment/);
+test('Next Euro assumptions are locally collapsed rather than globally hidden',()=>{
+  assert.match(source,/nextEuroTaxTreatmentDetails/);
+  assert.match(source,/Advanced Next € assumptions/);
+  assert.match(source,/r65-local-fold/);
+  assert.doesNotMatch(source,/density-advanced-only/);
+  assert.doesNotMatch(source,/advancedStateSummary/);
+});
+
+test('browser adapter retains the year-method audit column',()=>{
   assert.match(source,/data-density-method-head/);
   assert.match(source,/Tegenbewijs \/ actual return/);
+  assert.match(source,/latestMainPlan/);
 });
