@@ -102,7 +102,6 @@ function bootBrowser(){
     const privacy=document.createElement('div');privacy.className='callout r6-methodology';privacy.innerHTML='<strong>Data handling:</strong> the planner has no backend account. R6 can save your entered assumptions in localStorage on this browser so they survive a refresh. Reset removes that local snapshot and reloads the illustrative defaults.';
     modelBody.prepend(privacy);modelBody.prepend(methodology);
   }
-  const marker=$('modelVersion');if(marker)marker.textContent='Calculation build R6.2 · user-testing UX round 2 · 2026 rules · updated 1 Sep 2026';
 
   const status=$('plannerSaveStatus');
   function setStatus(text){if(status)status.textContent=text}
@@ -156,7 +155,7 @@ function bootBrowser(){
     const savingsLabel=context.querySelector('label[for="box3Savings"]');if(savingsLabel)savingsLabel.textContent='Savings / cash at start';
     const savingsHelp=$('box3Savings')?.closest('.field')?.querySelector('.inline');if(savingsHelp)savingsHelp.textContent='Cash and bank savings available to the household at the start of the plan. Purchase scenarios can spend this balance.';
     const grid=context.querySelector('.advanced-grid');if(grid){grid.classList.remove('grid3');grid.classList.add('grid2');}
-    const debtFields=['box3Debt','box3DebtInterest','box3DebtMonthlyRepayment','box3DebtRepaymentSource'].map(id=>$(id)?.closest('.field')).filter(Boolean);
+    const debtFields=['box3Debt','box3DebtInterest','box3DebtMonthlyRepayment','box3DebtRepaymentSource','box3DebtFallbackDestination'].map(id=>$(id)?.closest('.field')).filter(Boolean);
     if(debtFields.length&&grid){const details=document.createElement('details');details.className='inner-fold ux-household-fold';details.innerHTML='<summary>Optional: other Box 3 debt</summary><div class="inner-fold-body"><p class="subsection-copy">Use this only for debt that belongs in Box 3. Your normal owner-occupied mortgage belongs in the Mortgage tab, not here.</p><div class="grid2" data-ux-debt-grid></div></div>';grid.insertAdjacentElement('afterend',details);const target=details.querySelector('[data-ux-debt-grid]');debtFields.forEach(f=>target.appendChild(f));}
     const summary=context.querySelector('.summary'),keep=$('householdSavingsEnd')?.closest('.summary-item');
     if(summary&&keep){const more=Array.from(summary.children).filter(x=>x!==keep);if(more.length){const details=document.createElement('details');details.className='inner-fold ux-household-fold';details.innerHTML='<summary>More balance-sheet results</summary><div class="inner-fold-body"><div class="summary" data-ux-more-balances></div></div>';summary.insertAdjacentElement('afterend',details);const target=details.querySelector('[data-ux-more-balances]');more.forEach(x=>target.appendChild(x));const net=$('householdNetEnd')?.closest('.summary-item')?.querySelector('.k');if(net)net.textContent='Investments + savings − other debt';const ext=$('householdExternalTax')?.closest('.summary-item')?.querySelector('.k');if(ext)ext.textContent='Box 3 paid outside modeled accounts';}}

@@ -4,7 +4,7 @@ A static browser planner for comparing Dutch mortgage, investment, Box 3, purcha
 
 The project is designed for **scenario planning**, not mortgage underwriting, tax filing, or personal financial advice.
 
-## Current release candidate: R6.4 Public Beta Gate
+## Current release: R6.4.1 Output Integrity
 
 R6.4 is a bounded correctness and test-readiness release on top of the tested R6.3 calculation kernel. It does not add an affordability engine, Monte Carlo simulation, another tax category, or a second simplified calculation path.
 
@@ -17,6 +17,11 @@ R6.4 is a bounded correctness and test-readiness release on top of the tested R6
 - Proposed actual-return Box 3 is marked **not estimable** for incomplete calendar years. Unknown tax is not displayed or treated as €0.
 - A new purchase mortgage with a contractual term above 30 years cannot receive modeled mortgage-interest relief. Gross mortgage calculation remains available with relief switched off.
 - `MODEL_META` supplies the R6.4 public version and persistence-schema marker.
+
+
+### R6.4.1 output integrity
+
+R6.4.1 makes the Box 3 availability status authoritative across the full page. When tax cannot be estimated, retained projections are labeled **before Box 3**, tax-dependent cards and exports are unavailable, the year table is blocked, and no missing amount is rendered as €0. The release also routes the recurring Box 3 debt-repayment budget after payoff to investments, savings or spending and verifies 50 deterministic cross-engine scenarios.
 
 ## One engine, two densities
 
@@ -268,7 +273,8 @@ GitHub Actions runs the same suite on pushes to `main` and pull requests.
 - **R5 Next € optimizer: complete**
 - **R6 Product hardening: complete**
 - **R6.3 Logic integrity: complete**
-- **R6.4 Public Beta Gate and view density: release candidate**
+- **R6.4 Public Beta Gate and view density: complete**
+- **R6.4.1 Output integrity and 50-scenario reconciliation: complete**
 
 The intended next step after R6.4 passes its release gate is controlled user testing before broader functionality is considered.
 
