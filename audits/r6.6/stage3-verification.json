@@ -1,7 +1,9 @@
 {
   "stage": "R6.6 Stage 3",
   "title": "Scenario-local purchase rules and sources-and-uses",
-  "stage2Commit": "9c172533d539cdebd65037b9a2ef853ca57de522",
+  "stage1Commit": "fee582d39a73623d1810433b952d757c61cba21d",
+  "stage2Commit": "9a9df1216879a09378db6e449dd5e07c2f85dc54",
+  "stage3Commit": "ba0ba600fb8451f8405eca69de6f5803c8706619",
   "publicMainCommit": "ac8f029788ff8d1fc2baf09fbc89b848a28f7803",
   "branch": "r6-6-decision-integrity",
   "verifiedAt": "2026-09-03",
@@ -23,6 +25,9 @@
     "browserMortgageTabIsolationPassed": true,
     "starterConditionsPassed": true,
     "nhgStrategySpecificPassed": true,
+    "r65BaselineRestored": true,
+    "oneTimeBaselineWorkflowRetired": true,
+    "generatedDependenciesRemoved": true,
     "publicMainChanged": false,
     "stage4Activated": false
   },
@@ -39,6 +44,15 @@
     "nhgStrategySpecificPassed": true,
     "topLevelStateIsolationPassed": true,
     "browserMortgageTabIsolationPassed": true
+  },
+  "repositoryHygiene": {
+    "generatedDirectoriesIgnored": [
+      "node_modules/",
+      "playwright-report/",
+      "test-results/"
+    ],
+    "changedFilesAfterCleanup": 58,
+    "cleanCalculationStageCommits": 3
   },
   "chromiumResponsive": true,
   "modelBoundaryChanges": true,
