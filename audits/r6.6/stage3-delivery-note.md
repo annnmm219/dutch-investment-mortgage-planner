@@ -1,13 +1,14 @@
 # R6.6 Stage 3 delivery note
 
-**Verified implementation commit:** `bb3360b6487aa59665a38bdb61a2f52a6e0561e6`  
-**Final cleaned Stage 3 branch head:** `05e6cab6f8643b8b9446b2b4ad218e6a9b9936ff`
+**Clean Stage 1 commit:** `fee582d39a73623d1810433b952d757c61cba21d`  
+**Clean Stage 2 commit:** `9a9df1216879a09378db6e449dd5e07c2f85dc54`  
+**Clean Stage 3 calculation and evidence commit:** `ba0ba600fb8451f8405eca69de6f5803c8706619`
 
-Stage 3 was committed only after the complete scenario-local purchase-rule gate passed.
+Stage 3 was accepted only after the complete scenario-local purchase-rule gate passed.
 
 - 178 of 178 Node tests passed.
 - 50 of 50 deterministic scenarios reconciled.
-- No control-scenario value or leader changed because their prior total costs were decomposed into 2% transfer tax plus residual other costs.
+- No control-scenario value or leader changed because the prior control totals were decomposed into 2% transfer tax plus residual other costs.
 - A €600,000 main-residence purchase produces €12,000 transfer tax.
 - Starter age, residence, prior-use and €555,000 ceiling conditions were tested.
 - NHG fees recalculate by strategy mortgage amount.
@@ -18,9 +19,11 @@ Stage 3 was committed only after the complete scenario-local purchase-rule gate 
 
 ## Delivery controls
 
-The Stage 3 build gate stopped on intermediate patch-generation and test-fixture failures before any generated product source was committed. The accepted implementation was produced only after the patch applied cleanly, all regression and reconciliation checks passed, and the real-browser isolation test proved that changing Mortgage-tab purchase and tax values does not change an active Buy-versus-Rent or Down-Payment scenario.
+The Stage 3 build gate stopped on intermediate patch-generation and test-fixture failures before any generated product source was accepted. The verified implementation was retained only after the patch applied cleanly, all regression and reconciliation checks passed, and the real-browser isolation test proved that changing Mortgage-tab purchase and tax values does not change an active Buy-versus-Rent or Down-Payment scenario.
 
-A later audit of the draft pull request found that a workflow installation had accidentally committed the local `node_modules` directory. This was a repository-hygiene defect, not a calculation defect. The complete generated dependency tree was removed in commit `05e6cab6f8643b8b9446b2b4ad218e6a9b9936ff`, and `.gitignore` now excludes:
+A repository audit then found generated Playwright dependencies in the intermediate branch history. The staged branch was rebuilt from clean Stage 1 and Stage 2 trees, with the final Stage 3 tree applied as a single clean commit. The one-time Stage 0 capture workflow was retired after it attempted to refresh frozen R6.5 evidence against later-stage code. The original R6.5 baseline evidence was restored byte-for-byte.
+
+`.gitignore` now excludes:
 
 - `node_modules/`
 - `playwright-report/`
@@ -28,9 +31,11 @@ A later audit of the draft pull request found that a workflow installation had a
 
 After cleanup:
 
-- the pull request fell from 516 changed files to 59 intentional files;
-- the normal Finance regression workflow passed again;
-- the Chromium responsiveness workflow passed again;
-- the Stage 3 calculation implementation and evidence remained unchanged.
+- the pull request contains three intentional calculation-stage commits, plus this documentation-only update;
+- the pull request contains 58 intentional changed files rather than 516 generated-file changes;
+- the normal Finance regression workflow passed after cleanup;
+- the Chromium responsiveness workflow passed after cleanup;
+- the R6.5 baseline manifest remains 143 tests and 50 reconciled scenarios;
+- Stage 3 product calculations and evidence remain unchanged.
 
 The bounded Box 1 own-home tax bridge remains Stage 4 and was not activated here.
