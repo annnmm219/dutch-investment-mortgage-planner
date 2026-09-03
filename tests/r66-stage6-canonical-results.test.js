@@ -187,6 +187,7 @@ test('browser routes result surfaces through the Stage 6 canonical contract',()=
   assert.match(app,/canonicalOutput:Boolean\(canonicalScope\)/);
   assert.doesNotMatch(app,/const noTax=simulate/);
   assert.match(scenario,/canonicalComparisonResult/);
+  assert.match(scenario,/OI=window\.OutputIntegrity/);
   assert.match(scenario,/rows\.push\(\{r,canonical:x\}\)/);
   assert.match(next,/canonicalNextEuroResult/);
   assert.match(density,/canonicalExportRows/);

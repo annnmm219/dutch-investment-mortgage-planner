@@ -445,7 +445,7 @@ return{runScenario,normalize,upfrontAllocation,purchaseSourcesAndUses,scenarioPu
 
 if(typeof window!=='undefined'&&window.document){(()=>{
 'use strict';
-const FC=window.FinanceCore,SC=window.ScenarioCore,PR=window.PurchaseRules;
+const FC=window.FinanceCore,SC=window.ScenarioCore,PR=window.PurchaseRules,OI=window.OutputIntegrity;
 if(!FC||!SC||!PR)throw new Error('FinanceCore, PurchaseRules and ScenarioCore must load before scenario UI');
 const $=id=>document.getElementById(id);
 const clamp=FC.clamp;
