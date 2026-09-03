@@ -28,6 +28,12 @@ const SOURCES=deepFreeze({
     authority:'Belastingdienst',
     lastVerifiedAt:LAST_VERIFIED_AT
   },
+  ownHomeAdjustmentLegislation:{
+    sourceTitle:'Memorie van toelichting Wet maatregelen woningmarkt 2014',
+    sourceUrl:'https://zoek.officielebekendmakingen.nl/kst-33756-3.html',
+    authority:'Tweede Kamer der Staten-Generaal',
+    lastVerifiedAt:LAST_VERIFIED_AT
+  },
   mortgageInterestDeduction:{
     sourceTitle:'Heb ik recht op hypotheekrenteaftrek?',
     sourceUrl:'https://www.rijksoverheid.nl/vraag-en-antwoord/huis-kopen/hypotheekrenteaftrek',
@@ -50,6 +56,12 @@ const SOURCES=deepFreeze({
     sourceTitle:'Hoe is het box 3-inkomen op mijn voorlopige aanslag 2026 berekend?',
     sourceUrl:'https://www.belastingdienst.nl/wps/wcm/connect/nl/box-3/content/berekening-box-3-inkomen-2026',
     authority:'Belastingdienst',
+    lastVerifiedAt:LAST_VERIFIED_AT
+  },
+  futureBox3ProposalStatus:{
+    sourceTitle:'Wet werkelijk rendement box 3 (36.748)',
+    sourceUrl:'https://www.eerstekamer.nl/wetsvoorstel/36748_wet_werkelijk_rendement_box',
+    authority:'Eerste Kamer der Staten-Generaal',
     lastVerifiedAt:LAST_VERIFIED_AT
   },
   transferTax:{

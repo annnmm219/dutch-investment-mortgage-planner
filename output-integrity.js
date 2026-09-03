@@ -6,11 +6,11 @@
 'use strict';
 
 const RELEASE_META=Object.freeze({
-  version:'R6.5',
+  version:'R6.6',
   ruleYear:2026,
-  updated:'2026-09-02',
+  updated:'2026-09-03',
   stateSchema:4,
-  releaseName:'Interface Simplification'
+  releaseName:'Decision Integrity'
 });
 
 const CANONICAL_KINDS=Object.freeze({

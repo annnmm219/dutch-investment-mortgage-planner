@@ -40,10 +40,11 @@ function canonical(selected,config={box3Mode:'current',box3PaySource:'savings'},
   },config);
 }
 
-test('R6.5 is the single final output release identity',()=>{
-  assert.equal(OI.RELEASE_META.version,'R6.5');
+test('R6.6 is the single final output release identity',()=>{
+  assert.equal(OI.RELEASE_META.version,'R6.6');
   assert.equal(OI.RELEASE_META.ruleYear,2026);
-  assert.match(OI.releaseLabel(),/Calculation build R6\.5/);
+  assert.equal(OI.RELEASE_META.updated,'2026-09-03');
+  assert.match(OI.releaseLabel(),/Calculation build R6\.6/);
 });
 
 test('money formatting never converts null or undefined into €0',()=>{
@@ -140,7 +141,7 @@ test('browser renderer and consumers include all release-blocking output surface
   assert.match(source,/Comparison unavailable/);
 });
 
-test('R6.5 interpretation warnings remain visible without expanding the engine',()=>{
+test('R6.6 interpretation warnings remain visible without expanding the engine',()=>{
   const source=read('output-integrity.js');
   assert.match(source,/Modeled own-home Box 1 effect/);
   assert.match(source,/2026 progressive Box 1 bridge/);

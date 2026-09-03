@@ -4,29 +4,22 @@ A static, browser-based planner for comparing Dutch mortgage, investment, Box 3,
 
 The project is designed for **scenario planning**. It is not mortgage underwriting, a tax return, or personal financial advice.
 
-## Current release: R6.5 Interface Simplification
+## Current release candidate: R6.6 Decision Integrity
 
-R6.5 is the final interface pass before another independent logic and fact review. It does **not** change the financial formulas introduced and tested through R6.4.2.
+R6.6 completes the controlled decision-integrity review across inputs, calculations, comparison economics, tax boundaries, displayed outputs, exports, browser state and primary-source facts.
 
-The release removes the global Standard/Advanced mode and replaces it with one interface plus locally collapsed assumptions. Common inputs remain visible; technical settings stay beside the calculation they affect.
+The public site remains on R6.5 until the release candidate is explicitly authorized for merge.
 
-### What changed in R6.5
+### What changed in R6.6
 
-- Removed the global `Standard | Advanced` switch.
-- Removed the global “Advanced settings are affecting this plan” banner.
-- Reduced browser persistence to a subtle status plus **Start fresh**.
-- Added local folds for:
-  - Advanced Box 3 assumptions
-  - Advanced mortgage and tax assumptions
-  - Advanced scenario assumptions
-  - Advanced Next € assumptions
-  - methodology and calculation explanations
-- Kept one expected investment-return assumption for the full plan.
-- Scenario comparisons inherit the Investment-tab return unless the user explicitly enables a local override.
-- Kept all 1 to 6 phases and all five comparison types available in the same interface.
-- Replaced successful affordability callouts with a compact status while keeping actual failures visible.
-- Moved non-critical methodology, caveats, and audit detail behind expandable sections.
-- Preserved local storage, all financial settings, Hillen and scenario-WOZ controls, the assumption log, and CSV export.
+- Declared and enforced effective versus nominal annual-rate conventions.
+- Made purchase inputs and complete sources-and-uses ledgers local to each purchase strategy.
+- Replaced the compressed mortgage-tax proxy with a bounded progressive 2026 Box 1 bridge.
+- Reconciled principal, equity, purchase and sale costs, owner costs, Box 3 balances, and dated external cash flows.
+- Routed cards, tables and CSV exports through versioned canonical result records.
+- Added strict browser validation and schema 1 to 2 saved-state migration.
+- Pinned the browser test runtime and added reproducible Chromium contracts.
+- Completed the final logic and primary-source audit, including formal adjudication of the published Hillen example conflict.
 
 ## Main workflow
 
@@ -219,12 +212,12 @@ npx playwright install chromium
 npm run test:e2e
 ```
 
-The current R6.6 audit branch passes:
+The R6.6 release candidate passes:
 
-- **224 automated Node tests**;
+- **232 automated Node tests**;
 - **50 of 50 deterministic scenario reconciliations**;
 - both pinned Chromium browser contracts;
-- exact Stage 6 to Stage 7 numerical parity across the 50-scenario matrix, with no leader changes.
+- exact Stage 7 to Stage 8 financial-result parity across the 50-scenario matrix, with no leader changes.
 
 The test suite covers mortgage identities, HRA allocation, EWF/Hillen, HRA expiry, mixed-asset Box 3, partial-year gates, dynamic household balances, cash conservation, purchase rules, all five scenario types, canonical output availability, screen/export field identity, local persistence primitives, local assumption folds, and CSV escaping.
 
@@ -256,9 +249,9 @@ The test suite covers mortgage identities, HRA allocation, EWF/Hillen, HRA expir
 - R6.4.1 Output integrity and 50-scenario reconciliation: complete
 - R6.4.2 Browser responsiveness hotfix: complete
 - **R6.5 Interface simplification: complete**
-- R6.6 Decision integrity, Stages 1 through 7: complete on the controlled audit branch
+- **R6.6 Decision integrity, Stages 1 through 8: complete on the controlled audit branch**
 
-The next controlled checkpoint is R6.6 Stage 8: final logic and primary-source fact audit.
+The next controlled checkpoint is release authorization: merge draft PR #13, verify GitHub workflows and wait for the public deployment before testing.
 
 ## Run locally
 

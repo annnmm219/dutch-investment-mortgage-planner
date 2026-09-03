@@ -89,7 +89,7 @@ async function responsivePing(label){
     }),100))),
     delay(5000).then(()=>{throw new Error(`${label}: browser main thread did not answer within 5 seconds`);})
   ]);
-  if(!result.version.includes('R6.5'))throw new Error(`${label}: wrong model version: ${result.version}`);
+  if(!result.version.includes('R6.6'))throw new Error(`${label}: wrong model version: ${result.version}`);
   if(result.phases<1)throw new Error(`${label}: phase UI did not initialize`);
   if(result.callbacks>1000)throw new Error(`${label}: excessive MutationObserver callbacks (${result.callbacks})`);
   if(result.globalSwitchVisible||result.globalBannerVisible)throw new Error(`${label}: obsolete global density UI is visible`);
@@ -127,8 +127,8 @@ try{
   const mortgage=await responsivePing('mortgage assumptions fold');
 
   if(pageErrors.length)throw new Error(`Browser page errors:\n${pageErrors.join('\n\n')}`);
-  console.log(JSON.stringify({release:'R6.5',responsive:true,initial,inherited,scenario,localFolds,mortgage,pageErrors:0},null,2));
-  console.log('R6.5 Chromium interface and responsiveness smoke test passed.');
+  console.log(JSON.stringify({release:'R6.6',responsive:true,initial,inherited,scenario,localFolds,mortgage,pageErrors:0},null,2));
+  console.log('R6.6 Chromium interface and responsiveness smoke test passed.');
 }finally{
   await browser.close();
   await new Promise(resolve=>server.close(resolve));

@@ -228,8 +228,8 @@ function run(){
   });
   assert.equal(count,50,'exactly 50 scenarios must run');
   const byMode=Object.fromEntries(MODES.map(mode=>[mode,rows.filter(row=>row.mode===mode).length]));
-  console.log(JSON.stringify({release:'R6.6 Stage 6',scenarios:count,reconciled:rows.filter(row=>row.reconciled).length,byMode,failures:0},null,2));
-  console.log('R6.6 Stage 6: 50/50 scenario calculations and canonical displayed values reconciled.');
+  console.log(JSON.stringify({release:'R6.6',scenarios:count,reconciled:rows.filter(row=>row.reconciled).length,byMode,failures:0},null,2));
+  console.log('R6.6: 50/50 scenario calculations and canonical displayed values reconciled.');
   return rows;
 }
 
