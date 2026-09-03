@@ -128,10 +128,15 @@ function browserMortgageAuditResult(core){
   });
 }
 
+function decorateScenarioCore(){
+  if(root?.ScenarioCore)Box1.decorateScenarioCore(root.ScenarioCore);
+}
+
 function installBrowserDisclosure(){
   if(typeof document==='undefined')return;
   const enqueue=typeof queueMicrotask==='function'?queueMicrotask:callback=>Promise.resolve().then(callback);
   const install=()=>{
+    decorateScenarioCore();
     const mode=document.getElementById('deductionMode');
     const modeLabel=document.querySelector('label[for="deductionMode"]');
     const manualLabel=document.querySelector('label[for="manualDeduction"]');
@@ -229,7 +234,7 @@ function installBrowserDisclosure(){
     document.addEventListener('change',scheduleRender);
     document.addEventListener('click',scheduleRender);
     scheduleRender();
-    setTimeout(scheduleRender,0);
+    setTimeout(()=>{decorateScenarioCore();scheduleRender();},0);
   };
   if(document.readyState==='loading')root?.addEventListener?.('DOMContentLoaded',install,{once:true});
   else install();
