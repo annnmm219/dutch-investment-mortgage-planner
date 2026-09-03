@@ -1,0 +1,37 @@
+{
+  "stage": "R6.6 Stage 7",
+  "status": "complete-local-unpushed",
+  "verifiedOn": "2026-09-03",
+  "stage6Baseline": "6708c7cedd3eb6c603549184e5c1db9eab8372d2",
+  "validation": {
+    "mainPlan": "strict-unavailable-gate",
+    "scenarioComparison": "strict-unavailable-gate",
+    "nextEuro": "strict-unavailable-gate",
+    "explicitZeroPreserved": true,
+    "blankRequiredValueRejected": true,
+    "outOfRangeValueRejected": true,
+    "invalidExportsBlank": true
+  },
+  "savedState": {
+    "kind": "dimp.planner-state.v2",
+    "schema": 2,
+    "migratesSchema": 1,
+    "malformedEntriesDropped": true
+  },
+  "economics": {
+    "scenarios": 50,
+    "reconciled": 50,
+    "numericalRecordChangesFromStage6": 0,
+    "leaderChanges": 0
+  },
+  "verification": {
+    "nodeTestsPassed": 224,
+    "nodeTestsTotal": 224,
+    "browserContractsPassed": 2,
+    "browserContractsTotal": 2,
+    "chromiumPageErrors": 0,
+    "playwrightVersion": "1.55.0",
+    "javascriptSyntax": "passed",
+    "diffCheck": "passed"
+  }
+}

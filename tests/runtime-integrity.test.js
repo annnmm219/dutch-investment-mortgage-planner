@@ -8,7 +8,7 @@ const path=require('node:path');
 const ROOT=path.resolve(__dirname,'..');
 const read=file=>fs.readFileSync(path.join(ROOT,file),'utf8');
 
-const EXPECTED_LOCAL_SCRIPTS=['model-contract.js','policy-2026.js','finance-core.js','box1-2026.js','logic-integrity-ui.js','box3-household.js','policy-ui.js','purchase-rules.js','output-integrity.js','app.js','purchase-costs.js','scenario-engine.js','box1-2026-ui.js','next-euro.js','app-state.js','view-density.js','view-density-state.js'];
+const EXPECTED_LOCAL_SCRIPTS=['model-contract.js','policy-2026.js','finance-core.js','box1-2026.js','logic-integrity-ui.js','box3-household.js','policy-ui.js','purchase-rules.js','output-integrity.js','input-integrity.js','app.js','purchase-costs.js','scenario-engine.js','box1-2026-ui.js','next-euro.js','app-state.js','view-density.js','view-density-state.js'];
 
 test('index.html declares the complete browser module order explicitly',()=>{
   const html=read('index.html');

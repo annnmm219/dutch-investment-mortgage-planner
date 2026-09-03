@@ -6,7 +6,8 @@
 'use strict';
 
 const STORAGE_KEY='dutch-investment-mortgage-planner:r6';
-const SCHEMA_VERSION=1;
+const STATE_KIND='dimp.planner-state.v2';
+const SCHEMA_VERSION=2;
 
 function controlKey(el){
   if(!el)return null;
@@ -29,13 +30,32 @@ function captureControls(controls,meta={}){
     const key=controlKey(el),type=String(el.type||'').toLowerCase();
     values[key]=(type==='checkbox'||type==='radio')?{kind:'checked',value:Boolean(el.checked)}:{kind:'value',value:String(el.value??'')};
   });
-  return{schema:SCHEMA_VERSION,savedAt:new Date().toISOString(),controls:values,meta:{activeTab:typeof meta.activeTab==='string'?meta.activeTab:null,mortgageType:meta.mortgageType==='linear'?'linear':meta.mortgageType==='annuity'?'annuity':null}};
+  return{kind:STATE_KIND,schema:SCHEMA_VERSION,savedAt:new Date().toISOString(),controls:values,meta:{activeTab:['investment','mortgage','scenarios'].includes(meta.activeTab)?meta.activeTab:null,mortgageType:meta.mortgageType==='linear'?'linear':meta.mortgageType==='annuity'?'annuity':null}};
+}
+function validControlKey(key){return/^id:[A-Za-z][A-Za-z0-9_-]*$/.test(key)||/^phase:\d+:[A-Za-z][A-Za-z0-9_-]*$/.test(key)}
+function normalizeControls(raw){
+  const controls={};
+  Object.entries(raw&&typeof raw==='object'?raw:{}).forEach(([key,entry])=>{
+    if(!validControlKey(key)||!entry||typeof entry!=='object')return;
+    if(entry.kind==='checked'&&typeof entry.value==='boolean')controls[key]={kind:'checked',value:entry.value};
+    if(entry.kind==='value'&&(typeof entry.value==='string'||typeof entry.value==='number')&&String(entry.value).length<=500)controls[key]={kind:'value',value:String(entry.value)};
+  });
+  return controls;
+}
+function migrateV1(value){
+  if(value?.schema!==1||!value.controls||typeof value.controls!=='object')return null;
+  const controls=normalizeControls(value.controls);
+  if(!controls['id:grossAnnualIncome']&&controls['id:grossIncome'])controls['id:grossAnnualIncome']={...controls['id:grossIncome']};
+  return{kind:STATE_KIND,schema:SCHEMA_VERSION,savedAt:typeof value.savedAt==='string'?value.savedAt:null,controls,meta:value.meta,migratedFrom:1};
 }
 function normalizePayload(raw){
   let value=raw;
   if(typeof raw==='string'){try{value=JSON.parse(raw)}catch{return null;}}
-  if(!value||typeof value!=='object'||value.schema!==SCHEMA_VERSION||!value.controls||typeof value.controls!=='object')return null;
-  return{schema:SCHEMA_VERSION,savedAt:typeof value.savedAt==='string'?value.savedAt:null,controls:{...value.controls},meta:{activeTab:typeof value.meta?.activeTab==='string'?value.meta.activeTab:null,mortgageType:value.meta?.mortgageType==='linear'?'linear':value.meta?.mortgageType==='annuity'?'annuity':null}};
+  if(!value||typeof value!=='object')return null;
+  if(value.schema===1)value=migrateV1(value);
+  if(!value||value.schema!==SCHEMA_VERSION||value.kind!==STATE_KIND||!value.controls||typeof value.controls!=='object')return null;
+  const activeTab=['investment','mortgage','scenarios'].includes(value.meta?.activeTab)?value.meta.activeTab:null;
+  return{kind:STATE_KIND,schema:SCHEMA_VERSION,savedAt:typeof value.savedAt==='string'?value.savedAt:null,controls:normalizeControls(value.controls),meta:{activeTab,mortgageType:value.meta?.mortgageType==='linear'?'linear':value.meta?.mortgageType==='annuity'?'annuity':null},migratedFrom:value.migratedFrom===1?1:null};
 }
 function applyEntry(el,entry){
   if(!el||!entry||typeof entry!=='object')return false;
@@ -142,7 +162,8 @@ function bootBrowser(){
       phaseKeys.forEach(key=>{const el=byKey(key);if(el&&applyEntry(el,payload.controls[key]))dispatch(el)});
       if(payload.meta.mortgageType)document.querySelector(`.compare-card[data-mort-type="${payload.meta.mortgageType}"]`)?.click();
       if(payload.meta.activeTab)document.querySelector(`.tab[data-tab="${payload.meta.activeTab}"]`)?.click();
-      if(payload.savedAt){const d=new Date(payload.savedAt);setStatus(Number.isNaN(d.getTime())?'Saved locally':`Restored local save · ${d.toLocaleDateString('nl-NL')}`)}else setStatus('Restored local save');
+      if(payload.migratedFrom===1){const migrated={...payload,migratedFrom:undefined};safeSet(JSON.stringify(migrated));setStatus('Restored and upgraded local save');}
+      else if(payload.savedAt){const d=new Date(payload.savedAt);setStatus(Number.isNaN(d.getTime())?'Saved locally':`Restored local save · ${d.toLocaleDateString('nl-NL')}`)}else setStatus('Restored local save');
     }finally{restoring=false;}
   }
 
@@ -293,7 +314,7 @@ function bootBrowser(){
   observeUxTargets();
 }
 
-return{STORAGE_KEY,SCHEMA_VERSION,controlKey,isPersistable,captureControls,normalizePayload,applyEntry,normalizeDecimalString,parseFlexibleNumber,clampFlexibleValue,estimateTaxableIncome2026,monthlyEquivalentExtra,mortgageReportingMonths,bootBrowser};
+return{STORAGE_KEY,STATE_KIND,SCHEMA_VERSION,controlKey,isPersistable,captureControls,validControlKey,normalizeControls,migrateV1,normalizePayload,applyEntry,normalizeDecimalString,parseFlexibleNumber,clampFlexibleValue,estimateTaxableIncome2026,monthlyEquivalentExtra,mortgageReportingMonths,bootBrowser};
 });
 
 if(typeof window!=='undefined'&&window.document)window.PlannerState.bootBrowser();

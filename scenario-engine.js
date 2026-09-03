@@ -445,8 +445,8 @@ return{runScenario,normalize,upfrontAllocation,purchaseSourcesAndUses,scenarioPu
 
 if(typeof window!=='undefined'&&window.document){(()=>{
 'use strict';
-const FC=window.FinanceCore,SC=window.ScenarioCore,PR=window.PurchaseRules,OI=window.OutputIntegrity;
-if(!FC||!SC||!PR)throw new Error('FinanceCore, PurchaseRules and ScenarioCore must load before scenario UI');
+const FC=window.FinanceCore,SC=window.ScenarioCore,PR=window.PurchaseRules,OI=window.OutputIntegrity,II=window.InputIntegrity;
+if(!FC||!SC||!PR||!OI||!II)throw new Error('FinanceCore, PurchaseRules, OutputIntegrity, InputIntegrity and ScenarioCore must load before scenario UI');
 const $=id=>document.getElementById(id);
 const clamp=FC.clamp;
 const num=(id,d=0)=>{const el=$(id);if(!el)return d;const v=Number(el.value);return Number.isFinite(v)?v:d};
@@ -654,10 +654,26 @@ function sensitivity(){
   const body=$('sensitivityBodyNew');body.innerHTML='';rows.forEach(x=>{const tr=document.createElement('tr'),canonical=x.canonical;tr.innerHTML=`<td>${pct(x.r)}</td><td>${fmt(canonical.strategies.A.net)}</td><td>${fmt(canonical.strategies.B.net)}</td><td>${canonical.outcome==='tie'?'Tie':canonical.outcome}</td>`;body.appendChild(tr)});
   $('sensitivitySummaryNew').innerHTML=cross===null?'<strong>No crossover found in this return range.</strong> Under these tested assumptions, one strategy has higher modeled wealth throughout the range.':`<strong>Approximate crossover: ${pct(cross)} effective annual investment return.</strong> Around this point, the strategy with higher modeled wealth changes.`;
 }
-function updateEngine(){
-  visibility();const mode=$('comparisonType').value,x=SC.runScenario(config()),gap=budgetStatus(x),verdict=$('scenarioVerdictNew'),years=clamp(num('scenarioHorizonNew',10),1,40),returnPct=clamp(num('scenarioReturnNew',5),-30,30),canonical=OI.canonicalComparisonResult(x,{mode,years,returnPct,budgetGap:gap}),model=OI.comparisonOutputModel(canonical),A=canonical.strategies.A,B=canonical.strategies.B;renderFunding(canonical);
+const BOX3_INPUT_IDS=['startYear','startPortfolio','currentTaxRate','currentAllowance','currentNotional','futureStart','futureTaxRate','futureExempt','futureLossThreshold','box3Savings','box3Debt','box3SavingsReturn','box3DebtInterest','box3DebtMonthlyRepayment','currentSavingsNotional','currentDebtNotional','currentDebtThreshold','firstJan1Portfolio','firstJan1Savings','firstJan1Debt'];
+const MORTGAGE_INPUT_IDS=['mortBalance','mortRate','mortYears','housePrice','ownSavings','purchaseCosts','purchaseRate','purchaseYears','grossIncome','wozValue','manualDeduction','hraRemainingYears','hraRemainingMonths','qualifyingBox1DebtPct'];
+function scenarioInputReport(mode){
+  const controls=[...engine.querySelectorAll('input')].filter(el=>!String(el.id).startsWith('sensitivity'));
+  controls.push(...II.controlsById(BOX3_INPUT_IDS));
+  if(mode!=='buy-rent'&&mode!=='downpayment')controls.push(...II.controlsById(MORTGAGE_INPUT_IDS));
+  return II.validateControls(controls);
+}
+function renderInvalidInputs(mode,report){
+  const reason=II.summary(report),canonical=OI.canonicalComparisonResult({valid:false,status:'invalid-input',reason},{mode}),model=OI.comparisonOutputModel(canonical),A=canonical.strategies.A,B=canonical.strategies.B,verdict=$('scenarioVerdictNew');
   window.__DIMP_CANONICAL_COMPARISON=canonical;
-  if(!canonical.valid){card($('strategyAResultNew'),A,false,false);card($('strategyBResultNew'),B,false,false);verdict.classList.add('invalid');verdict.innerHTML=`<strong>${model.title}</strong><span> ${model.detail}</span>`;$('scenarioBreakdownBodyNew').innerHTML='';sensitivity();return;}
+  card($('strategyAResultNew'),A,false,false);card($('strategyBResultNew'),B,false,false);
+  verdict.classList.add('invalid');verdict.innerHTML=`<strong>${model.title}</strong><span> ${model.detail}</span>`;
+  $('scenarioBreakdownBodyNew').innerHTML='';$('sensitivityBodyNew').innerHTML='';$('sensitivitySummaryNew').innerHTML='<strong>Sensitivity unavailable.</strong> Complete the required inputs.';
+  renderFunding(canonical);
+}
+function updateEngine(){
+  visibility();const mode=$('comparisonType').value,report=scenarioInputReport(mode);if(!report.valid){renderInvalidInputs(mode,report);return;}const x=SC.runScenario(config()),gap=budgetStatus(x),verdict=$('scenarioVerdictNew'),years=clamp(num('scenarioHorizonNew',10),1,40),returnPct=clamp(num('scenarioReturnNew',5),-30,30),canonical=OI.canonicalComparisonResult(x,{mode,years,returnPct,budgetGap:gap}),model=OI.comparisonOutputModel(canonical),A=canonical.strategies.A,B=canonical.strategies.B;renderFunding(canonical);
+  window.__DIMP_CANONICAL_COMPARISON=canonical;
+  if(!canonical.valid){card($('strategyAResultNew'),A,false,false);card($('strategyBResultNew'),B,false,false);verdict.classList.add('invalid');verdict.innerHTML=`<strong>${model.title}</strong><span> ${model.detail}</span>`;$('scenarioBreakdownBodyNew').innerHTML='';$('sensitivityBodyNew').innerHTML='';$('sensitivitySummaryNew').innerHTML='<strong>Sensitivity unavailable.</strong> Resolve the comparison inputs first.';return;}
   verdict.classList.remove('invalid');card($('strategyAResultNew'),A,canonical.outcome==='A',true);card($('strategyBResultNew'),B,canonical.outcome==='B',true);
   verdict.innerHTML=`<strong>${model.title}</strong><span> ${model.detail}</span>${canonical.note?`<small>${canonical.note}</small>`:''}${gap>.01?`<small class="scenario-budget-warning">Affordability warning: peak monthly requirement exceeds budget by ${fmt(gap)}.</small>`:''}`;
   const midYear=clamp(num('startMonth',1),1,12)>1,endMonth=((clamp(num('startMonth',1),1,12)-1+years*12-1)%12)+1;

@@ -176,6 +176,7 @@ Before-Box-3 values come from a separate no-Box-3 counterfactual run. After-Box-
 - `logic-integrity-ui.js`: model metadata and R6.3/R6.4 validity gates
 - `box3-household.js`: browser adapter for savings and Box 3 debt
 - `purchase-rules.js`: 2026 transfer-tax, NHG, and LTV planning rules
+- `input-integrity.js`: strict browser input validation and unavailable-result gating
 - `app.js`: main Investment and Mortgage interface
 - `purchase-costs.js`: purchase-cost controls and adapters
 - `scenario-engine.js`: five comparison strategies and scenario interface
@@ -196,29 +197,34 @@ The deterministic browser load order is:
 7. `policy-ui.js`
 8. `purchase-rules.js`
 9. `output-integrity.js`
-10. `app.js`
-11. `purchase-costs.js`
-12. `scenario-engine.js`
-13. `box1-2026-ui.js`
-14. `next-euro.js`
-15. `app-state.js`
-16. `view-density.js`
-17. `view-density-state.js`
+10. `input-integrity.js`
+11. `app.js`
+12. `purchase-costs.js`
+13. `scenario-engine.js`
+14. `box1-2026-ui.js`
+15. `next-euro.js`
+16. `app-state.js`
+17. `view-density.js`
+18. `view-density-state.js`
 
 ## Verification
 
 Run with Node 24 or newer:
 
 ```bash
+npm ci
 npm test
 npm run verify:50
+npx playwright install chromium
+npm run test:e2e
 ```
 
 The current R6.6 audit branch passes:
 
-- **217 automated Node tests**;
+- **224 automated Node tests**;
 - **50 of 50 deterministic scenario reconciliations**;
-- exact Stage 5 to Stage 6 numerical parity across the 50-scenario matrix, with no leader changes.
+- both pinned Chromium browser contracts;
+- exact Stage 6 to Stage 7 numerical parity across the 50-scenario matrix, with no leader changes.
 
 The test suite covers mortgage identities, HRA allocation, EWF/Hillen, HRA expiry, mixed-asset Box 3, partial-year gates, dynamic household balances, cash conservation, purchase rules, all five scenario types, canonical output availability, screen/export field identity, local persistence primitives, local assumption folds, and CSV escaping.
 
@@ -250,9 +256,9 @@ The test suite covers mortgage identities, HRA allocation, EWF/Hillen, HRA expir
 - R6.4.1 Output integrity and 50-scenario reconciliation: complete
 - R6.4.2 Browser responsiveness hotfix: complete
 - **R6.5 Interface simplification: complete**
-- R6.6 Decision integrity, Stages 1 through 6: complete on the controlled audit branch
+- R6.6 Decision integrity, Stages 1 through 7: complete on the controlled audit branch
 
-The next controlled checkpoint is R6.6 Stage 7: strict validation, saved-state migration and reproducible browser tests.
+The next controlled checkpoint is R6.6 Stage 8: final logic and primary-source fact audit.
 
 ## Run locally
 

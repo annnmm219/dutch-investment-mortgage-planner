@@ -126,6 +126,33 @@ function canonicalPlanResult(selectedResult={},beforeBox3Result={},config={}){
   };
 }
 
+function unavailablePlanResult(reason='Complete the required inputs to calculate results.',config={}){
+  return{
+    kind:CANONICAL_KINDS.plan,
+    available:false,
+    ignored:false,
+    status:'invalid-input',
+    reason:String(reason),
+    ruleYear:RELEASE_META.ruleYear,
+    assumptions:{
+      box3Mode:String(config.box3Mode||''),
+      box3PaySource:String(config.box3PaySource||''),
+      effectiveAnnualInvestmentReturnPct:null,
+      startYear:null,
+      startMonth:null
+    },
+    results:{
+      portfolioBeforeBox3:null,portfolioAfterBox3:null,savingsBeforeBox3:null,savingsAfterBox3:null,
+      box3DebtBeforeBox3:null,box3DebtAfterBox3:null,netFinancialAssetsBeforeBox3:null,netFinancialAssetsAfterBox3:null,
+      comparableWealthBeforeBox3:null,comparableWealthAfterBox3:null,mortgageRemaining:null,totalInvested:null,
+      settledBox3Tax:null,unsettledBox3Tax:null,externalBox3Tax:null,taxPaidFromPortfolio:null,
+      taxPaidFromSavings:null,externalCashFlowFutureValue:null,lossCarry:null
+    },
+    series:[],
+    yearBuckets:[]
+  };
+}
+
 function withoutBox3(config={}){
   const copy={...config,canonicalOutput:false,box3Mode:'none'};
   if(config.box3)copy.box3={...config.box3,mode:'none'};
@@ -609,6 +636,7 @@ return{
   formatPercent,
   releaseLabel,
   canonicalPlanResult,
+  unavailablePlanResult,
   withoutBox3,
   decorateFinanceCore,
   planExportRows,

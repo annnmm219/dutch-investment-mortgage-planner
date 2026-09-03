@@ -17,9 +17,9 @@ jobs:
         uses: actions/setup-node@v5
         with:
           node-version: 24
-      - name: Install Playwright runtime
-        run: npm install --no-save playwright@1.55.0
+      - name: Install pinned dependencies
+        run: npm ci
       - name: Install Chromium
         run: npx playwright install --with-deps chromium
-      - name: Verify the page remains responsive
-        run: node scripts/browser-responsiveness-smoke.mjs
+      - name: Verify browser contracts
+        run: npm run test:e2e
