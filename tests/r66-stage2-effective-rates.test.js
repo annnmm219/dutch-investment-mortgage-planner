@@ -24,8 +24,8 @@ function scenarioBase(mode,months){
     mortgage:{balance:0,ratePct:0,years:30},tax:{enabled:false,deductionRate:0,wozValue:0,hraRemainingMonths:0,qualifyingInterestFraction:0},
     box3:noTaxBox3(),upfrontCashTreatment:'invest',homeGrowthPct:0,rentGrowthPct:0,sellingCostPct:0,
     vveMonthly:0,maintenanceAnnual:0,ownerTaxesAnnual:0,insuranceAnnual:0,groundLeaseAnnual:0,
-    buyRent:{price:0,cash:0,downPayment:0,monthlyRent:0,mortgageRatePct:0,mortgageYears:30,wozValue:0},
-    downpayment:{price:0,cash:0,downA:0,downB:0,mortgageRatePct:0,mortgageYears:30,wozValue:0},
+    buyRent:{purchaseCosts:0,mortgageType:'annuity',price:0,cash:0,downPayment:0,monthlyRent:0,mortgageRatePct:0,mortgageYears:30,wozValue:0},
+    downpayment:{purchaseCosts:0,mortgageType:'annuity',price:0,cash:0,downA:0,downB:0,mortgageRatePct:0,mortgageYears:30,wozValue:0},
     mortgageInvest:{extraMonthly:0},sellRent:{homeValue:0,monthlyRent:0,wozValue:0}
   };
 }
@@ -74,7 +74,7 @@ test('home-value growth compounds to the entered effective annual rate',()=>{
 test('rent growth reproduces the entered annual increase after twelve monthly steps',()=>{
   const config=scenarioBase('buy-rent',13);
   config.rentGrowthPct=3;
-  config.buyRent={price:0,cash:0,downPayment:0,monthlyRent:1000,mortgageRatePct:0,mortgageYears:30,wozValue:0};
+  config.buyRent={purchaseCosts:0,mortgageType:'annuity',price:1,cash:1,downPayment:1,monthlyRent:1000,mortgageRatePct:0,mortgageYears:30,wozValue:1};
   const result=SC.runScenario(config);
   assert.equal(result.valid,true);
   approx(result.cashB[12],1030,1e-9,'month-13 rent');

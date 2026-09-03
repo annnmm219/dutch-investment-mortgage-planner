@@ -112,6 +112,21 @@ const INPUT_SCHEMAS=deepFreeze({
     nominalAnnualMortgageRatePct:{type:'number',required:true,min:0,max:100,unit:'percent-per-year'},
     mortgageTermYears:{type:'number',required:true,exclusiveMin:0,max:100,unit:'years'},
     mortgageType:{type:'enum',required:true,values:['annuity','linear']}
+  },
+  purchaseFunding:{
+    propertyPrice:{type:'number',required:true,exclusiveMin:0,unit:'EUR'},
+    transactionCosts:{type:'number',required:true,min:0,unit:'EUR'},
+    availableSavings:{type:'number',required:true,min:0,unit:'EUR'},
+    buyerCashTowardPrice:{type:'number',required:true,min:0,unit:'EUR'}
+  },
+  purchaseRules:{
+    transferTaxMode:{type:'enum',required:true,values:['main','starter','other-home','other-real-estate','manual']},
+    manualTransferTax:{type:'number',required:false,min:0,unit:'EUR'},
+    appraisedValue:{type:'number',required:false,exclusiveMin:0,unit:'EUR'},
+    nhgMode:{type:'enum',required:true,values:['none','standard','energy']},
+    buyerAge:{type:'number',required:false,min:0,max:120,unit:'years'},
+    starterMainResidence:{type:'boolean',required:false},
+    starterExemptionUnused:{type:'boolean',required:false}
   }
 });
 

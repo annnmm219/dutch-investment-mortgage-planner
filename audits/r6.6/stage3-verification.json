@@ -1,0 +1,48 @@
+{
+  "stage": "R6.6 Stage 3",
+  "title": "Scenario-local purchase rules and sources-and-uses",
+  "stage2Commit": "9c172533d539cdebd65037b9a2ef853ca57de522",
+  "publicMainCommit": "ac8f029788ff8d1fc2baf09fbc89b848a28f7803",
+  "branch": "r6-6-decision-integrity",
+  "verifiedAt": "2026-09-03",
+  "nodeVersion": "v24.19.0",
+  "tests": 178,
+  "passed": 178,
+  "failed": 0,
+  "scenarioReconciliation": {
+    "scenarios": 50,
+    "reconciled": 50,
+    "failures": 0
+  },
+  "scenariosWithNumericChanges": 0,
+  "scenarioLeaderChanges": 0,
+  "controls": {
+    "fundingIdentitiesExact": true,
+    "canonicalPreserved": true,
+    "topLevelStateIsolationPassed": true,
+    "browserMortgageTabIsolationPassed": true,
+    "starterConditionsPassed": true,
+    "nhgStrategySpecificPassed": true,
+    "publicMainChanged": false,
+    "stage4Activated": false
+  },
+  "ruleProbes": {
+    "mainResidence600k": {
+      "transferTax": 12000,
+      "baseCosts": 8000,
+      "totalCosts": 20000,
+      "mortgageProceeds": 540000,
+      "totalBuyerCash": 80000,
+      "identityDifference": 0
+    },
+    "starterConditionsPassed": true,
+    "nhgStrategySpecificPassed": true,
+    "topLevelStateIsolationPassed": true,
+    "browserMortgageTabIsolationPassed": true
+  },
+  "chromiumResponsive": true,
+  "modelBoundaryChanges": true,
+  "validControlResultsChanged": false,
+  "publicMainChanged": false,
+  "stage4Activated": false
+}

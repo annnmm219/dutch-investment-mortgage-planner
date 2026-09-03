@@ -131,7 +131,7 @@ test('Hillen, scenario WOZ and audit export remain available without a second en
 });
 
 test('scenario-specific WOZ is added only to the selected scenario branch',()=>{
-  const base={mode:'buy-rent',buyRent:{price:350000},downpayment:{price:300000},sellRent:{homeValue:400000}};
+  const base={mode:'buy-rent',buyRent:{purchaseCosts:0,mortgageType:'annuity',price:350000},downpayment:{purchaseCosts:0,mortgageType:'annuity',price:300000},sellRent:{homeValue:400000}};
   const buy=UI.applyScenarioWoz(base,{buyRentWoz:330000,downpaymentWoz:290000,sellRentWoz:390000});
   assert.equal(buy.buyRent.wozValue,330000);
   assert.equal(buy.downpayment.wozValue,undefined);

@@ -117,6 +117,14 @@ Investment return, savings yield, home-value growth and rent growth are effectiv
 
 Mortgage interest and Box 3 debt interest remain nominal annual contractual rates divided by 12. Box 3 deemed percentages remain annual statutory tax factors rather than monthly compounding rates.
 
+### Purchase-scenario funding
+
+Buy-versus-rent and down-payment comparisons own their property price, other purchase costs, appraisal, transfer-tax treatment, NHG choice, mortgage method, nominal mortgage rate, term, WOZ proxy and local mortgage-tax assumption. They do not import those values from the Mortgage tab.
+
+The public scenario path recalculates 2026 transfer tax and any eligible NHG fee from the active scenario. Starter treatment requires age 18–34, main-residence use, an unused exemption and a full property value within the 2026 ceiling. An ineligible starter selection falls back to the applicable ordinary rate and is disclosed.
+
+Every purchase strategy must satisfy `property price + purchase costs = mortgage proceeds + buyer cash`. Buyer cash includes both the amount applied to the price and the cash used for purchase costs. Unfunded, NHG-ineligible or internally inconsistent purchases are rejected instead of silently capped or balanced with an unexplained source.
+
 ### Mortgage-interest relief
 
 The annual HRA/EWF/Hillen estimate is authoritative. Interest is aggregated by calendar year, the annual home-tax estimate is calculated once, and that amount is allocated across the monthly schedule.
