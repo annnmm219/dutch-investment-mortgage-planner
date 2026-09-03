@@ -22,6 +22,12 @@ const SOURCES=deepFreeze({
     authority:'Belastingdienst',
     lastVerifiedAt:LAST_VERIFIED_AT
   },
+  ownHomeDeductionAdjustment:{
+    sourceTitle:'Tariefsaanpassing eigen woning',
+    sourceUrl:'https://www.belastingdienst.nl/wps/wcm/connect/nl/koopwoning/content/tariefsaanpassing-eigen-woning',
+    authority:'Belastingdienst',
+    lastVerifiedAt:LAST_VERIFIED_AT
+  },
   mortgageInterestDeduction:{
     sourceTitle:'Heb ik recht op hypotheekrenteaftrek?',
     sourceUrl:'https://www.rijksoverheid.nl/vraag-en-antwoord/huis-kopen/hypotheekrenteaftrek',
@@ -80,7 +86,8 @@ const VALUES=deepFreeze({
       {lower:38883,upper:78426,rate:.3756},
       {lower:78426,upper:null,rate:.495}
     ],
-    ownHomeDeductionMaxRate:.3756
+    ownHomeDeductionMaxRate:.3756,
+    ownHomeHighIncomeAdjustmentRate:.1194
   },
   ownHome:{
     maximumQualifyingMortgageMonths:360
@@ -148,7 +155,8 @@ function item(key,value,status,sourceKey,notes=''){
 
 const ITEMS=deepFreeze([
   item('box1.preAowBrackets',VALUES.box1.preAowBrackets,'final','box1Rates'),
-  item('box1.ownHomeDeductionMaxRate',VALUES.box1.ownHomeDeductionMaxRate,'final','mortgageInterestDeduction'),
+  item('box1.ownHomeDeductionMaxRate',VALUES.box1.ownHomeDeductionMaxRate,'final','ownHomeDeductionAdjustment'),
+  item('box1.ownHomeHighIncomeAdjustmentRate',VALUES.box1.ownHomeHighIncomeAdjustmentRate,'final','ownHomeDeductionAdjustment','For taxpayers in the highest 2026 Box 1 bracket, this rate adjustment limits the own-home deduction effect to 37.56%.'),
   item('ownHome.maximumQualifyingMortgageMonths',VALUES.ownHome.maximumQualifyingMortgageMonths,'final','mortgageInterestDeduction'),
   item('eigenwoningforfait.rateBands',VALUES.eigenwoningforfait.rateBands,'final','eigenwoningforfait'),
   item('eigenwoningforfait.highValueThreshold',VALUES.eigenwoningforfait.highValueThreshold,'final','eigenwoningforfait'),
