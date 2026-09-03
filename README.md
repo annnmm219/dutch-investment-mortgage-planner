@@ -41,7 +41,7 @@ Set:
 - monthly investment per phase;
 - monthly extra mortgage repayment per phase;
 - annual bonus or lump sum and its destination;
-- one expected annual investment return;
+- one expected effective annual investment return;
 - Box 3 on or off and the fiscal-partner count.
 
 Detailed Box 3 regimes, payment source, January 1 snapshots, debt, actual savings and debt rates, statutory parameters, and proposed-regime assumptions remain available in **Advanced Box 3 assumptions**.
@@ -75,7 +75,7 @@ Owner-cost detail, scenario-specific WOZ, mortgage-method override, unused-purch
 
 A clean browser starts with illustrative examples, not personal recommendations:
 
-- investment return: **5%**;
+- effective annual investment return: **5%**;
 - existing mortgage: **€300,000**, **4.00%**, **25 years**;
 - selected mortgage structure: **annuity**;
 - planned purchase: **€350,000** price, **€40,000** own savings, **€15,000** purchase costs;
@@ -111,6 +111,12 @@ The application restores the previous plan from browser `localStorage`. A restor
 
 ## Important calculation conventions
 
+### Annual-rate semantics
+
+Investment return, savings yield, home-value growth and rent growth are effective annual assumptions. The engine converts each one with `(1 + annualRate)^(1/12) - 1`, so twelve monthly periods reproduce the entered annual rate. Recurring contributions are added at month end after that month's growth.
+
+Mortgage interest and Box 3 debt interest remain nominal annual contractual rates divided by 12. Box 3 deemed percentages remain annual statutory tax factors rather than monthly compounding rates.
+
 ### Mortgage-interest relief
 
 The annual HRA/EWF/Hillen estimate is authoritative. Interest is aggregated by calendar year, the annual home-tax estimate is calculated once, and that amount is allocated across the monthly schedule.
@@ -145,7 +151,7 @@ Comparable wealth definitions vary by decision because some assets are common to
 
 ### Next €
 
-Next € reruns the production Extra Repayment versus Invest scenario to estimate the nominal investment return at which the two uses of additional monthly cash break even.
+Next € reruns the production Extra Repayment versus Invest scenario to estimate the effective annual investment return at which the two uses of additional monthly cash break even.
 
 It is not risk-adjusted. Extra repayment is comparatively certain; investment returns are volatile.
 

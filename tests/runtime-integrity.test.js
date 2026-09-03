@@ -80,7 +80,7 @@ test('R5 loads Next Euro after ScenarioCore and exposes the break-even UI',()=>{
   const html=read('index.html'),next=read('next-euro.js');
   assert.ok(html.indexOf('scenario-engine.js')<html.indexOf('next-euro.js'));
   assert.match(next,/R5 · Next €/);
-  assert.match(next,/Break-even investment return/);
+  assert.match(next,/Break-even effective annual return/);
   assert.match(next,/not a risk-adjusted/i);
 });
 

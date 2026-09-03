@@ -14,7 +14,7 @@ const PR=require('../purchase-rules.js');
 
 const close=(actual,expected,tolerance=1e-12)=>assert.ok(Math.abs(actual-expected)<=tolerance,`${actual} vs ${expected}`);
 
-test('Stage 1 locks explicit annual-rate conventions without changing R6.5 calculations yet',()=>{
+test('Stage 1 locked explicit annual-rate conventions before Stage 2 activation',()=>{
   assert.equal(Contract.RATE_CONVENTIONS.mortgageInterest.annualType,'nominal');
   assert.equal(Contract.RATE_CONVENTIONS.investmentReturn.annualType,'effective');
   assert.equal(Contract.RATE_CONVENTIONS.investmentReturn.activeFrom,'R6.6 Stage 2');

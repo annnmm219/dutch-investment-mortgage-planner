@@ -33,6 +33,13 @@ const RATE_CONVENTIONS=deepFreeze({
     formula:'r_month = (1 + r_effective)^(1/12) - 1',
     activeFrom:'R6.6 Stage 2'
   },
+  box3DebtInterest:{
+    inputUnit:'percent-per-year',
+    annualType:'nominal',
+    monthlyConversion:'annual nominal contractual rate divided by 12',
+    formula:'r_month = r_nominal / 12',
+    activeFrom:'R6.6 Stage 2 clarification'
+  },
   homeValueGrowth:{
     inputUnit:'percent-per-year',
     annualType:'effective',
