@@ -150,11 +150,22 @@ function browserNumber(id,fallback=0){
 function browserTaxContext(){
   if(typeof document==='undefined')return null;
   const mode=document.getElementById('deductionMode')?.value||'auto';
-  if(mode==='manual')return{calculationMode:'manual-rate'};
+  const maximumMonths=POLICY.ownHome.maximumQualifyingMortgageMonths;
+  const years=Math.max(0,browserNumber('hraRemainingYears',maximumMonths/12));
+  const months=clamp(browserNumber('hraRemainingMonths',0),0,11);
+  const eligibility={
+    hraRemainingMonths:Math.min(maximumMonths,Math.round(years*12+months)),
+    qualifyingInterestFraction:clamp(browserNumber('qualifyingBox1DebtPct',100)/100,0,1)
+  };
+  if(document.getElementById('hillenOverrideEnabled')?.checked){
+    eligibility.hillenRelief=clamp(browserNumber('hillenOverridePct',POLICY.hillen.relief2026*100)/100,0,1);
+  }
+  if(mode==='manual')return{calculationMode:'manual-rate',...eligibility};
   return{
     calculationMode:'box1-2026',
     box1IncomeBeforeOwnHome:Math.max(0,browserNumber('grossIncome',0)),
     box1Profile:PROFILE,
+    ...eligibility,
     hasBox1LossCarry:false,
     hasOtherRateAdjustedDeductions:false,
     hasComplexFiscalPartnerAllocation:false,
