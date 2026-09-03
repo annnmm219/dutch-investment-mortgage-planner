@@ -1,6 +1,6 @@
 # R6.6 Stage 7: validation, saved-state migration and browser reproducibility
 
-**Stage status:** complete locally, not pushed  
+**Stage status:** complete and pushed
 **Branch:** `r6-6-decision-integrity`  
 **Stage 6 baseline:** `6708c7cedd3eb6c603549184e5c1db9eab8372d2`  
 **Public `main`:** unchanged
