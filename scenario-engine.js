@@ -1,13 +1,15 @@
 (function(root,factory){
   const FC=typeof module==='object'&&module.exports?require('./finance-core.js'):root.FinanceCore;
   const PR=typeof module==='object'&&module.exports?require('./purchase-rules.js'):root.PurchaseRules;
-  const api=factory(FC,PR);
+  const OI=typeof module==='object'&&module.exports?require('./output-integrity.js'):root.OutputIntegrity;
+  const api=factory(FC,PR,OI);
   if(typeof module==='object'&&module.exports)module.exports=api;
   if(root)root.ScenarioCore=api;
-})(typeof globalThis!=='undefined'?globalThis:this,function(FC,PR){
+})(typeof globalThis!=='undefined'?globalThis:this,function(FC,PR,OI){
 'use strict';
 if(!FC)throw new Error('FinanceCore is required by ScenarioCore');
 if(!PR)throw new Error('PurchaseRules is required by ScenarioCore');
+if(!OI)throw new Error('OutputIntegrity is required by ScenarioCore');
 
 const nonNegative=v=>Math.max(0,Number(v)||0);
 const optionalNonNegative=v=>v==null||v===''?null:nonNegative(v);
@@ -602,8 +604,8 @@ function renderFunding(x){
   details.classList.toggle('hidden',!funding);
   if(!funding){body.innerHTML='';status.textContent='';return;}
   const A=funding.A,B=funding.B;
-  $('fundingAHeadNew').textContent=x.A?.name||'Strategy A';
-  $('fundingBHeadNew').textContent=B?(x.B?.name||'Strategy B'):'Not applicable';
+  $('fundingAHeadNew').textContent=x.strategies?.A?.name||x.A?.name||'Strategy A';
+  $('fundingBHeadNew').textContent=B?(x.strategies?.B?.name||x.B?.name||'Strategy B'):'Not applicable';
   const rows=[
     ['Property price','propertyPrice'],
     ['Other purchase and financing costs','baseCosts'],
@@ -647,19 +649,20 @@ function budgetStatus(x){
 function sensitivity(){
   let low=clamp(num('sensitivityLowNew',2),-30,30),high=clamp(num('sensitivityHighNew',10),-30,30),step=clamp(num('sensitivityStepNew',2),.5,10);if(high<low)[low,high]=[high,low];
   const rows=[];let prev=null,cross=null;
-  for(let r=low;r<=high+1e-9&&rows.length<61;r+=step){const x=SC.runScenario(config(r));if(!x.valid){$('sensitivityBodyNew').innerHTML='';$('sensitivitySummaryNew').innerHTML='<strong>Sensitivity unavailable.</strong> Fund the upfront cash requirement first.';return;}const d=x.A.net-x.B.net;if(prev&&Math.sign(prev.d)!==Math.sign(d)&&prev.d!==0&&d!==0)cross=prev.r+(r-prev.r)*(Math.abs(prev.d)/(Math.abs(prev.d)+Math.abs(d)));else if(d===0)cross=r;rows.push({r,A:x.A.net,B:x.B.net,d});prev={r,d};}
-  const body=$('sensitivityBodyNew');body.innerHTML='';rows.forEach(x=>{const tr=document.createElement('tr');tr.innerHTML=`<td>${pct(x.r)}</td><td>${fmt(x.A)}</td><td>${fmt(x.B)}</td><td>${Math.abs(x.d)<1?'Tie':x.d>0?'A':'B'}</td>`;body.appendChild(tr)});
-  $('sensitivitySummaryNew').innerHTML=cross===null?'<strong>No crossover found in this return range.</strong> One strategy leads throughout the tested range.':`<strong>Approximate crossover: ${pct(cross)} effective annual investment return.</strong> Around this point the modeled advantage changes sides.`;
+  const mode=$('comparisonType').value,years=clamp(num('scenarioHorizonNew',10),1,40);
+  for(let r=low;r<=high+1e-9&&rows.length<61;r+=step){const x=OI.canonicalComparisonResult(SC.runScenario(config(r)),{mode,years,returnPct:r});if(!x.valid){$('sensitivityBodyNew').innerHTML='';$('sensitivitySummaryNew').innerHTML='<strong>Sensitivity unavailable.</strong> Fund the upfront cash requirement first.';return;}const d=x.difference;if(prev&&Math.sign(prev.d)!==Math.sign(d)&&prev.d!==0&&d!==0)cross=prev.r+(r-prev.r)*(Math.abs(prev.d)/(Math.abs(prev.d)+Math.abs(d)));else if(d===0)cross=r;rows.push({r,canonical:x});prev={r,d};}
+  const body=$('sensitivityBodyNew');body.innerHTML='';rows.forEach(x=>{const tr=document.createElement('tr'),canonical=x.canonical;tr.innerHTML=`<td>${pct(x.r)}</td><td>${fmt(canonical.strategies.A.net)}</td><td>${fmt(canonical.strategies.B.net)}</td><td>${canonical.outcome==='tie'?'Tie':canonical.outcome}</td>`;body.appendChild(tr)});
+  $('sensitivitySummaryNew').innerHTML=cross===null?'<strong>No crossover found in this return range.</strong> Under these tested assumptions, one strategy has higher modeled wealth throughout the range.':`<strong>Approximate crossover: ${pct(cross)} effective annual investment return.</strong> Around this point, the strategy with higher modeled wealth changes.`;
 }
 function updateEngine(){
-  visibility();const x=SC.runScenario(config());renderFunding(x);const gap=budgetStatus(x),verdict=$('scenarioVerdictNew');
-  if(!x.valid){card($('strategyAResultNew'),x.A,false,false);card($('strategyBResultNew'),x.B,false,false);verdict.classList.add('invalid');verdict.innerHTML=`<strong>Comparison unavailable.</strong><span> ${x.reason}</span>`;$('scenarioBreakdownBodyNew').innerHTML='';sensitivity();return;}
-  verdict.classList.remove('invalid');const d=x.A.net-x.B.net,a=d>1,b=d<-1;card($('strategyAResultNew'),x.A,a,true);card($('strategyBResultNew'),x.B,b,true);
-  const lead=a?x.A.name:b?x.B.name:'Neither strategy',years=clamp(num('scenarioHorizonNew',10),1,40);
-  verdict.innerHTML=`<strong>${lead}${a||b?' leads by '+fmt(Math.abs(d)):' is clearly ahead'} after ${years} years.</strong><span> Based on ${pct(clamp(num('scenarioReturnNew',5),-30,30))} investment return and selected tax/mortgage assumptions.</span>${x.note?`<small>${x.note}</small>`:''}${gap>.01?`<small class="scenario-budget-warning">Affordability warning: peak monthly requirement exceeds budget by ${fmt(gap)}.</small>`:''}`;
+  visibility();const mode=$('comparisonType').value,x=SC.runScenario(config()),gap=budgetStatus(x),verdict=$('scenarioVerdictNew'),years=clamp(num('scenarioHorizonNew',10),1,40),returnPct=clamp(num('scenarioReturnNew',5),-30,30),canonical=OI.canonicalComparisonResult(x,{mode,years,returnPct,budgetGap:gap}),model=OI.comparisonOutputModel(canonical),A=canonical.strategies.A,B=canonical.strategies.B;renderFunding(canonical);
+  window.__DIMP_CANONICAL_COMPARISON=canonical;
+  if(!canonical.valid){card($('strategyAResultNew'),A,false,false);card($('strategyBResultNew'),B,false,false);verdict.classList.add('invalid');verdict.innerHTML=`<strong>${model.title}</strong><span> ${model.detail}</span>`;$('scenarioBreakdownBodyNew').innerHTML='';sensitivity();return;}
+  verdict.classList.remove('invalid');card($('strategyAResultNew'),A,canonical.outcome==='A',true);card($('strategyBResultNew'),B,canonical.outcome==='B',true);
+  verdict.innerHTML=`<strong>${model.title}</strong><span> ${model.detail}</span>${canonical.note?`<small>${canonical.note}</small>`:''}${gap>.01?`<small class="scenario-budget-warning">Affordability warning: peak monthly requirement exceeds budget by ${fmt(gap)}.</small>`:''}`;
   const midYear=clamp(num('startMonth',1),1,12)>1,endMonth=((clamp(num('startMonth',1),1,12)-1+years*12-1)%12)+1;
   $('scenarioTaxNoteNew').textContent=`Box 3: ${$('box3Mode')?.selectedOptions?.[0]?.textContent||'not set'}. Mortgage-interest deduction: ${$('mortTaxEnabled')?.checked?'included':'ignored'}.${midYear?' First partial year uses the deemed method only.':''}${endMonth!==12?' Final partial year remains an unsettled estimate.':''}`;
-  breakdown(x.A,x.B);sensitivity();
+  breakdown(A,B);sensitivity();
 }
 engine.addEventListener('input',updateEngine);engine.addEventListener('change',updateEngine);
 document.querySelectorAll('#tab-investment input,#tab-investment select,#tab-mortgage input,#tab-mortgage select').forEach(el=>{el.addEventListener('input',updateEngine);el.addEventListener('change',updateEngine)});

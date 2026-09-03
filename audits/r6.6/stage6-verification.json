@@ -1,0 +1,55 @@
+{
+  "stage": "R6.6 Stage 6",
+  "status": "complete-local-unpushed",
+  "verifiedOn": "2026-09-03",
+  "stage5Baseline": {
+    "authoritativeHead": "b332b805d09c7731d07a9bd891d37eb8ba55216a",
+    "localEquivalentCommit": "b03347389d6bd4ff815b28e63b46940424763cb4"
+  },
+  "matrix": {
+    "scenarios": 50,
+    "reconciled": 50,
+    "numericalChanges": 0,
+    "protectedEconomicFieldChanges": 0,
+    "leaderChanges": 0
+  },
+  "canonicalProbes": {
+    "portfolioPayment": {
+      "portfolioBeforeBox3": 250869.6503310277,
+      "portfolioAfterBox3": 237536.33188832752,
+      "taxPaidFromPortfolio": 12710.66168718423
+    },
+    "savingsPayment": {
+      "portfolioBeforeBox3": 250869.6503310277,
+      "portfolioAfterBox3": 250869.6503310277,
+      "savingsBeforeBox3": 53060.4,
+      "savingsAfterBox3": 39967.16701897559,
+      "taxPaidFromSavings": 12845.709759376863
+    },
+    "externalPayment": {
+      "portfolioBeforeBox3": 250869.6503310277,
+      "portfolioAfterBox3": 250869.6503310277,
+      "savingsBeforeBox3": 53060.4,
+      "savingsAfterBox3": 53060.4,
+      "externalTax": 12934.818119169977,
+      "externalCashFlowFutureValue": 13561.083032245748
+    },
+    "csv": {
+      "portfolioBeforeBox3": "250869.65",
+      "portfolioAfterBox3": "237536.33",
+      "distinct": true
+    },
+    "checksPassed": 17,
+    "checksTotal": 17
+  },
+  "verification": {
+    "nodeTestsPassed": 217,
+    "nodeTestsTotal": 217,
+    "scenarioChecksPassed": 50,
+    "scenarioChecksTotal": 50,
+    "javascriptSyntax": "passed",
+    "diffCheck": "passed",
+    "localChromium": "unavailable",
+    "remoteBrowserWorkflow": "pending-authorized-push"
+  }
+}

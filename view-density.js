@@ -524,7 +524,8 @@ function bootBrowser(){
   function assumptionRows(){
     const rows=[],seen=new Set();
     document.querySelectorAll('input,select').forEach(el=>{if(el.type==='hidden'||el.disabled)return;const key=el.id||`${el.dataset?.i||''}:${el.dataset?.field||''}:${el.name||''}`;if(!key||seen.has(key))return;seen.add(key);const value=(el.type==='checkbox'||el.type==='radio')?(el.checked?'Yes':'No'):(el.selectedOptions?.[0]?.textContent||el.value);rows.push({section:el.closest('.panel')?.id?.replace('tab-','')||'Planner',label:labelForControl(el),value});});
-    [['Results','Investment portfolio','sPortfolio'],['Results','Savings / cash at end','householdSavingsEnd'],['Results','Mortgage remaining','sMortgage'],['Results','Scenario verdict','scenarioVerdictNew'],['Results','Next € break-even','nextEuroBreakEven']].forEach(([section,label,id])=>{const el=$(id);if(el)rows.push({section,label,value:String(el.textContent||'').trim().replace(/\s+/g,' ')});});
+    const canonicalRows=window.OutputIntegrity?.canonicalExportRows?.({plan:window.__DIMP_CANONICAL_RESULT,comparison:window.__DIMP_CANONICAL_COMPARISON,nextEuro:window.__DIMP_CANONICAL_NEXT_EURO})||[];
+    canonicalRows.forEach(([section,label,value])=>rows.push({section,label,value}));
     return rows;
   }
   function renderAssumptionLog(){const log=$('assumptionLog');if(!log)return;const meta=window.MODEL_META||{};const lines=[`Model: ${meta.version||'R6.5'} · rule year ${meta.ruleYear||2026}`,`Generated: ${new Date().toISOString()}`,''];assumptionRows().forEach(row=>lines.push(`[${row.section}] ${row.label}: ${row.value}`));log.textContent=lines.join('\n');}

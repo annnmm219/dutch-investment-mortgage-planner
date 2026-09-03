@@ -164,6 +164,12 @@ Next € reruns the production Extra Repayment versus Invest scenario to estimat
 
 It is not risk-adjusted. Extra repayment is comparatively certain; investment returns are volatile.
 
+### Canonical results and exports
+
+The R6.6 audit branch creates versioned canonical records for the main plan, decision comparison and Next Euro calculation. Headline cards, result tables, charts, the local audit log and CSV export consume those records rather than selecting raw calculation fields independently.
+
+Before-Box-3 values come from a separate no-Box-3 counterfactual run. After-Box-3 values come from the selected tax run. If a tax-adjusted result is unavailable, its numeric export cell remains blank and the status and reason stay explicit.
+
 ## Architecture
 
 - `finance-core.js`: mortgage, HRA allocation, Box 3, household balances, investment flows, and combined-plan calculations
@@ -177,21 +183,27 @@ It is not risk-adjusted. Extra repayment is comparatively certain; investment re
 - `app-state.js`: browser-local persistence and input normalization
 - `view-density.js`: R6.5 local interface folds, inherited scenario return, compact save status, and audit controls
 - `view-density-state.js`: late-control restoration, Next € assumption controls, and Box 3 method column
-- `output-integrity.js`: authoritative available/unavailable output semantics
+- `output-integrity.js`: versioned canonical results, available/unavailable semantics, display adapters, and export rows
 
 The deterministic browser load order is:
 
-1. `finance-core.js`
-2. `logic-integrity-ui.js`
-3. `box3-household.js`
-4. `purchase-rules.js`
-5. `app.js`
-6. `purchase-costs.js`
-7. `scenario-engine.js`
-8. `next-euro.js`
-9. `app-state.js`
-10. `view-density.js`
-11. `view-density-state.js`
+1. `model-contract.js`
+2. `policy-2026.js`
+3. `finance-core.js`
+4. `box1-2026.js`
+5. `logic-integrity-ui.js`
+6. `box3-household.js`
+7. `policy-ui.js`
+8. `purchase-rules.js`
+9. `output-integrity.js`
+10. `app.js`
+11. `purchase-costs.js`
+12. `scenario-engine.js`
+13. `box1-2026-ui.js`
+14. `next-euro.js`
+15. `app-state.js`
+16. `view-density.js`
+17. `view-density-state.js`
 
 ## Verification
 
@@ -202,13 +214,13 @@ npm test
 npm run verify:50
 ```
 
-R6.5 currently passes:
+The current R6.6 audit branch passes:
 
-- **143 automated Node tests**;
+- **217 automated Node tests**;
 - **50 of 50 deterministic scenario reconciliations**;
-- a real Chromium smoke test covering initial load, inherited return, scenario rerendering, local assumption folds, and Mortgage-tab interaction.
+- exact Stage 5 to Stage 6 numerical parity across the 50-scenario matrix, with no leader changes.
 
-The test suite covers mortgage identities, HRA allocation, EWF/Hillen, HRA expiry, mixed-asset Box 3, partial-year gates, dynamic household balances, cash conservation, purchase rules, all five scenario types, output availability, local persistence primitives, local assumption folds, and CSV escaping.
+The test suite covers mortgage identities, HRA allocation, EWF/Hillen, HRA expiry, mixed-asset Box 3, partial-year gates, dynamic household balances, cash conservation, purchase rules, all five scenario types, canonical output availability, screen/export field identity, local persistence primitives, local assumption folds, and CSV escaping.
 
 ## Main limitations
 
@@ -238,8 +250,9 @@ The test suite covers mortgage identities, HRA allocation, EWF/Hillen, HRA expir
 - R6.4.1 Output integrity and 50-scenario reconciliation: complete
 - R6.4.2 Browser responsiveness hotfix: complete
 - **R6.5 Interface simplification: complete**
+- R6.6 Decision integrity, Stages 1 through 6: complete on the controlled audit branch
 
-The next step is another independent logic and fact check, followed by controlled user testing if that review passes.
+The next controlled checkpoint is R6.6 Stage 7: strict validation, saved-state migration and reproducible browser tests.
 
 ## Run locally
 
