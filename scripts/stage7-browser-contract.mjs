@@ -55,6 +55,11 @@ try{
   await page.waitForFunction(()=>window.__DIMP_CANONICAL_RESULT?.available===true);
 
   await page.locator('.tab[data-tab="scenarios"]').click();
+  await page.locator('#scenarioSourceFresh').check();
+  await page.evaluate(()=>{
+    const values={scenarioStartPortfolioFresh:'50000',scenarioStartSavingsFresh:'100000',scenarioStartDebtFresh:'0',scenarioIncomeFresh:'60000',scenarioWozFresh:'350000',scenarioOwnerTotalNew:'350',scenarioBuyPriceNew:'350000',scenarioBuyCostsNew:'8000',scenarioDownPaymentNew:'35000',scenarioRentNew:'1600',scenarioBuyRateNew:'4',scenarioBuyYearsNew:'30'};
+    for(const [id,value] of Object.entries(values)){const el=document.getElementById(id);el.value=value;el.dispatchEvent(new Event('input',{bubbles:true}));}
+  });
   await fillAndInput('#scenarioBuyPriceNew','');
   await page.waitForFunction(()=>window.__DIMP_CANONICAL_COMPARISON?.status==='invalid-input');
   if(!/required/i.test(await page.locator('#scenarioVerdictNew').textContent()))throw new Error('scenario invalid-input reason was not rendered');

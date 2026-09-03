@@ -107,16 +107,16 @@ test('browser save is compact and clearly distinguishes restored data from examp
 
 test('successful affordability is compact while warnings remain available',()=>{
   const source=read('view-density.js');
-  assert.match(source,/Within entered monthly budget/);
+  assert.match(source,/Starting housing cost is within your comfortable limit/);
   assert.match(source,/scenarioBudgetStatusNew/);
   assert.match(source,/classList\.contains\('warn'\)/);
   assert.match(source,/How this comparison works/);
 });
 
-test('combined owner cost remains exactly equal to its detailed split',()=>{
+test('combined owner cost remains available without recreating a hidden duplicate field',()=>{
   assert.equal(UI.monthlyOwnerCost({vveMonthly:250,maintenanceAnnual:1500,ownerTaxesAnnual:600,insuranceAnnual:240,groundLeaseAnnual:1200}),545);
   const source=read('view-density.js');
-  assert.match(source,/r65-owner-total input/);
+  assert.match(source,/scenarioOwnerTotalNew/);
   assert.match(source,/scenarioVveNew/);
   assert.match(source,/scenarioMaintenanceNew/);
 });
@@ -124,7 +124,7 @@ test('combined owner cost remains exactly equal to its detailed split',()=>{
 test('Hillen, scenario WOZ and audit export remain available without a second engine',()=>{
   const source=read('view-density.js');
   assert.match(source,/hillenOverrideEnabled/);
-  assert.match(source,/scenarioBuyWozNew/);
+  assert.match(read('scenario-engine.js'),/scenarioWozFresh/);
   assert.match(source,/exportAssumptionCsv/);
   assert.match(source,/__viewDensityHillenDecorated/);
   assert.match(source,/__viewDensityWozDecorated/);

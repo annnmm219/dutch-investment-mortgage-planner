@@ -97,13 +97,14 @@ test('purchase-rule schema accepts the complete local rule object',()=>{
   assert.equal(x.valid,true);
 });
 
-test('browser purchase configuration is local and never reads Mortgage-tab purchase or tax controls',()=>{
+test('browser purchase configuration stays scenario-owned after an explicit source snapshot',()=>{
   const source=fs.readFileSync(path.resolve(__dirname,'../scenario-engine.js'),'utf8');
   const config=/function config\(retOverride\)\{([\s\S]*?)\n\}\nfunction question/.exec(source)?.[1]||'';
   assert.ok(config);
   assert.match(config,/purchaseRules:purchaseRuleConfig\(\)/);
-  assert.match(config,/tax=purchaseMode\?purchaseTaxConfig\(mode\):mortgageTabTaxConfig\(\)/);
-  assert.match(config,/mortgage:purchaseMode\?\{balance:0,ratePct:0,years:30\}:mainMortgage\(\)/);
+  assert.match(config,/tax:scenarioTaxConfig\(mode\)/);
+  assert.match(config,/mortgage:purchaseMode\?\{balance:0,ratePct:0,years:30\}:source\.mortgage/);
+  assert.match(config,/resolveScenarioInputSource/);
   assert.doesNotMatch(config,/num\('purchaseCosts'/);
   assert.match(source,/scenarioTransferTaxModeNew/);
   assert.match(source,/scenarioPurchaseNhgModeNew/);

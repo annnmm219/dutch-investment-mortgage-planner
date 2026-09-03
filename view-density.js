@@ -334,7 +334,7 @@ function bootBrowser(){
   }
 
   function ensureScenarioReturn(){
-    if($('scenarioReturnOverrideEnabled'))return;
+    if($('scenarioReturnOverrideEnabled')||$('scenarioSourceCard'))return;
     const input=$('scenarioReturnNew'),wrap=input?.closest('.field'),grid=wrap?.parentElement;
     if(!input||!wrap||!grid)return;
     const global=$('annualReturn');
@@ -352,7 +352,7 @@ function bootBrowser(){
   }
 
   function ensureOwnerLight(){
-    if(document.querySelector('[data-r65-role="owner-total"]'))return;
+    if(document.querySelector('[data-r65-role="owner-total"]')||$('scenarioOwnerTotalNew'))return;
     const advanced=field('scenarioVveNew'),grid=advanced?.parentElement;
     if(!advanced||!grid)return;
     const wrap=document.createElement('div');wrap.className='field r65-owner-total';
@@ -385,6 +385,7 @@ function bootBrowser(){
   }
 
   function ensureScenarioWozFields(){
+    if($('scenarioSourceCard'))return;
     const definitions=[['buy-rent','scenarioBuyWozNew','Scenario WOZ value'],['downpayment','scenarioDpWozNew','Scenario WOZ value'],['sell-rent','scenarioSellWozNew','Current-home WOZ value']];
     definitions.forEach(([mode,id,label])=>{
       if($(id))return;
@@ -400,7 +401,7 @@ function bootBrowser(){
     const card=$('scenarioMonthlyBudgetNew')?.closest('.card');if(!card)return;
     const details=createDetails('r65ScenarioAdvanced','Advanced scenario assumptions');
     const body=bodyOf(details),grid=document.createElement('div');grid.className='r65-advanced-grid';body.appendChild(grid);
-    const ids=['scenarioMortgageMethodNew','scenarioUpfrontCashTreatmentNew','scenarioVveNew','scenarioMaintenanceNew','scenarioOwnerTaxesNew','scenarioInsuranceNew','scenarioGroundLeaseNew'];
+    const ids=['scenarioMortgageMethodNew','scenarioUpfrontCashTreatmentNew'];
     ids.forEach(id=>{const el=field(id);if(el)grid.appendChild(el);});
     document.querySelectorAll('.r65-scenario-woz-field').forEach(el=>grid.appendChild(el));
     card.appendChild(details);
@@ -491,7 +492,7 @@ function bootBrowser(){
   function compactBudgetStatus(){
     const el=$('scenarioBudgetStatusNew');if(!el)return;
     if(el.classList.contains('warn')){el.classList.remove('r65-compact-ok');return;}
-    el.classList.add('r65-compact-ok');el.innerHTML='<span class="r65-status-ok">Within entered monthly budget</span>';
+    el.classList.add('r65-compact-ok');el.innerHTML=$('scenarioMonthlyBudgetNew')?.value?'<span class="r65-status-ok">Starting housing cost is within your comfortable limit</span>':'<span class="r65-status-ok">Optional comfortable housing limit not entered</span>';
   }
 
   function mortgageTermMonths(){const purchase=$('mortgageMode')?.value==='purchase';const years=purchase?number($('purchaseYears')?.value,30):number($('mortYears')?.value,25);return Math.max(0,Math.round(Math.min(years,30)*12));}

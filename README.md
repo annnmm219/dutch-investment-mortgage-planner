@@ -20,6 +20,7 @@ The public site remains on R6.5 until the release candidate is explicitly author
 - Added strict browser validation and schema 1 to 2 saved-state migration.
 - Pinned the browser test runtime and added reproducible Chromium contracts.
 - Completed the final logic and primary-source audit, including formal adjudication of the published Hillen example conflict.
+- Made Scenarios a self-contained entry point with an explicit imported snapshot or independent fresh-data route.
 
 ## Main workflow
 
@@ -52,6 +53,11 @@ Detailed HRA eligibility, qualifying debt share, manual deduction rate, Hillen o
 
 ### Scenarios
 
+Begin by choosing one data route:
+
+- **Use my existing planner data** copies the relevant Investment and Mortgage values into a visible scenario snapshot. Later changes in those tabs do not change the comparison unless **Refresh imported data** is selected.
+- **Start a fresh comparison** clears personal scenario fields and reads no values from Investment or Mortgage.
+
 Choose one comparison:
 
 1. Buy versus Rent
@@ -60,9 +66,9 @@ Choose one comparison:
 4. Linear versus Annuity
 5. Keep Home versus Sell and Rent
 
-The scenario uses the Investment-tab return by default. A different comparison return can be enabled explicitly.
+All personal inputs used by the calculation are visible inside Scenarios. Purchase price, purchase mortgage and purchase-tax facts remain scenario-owned because they cannot be safely inferred from an existing mortgage.
 
-Owner-cost detail, scenario-specific WOZ, mortgage-method override, unused-purchase-cash treatment, and audit controls remain locally expandable.
+Owner costs begin as one monthly amount with the included components named directly beneath it. An optional itemized breakdown, scenario-specific purchase assumptions, and audit controls remain locally expandable. The optional comfortable housing limit checks the higher starting housing cost only and never changes the wealth result.
 
 ## Default example values
 
@@ -208,15 +214,17 @@ Run with Node 24 or newer:
 npm ci
 npm test
 npm run verify:50
+npm run verify:stage9
 npx playwright install chromium
 npm run test:e2e
 ```
 
 The R6.6 release candidate passes:
 
-- **232 automated Node tests**;
+- **239 automated Node tests**;
 - **50 of 50 deterministic scenario reconciliations**;
-- both pinned Chromium browser contracts;
+- **50 imported and 50 fresh calculations**, compared pair by pair with 50 exact matches and no mismatches;
+- all three pinned Chromium browser contracts with zero page errors;
 - exact Stage 7 to Stage 8 financial-result parity across the 50-scenario matrix, with no leader changes.
 
 The test suite covers mortgage identities, HRA allocation, EWF/Hillen, HRA expiry, mixed-asset Box 3, partial-year gates, dynamic household balances, cash conservation, purchase rules, all five scenario types, canonical output availability, screen/export field identity, local persistence primitives, local assumption folds, and CSV escaping.
@@ -249,9 +257,9 @@ The test suite covers mortgage identities, HRA allocation, EWF/Hillen, HRA expir
 - R6.4.1 Output integrity and 50-scenario reconciliation: complete
 - R6.4.2 Browser responsiveness hotfix: complete
 - **R6.5 Interface simplification: complete**
-- **R6.6 Decision integrity, Stages 1 through 8: complete on the controlled audit branch**
+- **R6.6 Decision integrity, Stages 1 through 9: complete on the controlled audit branch**
 
-The next controlled checkpoint is release authorization: merge draft PR #13, verify GitHub workflows and wait for the public deployment before testing.
+The next controlled checkpoint is user testing of the Stage 9 branch build. Draft PR #13 remains unmerged, and the public site remains on R6.5 until explicit merge authorization.
 
 ## Run locally
 

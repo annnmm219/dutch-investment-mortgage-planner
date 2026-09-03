@@ -109,6 +109,6 @@ test('R6.6 cache-busts every local browser asset',()=>{
   const html=read('index.html');
   const local=[...html.matchAll(/<script\s+src="((?!https?:\/\/)[^"]+)"/g)].map(m=>m[1]);
   assert.equal(local.length,EXPECTED_LOCAL_SCRIPTS.length);
-  local.forEach(src=>assert.match(src,/\?v=R6\.6$/));
-  assert.match(html,/styles\.css\?v=R6\.6/);
+  local.forEach(src=>assert.match(src,/\?v=R6\.6-stage9$/));
+  assert.match(html,/styles\.css\?v=R6\.6-stage9/);
 });
