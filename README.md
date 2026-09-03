@@ -82,7 +82,8 @@ A clean browser starts with illustrative examples, not personal recommendations:
 - purchase term: **30 years**;
 - gross employment income: **€60,000**;
 - WOZ planning value: **€400,000**;
-- owner costs: **€250/month VvE plus €1,500/year maintenance**, equal to **€375/month** before any custom additions;
+- owner costs: **€250/month VvE plus €1,500/year maintenance**, equal to **€375/month** initially, with an editable **2% effective annual owner-cost growth** assumption;
+- expected savings yield: **2% effective annually** and Box 3 debt interest: **4% nominal annually**, both illustrative household assumptions kept separate from statutory deemed percentages;
 - Box 3: **2026 current-rules planning path**, one taxpayer, tax paid from savings.
 
 The application restores the previous plan from browser `localStorage`. A restored value is therefore not necessarily a default. **Start fresh** clears the local snapshot and reloads the illustrative examples.
@@ -103,7 +104,7 @@ The application restores the previous plan from browser `localStorage`. A restor
 - Nullable January 1 snapshot gate for mid-year plans
 - Current-law incomplete-year and proposed-regime availability handling
 - 2026 transfer-tax, NHG, and LTV planning checks
-- Fair-cash-flow equalisation between strategies
+- Fair-cash-flow equalisation between strategies, including dated external-cash opportunity costs
 - Return sensitivity analysis
 - Next € invest-versus-repay break-even analysis
 - Browser-local save and restore
@@ -113,7 +114,7 @@ The application restores the previous plan from browser `localStorage`. A restor
 
 ### Annual-rate semantics
 
-Investment return, savings yield, home-value growth and rent growth are effective annual assumptions. The engine converts each one with `(1 + annualRate)^(1/12) - 1`, so twelve monthly periods reproduce the entered annual rate. Recurring contributions are added at month end after that month's growth.
+Investment return, savings yield, home-value growth, rent growth and owner-cost growth are effective annual assumptions. The engine converts each one with `(1 + annualRate)^(1/12) - 1`, so twelve monthly periods reproduce the entered annual rate. Recurring contributions are added at month end after that month's growth.
 
 Mortgage interest and Box 3 debt interest remain nominal annual contractual rates divided by 12. Box 3 deemed percentages remain annual statutory tax factors rather than monthly compounding rates.
 
@@ -131,7 +132,7 @@ The annual HRA/EWF/Hillen estimate is authoritative. Interest is aggregated by c
 
 Home ownership months are separate from mortgage-active months, so EWF/Hillen can continue after the mortgage balance reaches zero while the home remains owner-occupied.
 
-The automatic deduction rate is a simplified planning proxy. It is not a full before-and-after Box 1 calculation.
+Automatic mode uses the bounded 2026 progressive Box 1 before-and-after bridge documented in `audits/r6.6/stage4-delivery-note.md`. It remains a planning calculation for the supported profile, not a full income-tax return.
 
 For a new purchase mortgage above 30 years, modeled HRA is blocked rather than automatically granted for the first 30 years.
 
@@ -215,7 +216,10 @@ The test suite covers mortgage identities, HRA allocation, EWF/Hillen, HRA expir
 - HRA is a planning approximation, not an aangifte calculation.
 - Box 3 does not represent every asset, exemption, partner-allocation, or partial-foreign-taxpayer case.
 - Most 2026 tax parameters are held constant in long-horizon sensitivity calculations unless the model contains a specific year path.
-- Owner-cost inputs remain flat in nominal euros unless changed manually.
+- Results are nominal euros and are not inflation-adjusted real purchasing power.
+- Owner-cost inputs escalate at the entered effective annual rate; a 0% rate keeps them flat in nominal euros.
+- Investment returns are uncertain and can be sequence-dependent. Mortgage repayment savings are contractual within the entered mortgage assumptions, but lender conditions can differ.
+- Liquidity is not assigned a monetary value. Home equity and repaid debt can be less accessible than investments or cash.
 - Purchase financing costs with possible first-year deductibility are not fully modeled.
 - The planner does not calculate official Nibud/LTI borrowing capacity or lender acceptance.
 - Mortgage product behavior after extra repayment may differ by lender.

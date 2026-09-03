@@ -8,13 +8,17 @@
 if(!Policy2026)throw new Error('Policy2026 is required by Box3Household');
 const POLICY=Policy2026.VALUES;
 
+const ACTUAL_RATE_ASSUMPTIONS=Object.freeze({
+  savingsYieldPct:2,
+  debtInterestPct:4,
+  status:'illustrative user-editable planning assumptions'
+});
+
 const DEFAULTS={
   savings:0,
   debt:0,
-  // Legacy illustrative actual household rates. These are not statutory
-  // deemed percentages and will be separated in R6.6 Stage 5.
-  savingsReturnPct:1.28,
-  debtInterestPct:2.70,
+  savingsReturnPct:ACTUAL_RATE_ASSUMPTIONS.savingsYieldPct,
+  debtInterestPct:ACTUAL_RATE_ASSUMPTIONS.debtInterestPct,
   debtMonthlyRepayment:0,
   debtRepaymentSource:'external',
   debtFallbackDestination:'invest',
@@ -52,10 +56,12 @@ function renderBalanceSummary(result){
   const debt=document.getElementById('householdDebtEnd');
   const net=document.getElementById('householdNetEnd');
   const external=document.getElementById('householdExternalTax');
+  const externalFutureValue=document.getElementById('householdExternalFutureValue');
   if(savings)savings.textContent=fmt(result.savings);
   if(debt)debt.textContent=fmt(result.box3Debt);
   if(net)net.textContent=fmt(result.netFinancialAssets);
   if(external)external.textContent=fmt(result.externalTax);
+  if(externalFutureValue)externalFutureValue.textContent=fmt(result.externalCashFlowFutureValue);
 }
 
 function decorateCore(FC,getContext){
@@ -151,8 +157,8 @@ function injectBrowserUI(){
     <div class="grid3 advanced-grid">
       <div class="field"><label for="box3Savings">Starting savings / bank deposits</label><input id="box3Savings" type="number" min="0" step="100" value="50000"><p class="inline">A real balance in the household ledger. Purchase scenarios use this as their starting cash instead of a separate cash pot.</p></div>
       <div class="field"><label for="box3Debt">Starting Box 3 debt</label><input id="box3Debt" type="number" min="0" step="100" value="0"><p class="inline">Only debt that belongs in Box 3. Keep the owner-occupied home mortgage separate.</p></div>
-      <div class="field"><label for="box3SavingsReturn">Effective annual savings yield %</label><input id="box3SavingsReturn" type="number" min="-10" max="30" step="0.01" value="1.28"><p class="inline">Converted to its monthly equivalent so 12 months reproduce the entered annual yield. Savings interest is included in actual-return Box 3.</p></div>
-      <div class="field"><label for="box3DebtInterest">Nominal annual Box 3 debt interest %</label><input id="box3DebtInterest" type="number" min="0" max="30" step="0.01" value="2.70"><p class="inline">Divided by 12 as a nominal contractual annual rate. Interest is modeled for Box 3 actual return and paid as external household cash flow.</p></div>
+      <div class="field"><label for="box3SavingsReturn">Effective annual savings yield % (your expected rate)</label><input id="box3SavingsReturn" type="number" min="-10" max="30" step="0.01" value="${ACTUAL_RATE_ASSUMPTIONS.savingsYieldPct.toFixed(2)}"><p class="inline">Editable household assumption, not the statutory Box 3 bank-deposit percentage. Savings interest is included in modeled actual return.</p></div>
+      <div class="field"><label for="box3DebtInterest">Nominal annual Box 3 debt interest %</label><input id="box3DebtInterest" type="number" min="0" max="30" step="0.01" value="${ACTUAL_RATE_ASSUMPTIONS.debtInterestPct.toFixed(2)}"><p class="inline">Your editable contractual assumption, not the statutory Box 3 debt percentage. Interest is recorded as a dated external household outflow.</p></div>
       <div class="field"><label for="box3DebtMonthlyRepayment">Monthly Box 3 debt repayment</label><input id="box3DebtMonthlyRepayment" type="number" min="0" step="50" value="0"><p class="inline">Optional. Reduces the debt balance each month.</p></div>
       <div class="field"><label for="box3DebtRepaymentSource">Debt repayment comes from</label><select id="box3DebtRepaymentSource"><option value="external" selected>External cash flow</option><option value="savings">Savings / cash balance</option></select><p class="inline">Savings-funded repayment reduces cash and debt together. External repayment is tracked separately.</p></div>
       <div class="field"><label for="box3DebtFallbackDestination">After Box 3 debt payoff, redirect the monthly budget to</label><select id="box3DebtFallbackDestination"><option value="invest" selected>Investments</option><option value="savings">Savings / cash</option><option value="consume">Stop allocating / spending</option></select><p class="inline">Also applies to the unused portion of the final repayment. The repayment budget is never left without a destination.</p></div>
@@ -162,8 +168,9 @@ function injectBrowserUI(){
       <div class="summary-item"><p class="k">Ending Box 3 debt</p><p class="v" id="householdDebtEnd">—</p></div>
       <div class="summary-item"><p class="k">Net financial assets</p><p class="v" id="householdNetEnd">—</p><p class="s">portfolio + savings − Box 3 debt; excludes home and Box 1 mortgage</p></div>
       <div class="summary-item"><p class="k">Box 3 paid externally</p><p class="v" id="householdExternalTax">—</p></div>
+      <div class="summary-item"><p class="k">External outflows at plan horizon</p><p class="v" id="householdExternalFutureValue">—</p><p class="s">dated tax, Box 3 debt interest and external repayments carried at the selected investment return</p></div>
     </div>
-    <div class="callout"><strong>Household balance-sheet behavior:</strong> Box 3 tax paid from savings reduces savings; tax paid from investments reduces the portfolio; external tax is tracked separately. If the selected balance cannot cover the full tax charge, the remainder becomes external cash flow rather than disappearing.</div>`;
+    <div class="callout"><strong>Household balance-sheet behavior:</strong> Box 3 tax paid from savings reduces savings; tax paid from investments reduces the portfolio. External tax, debt interest and repayments are recorded when paid and valued at the plan horizon, so an early outflow is not treated like a final-month outflow. Debt principal still reduces the debt balance and is not classified as an economic expense.</div>`;
   card.insertBefore(context,explanation);
 
   const currentNotional=document.getElementById('currentNotional');
@@ -187,7 +194,7 @@ function injectBrowserUI(){
     const currentTitle=foldBody.querySelector('.subsection-title');
     const currentCopy=foldBody.querySelector('.subsection-copy');
     if(currentTitle)currentTitle.textContent='2026 current rules, dynamic mixed-asset estimate';
-    if(currentCopy)currentCopy.textContent='Uses the investment portfolio plus the household savings and Box 3 debt ledgers. Each complete calendar year takes the modeled Jan 1 balances, then compares the deemed-return method with the modeled actual-return rebuttal.';
+    if(currentCopy)currentCopy.textContent='Statutory deemed percentages below are tax parameters. They are separate from your expected savings yield and contractual debt interest above. Each complete calendar year compares the deemed method with the modeled actual-return rebuttal.';
   }
 
   const trigger=()=>{const el=document.getElementById('currentNotional')||document.getElementById('box3Mode');if(el)el.dispatchEvent(new Event('input',{bubbles:true}));};
@@ -208,6 +215,6 @@ function bootBrowser(){
   decorateCore(window.FinanceCore,browserContext);
 }
 
-return{DEFAULTS,normalizeContext,decorateCore,browserContext,configureTaxSource,configureR4Defaults,injectBrowserUI,renderBalanceSummary,bootBrowser};
+return{ACTUAL_RATE_ASSUMPTIONS,DEFAULTS,normalizeContext,decorateCore,browserContext,configureTaxSource,configureR4Defaults,injectBrowserUI,renderBalanceSummary,bootBrowser};
 });
 if(typeof window!=='undefined')window.Box3Household.bootBrowser();

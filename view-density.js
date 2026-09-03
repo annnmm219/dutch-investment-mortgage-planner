@@ -14,7 +14,7 @@ const DEFAULTS=Object.freeze({
   box3Mode:'current',
   box3PaySource:'savings',
   box3Debt:0,
-  box3DebtInterest:2.70,
+  box3DebtInterest:4,
   box3DebtMonthlyRepayment:0,
   box3DebtRepaymentSource:'external',
   box3DebtFallbackDestination:'invest',
@@ -43,7 +43,8 @@ const DEFAULTS=Object.freeze({
   maintenanceAnnual:1500,
   ownerTaxesAnnual:0,
   insuranceAnnual:0,
-  groundLeaseAnnual:0
+  groundLeaseAnnual:0,
+  ownerCostGrowthPct:2
 });
 
 function normalizeView(){return DEFAULT_VIEW;}
@@ -118,7 +119,8 @@ function collectAdvancedState(values={}){
   if(values.scenarioReturnOverrideEnabled)add('scenario','scenario-return','Custom scenario return');
   const customSensitivity=!near(values.sensitivityLow,DEFAULTS.sensitivityLow)||!near(values.sensitivityHigh,DEFAULTS.sensitivityHigh)||!near(values.sensitivityStep,DEFAULTS.sensitivityStep);
   if(customSensitivity)add('scenario','sensitivity','Custom return sensitivity range');
-  const customOwner=!near(values.vveMonthly,DEFAULTS.vveMonthly)||!near(values.maintenanceAnnual,DEFAULTS.maintenanceAnnual)||!near(values.ownerTaxesAnnual,DEFAULTS.ownerTaxesAnnual)||!near(values.insuranceAnnual,DEFAULTS.insuranceAnnual)||!near(values.groundLeaseAnnual,DEFAULTS.groundLeaseAnnual);
+  const ownerCostGrowth=values.ownerCostGrowthPct==null?DEFAULTS.ownerCostGrowthPct:number(values.ownerCostGrowthPct);
+  const customOwner=!near(values.vveMonthly,DEFAULTS.vveMonthly)||!near(values.maintenanceAnnual,DEFAULTS.maintenanceAnnual)||!near(values.ownerTaxesAnnual,DEFAULTS.ownerTaxesAnnual)||!near(values.insuranceAnnual,DEFAULTS.insuranceAnnual)||!near(values.groundLeaseAnnual,DEFAULTS.groundLeaseAnnual)||!near(ownerCostGrowth,DEFAULTS.ownerCostGrowthPct);
   if(customOwner)add('scenario','owner-costs',`Customized owner-cost split: ${money(monthlyOwnerCost(values))}/mo`);
   return items;
 }
@@ -497,10 +499,10 @@ function bootBrowser(){
   function domState(){
     const firstValues=[$('firstJan1Portfolio')?.value,$('firstJan1Savings')?.value,$('firstJan1Debt')?.value];
     return{
-      bonusMonth:number($('bonusMonth')?.value,12),box3Mode:$('box3Mode')?.value||'current',box3PaySource:$('box3PaySource')?.value||'savings',box3Debt:number($('box3Debt')?.value),box3DebtInterest:number($('box3DebtInterest')?.value,2.70),box3DebtMonthlyRepayment:number($('box3DebtMonthlyRepayment')?.value),box3DebtRepaymentSource:$('box3DebtRepaymentSource')?.value||'external',box3DebtFallbackDestination:$('box3DebtFallbackDestination')?.value||'invest',
+      bonusMonth:number($('bonusMonth')?.value,12),box3Mode:$('box3Mode')?.value||'current',box3PaySource:$('box3PaySource')?.value||'savings',box3Debt:number($('box3Debt')?.value),box3DebtInterest:number($('box3DebtInterest')?.value,4),box3DebtMonthlyRepayment:number($('box3DebtMonthlyRepayment')?.value),box3DebtRepaymentSource:$('box3DebtRepaymentSource')?.value||'external',box3DebtFallbackDestination:$('box3DebtFallbackDestination')?.value||'invest',
       currentTaxRate:number($('currentTaxRate')?.value,36),currentAllowance:number($('currentAllowance')?.value,59357),currentNotional:number($('currentNotional')?.value,6),currentSavingsNotional:number($('currentSavingsNotional')?.value,1.28),currentDebtNotional:number($('currentDebtNotional')?.value,2.70),currentDebtThreshold:number($('currentDebtThreshold')?.value,3800),futureStart:number($('futureStart')?.value,2028),futureTaxRate:number($('futureTaxRate')?.value,36),futureExempt:number($('futureExempt')?.value,1800),futureLossThreshold:number($('futureLossThreshold')?.value,500),jan1Assumption:Boolean($('assumePlanStartAsJan1')?.checked),jan1SnapshotEntered:firstValues.some(value=>value!==undefined&&value!==''),
       deductionMode:$('deductionMode')?.value||'auto',hraRemainingMonths:Math.max(0,Math.round(number($('hraRemainingYears')?.value,30)*12+number($('hraRemainingMonths')?.value))),defaultHraMonths:mortgageTermMonths(),qualifyingShare:number($('qualifyingBox1DebtPct')?.value,100),hillenOverrideEnabled:Boolean($('hillenOverrideEnabled')?.checked),hillenOverridePct:number($('hillenOverridePct')?.value,71.867),unusedMortgageDestination:$('unusedMortgageDestination')?.value||'invest',mortgageReportHorizon:$('mortgageReportHorizon')?.value||'investment',transferTaxMode:$('purchaseTransferTaxMode')?.value||'main',appraisedValue:number($('purchaseAppraisedValue')?.value),housePrice:number($('housePrice')?.value),nhgMode:$('purchaseNhgMode')?.value||'none',
-      upfrontCashTreatment:$('scenarioUpfrontCashTreatmentNew')?.value||'invest',scenarioMortgageMethod:$('scenarioMortgageMethodNew')?.value||'selected',scenarioWoz:activeScenarioWoz(),scenarioReturnOverrideEnabled:Boolean($('scenarioReturnOverrideEnabled')?.checked),sensitivityLow:number($('sensitivityLowNew')?.value,2),sensitivityHigh:number($('sensitivityHighNew')?.value,10),sensitivityStep:number($('sensitivityStepNew')?.value,2),vveMonthly:number($('scenarioVveNew')?.value,250),maintenanceAnnual:number($('scenarioMaintenanceNew')?.value,1500),ownerTaxesAnnual:number($('scenarioOwnerTaxesNew')?.value),insuranceAnnual:number($('scenarioInsuranceNew')?.value),groundLeaseAnnual:number($('scenarioGroundLeaseNew')?.value)
+      upfrontCashTreatment:$('scenarioUpfrontCashTreatmentNew')?.value||'invest',scenarioMortgageMethod:$('scenarioMortgageMethodNew')?.value||'selected',scenarioWoz:activeScenarioWoz(),scenarioReturnOverrideEnabled:Boolean($('scenarioReturnOverrideEnabled')?.checked),sensitivityLow:number($('sensitivityLowNew')?.value,2),sensitivityHigh:number($('sensitivityHighNew')?.value,10),sensitivityStep:number($('sensitivityStepNew')?.value,2),vveMonthly:number($('scenarioVveNew')?.value,250),maintenanceAnnual:number($('scenarioMaintenanceNew')?.value,1500),ownerTaxesAnnual:number($('scenarioOwnerTaxesNew')?.value),insuranceAnnual:number($('scenarioInsuranceNew')?.value),groundLeaseAnnual:number($('scenarioGroundLeaseNew')?.value),ownerCostGrowthPct:number($('scenarioOwnerCostGrowthNew')?.value,2)
     };
   }
   function setBadge(details,count){

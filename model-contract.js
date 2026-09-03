@@ -81,6 +81,7 @@ const TRANSACTION_TIMING=deepFreeze({
   savingsInterest:'Credited on the opening monthly savings balance before that month’s savings cash flow.',
   box3DebtInterest:'Calculated on the opening monthly Box 3 debt balance before that month’s repayment.',
   box3Tax:'Settled after the final modeled month of a complete calendar year; incomplete final years remain unsettled.',
+  externalCashFlow:'Recorded in the month paid and carried to the comparison horizon at the selected effective annual investment return.',
   purchaseCashEvent:'Applied at time zero before recurring monthly scenario cash flows and equalisation.'
 });
 
