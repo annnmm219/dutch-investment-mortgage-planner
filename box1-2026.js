@@ -19,13 +19,21 @@ const BOX1_2026_RULES=Object.freeze({
   highIncomeAdjustmentRate:.1194,
   maximumOwnHomeDeductionRate:.3756,
   hillenRelief:.71867,
-  scope:'Non-AOW ordinary employment income; tax credits and other rate-adjusted deductions excluded.'
+  status:'final-2026-rules',
+  verifiedAt:'2026-09-03',
+  scope:'Non-AOW ordinary employment income; tax credits and other rate-adjusted deductions excluded.',
+  sources:Object.freeze([
+    Object.freeze({title:'Belastingdienst Box 1 rates 2026',url:'https://www.belastingdienst.nl/wps/wcm/connect/bldcontentnl/belastingdienst/prive/inkomstenbelasting/heffingskortingen_boxen_tarieven/boxen_en_tarieven/box_1/box_1'}),
+    Object.freeze({title:'Belastingdienst high-income own-home deduction adjustment',url:'https://www.belastingdienst.nl/wps/wcm/connect/nl/koopwoning/content/tariefsaanpassing-eigen-woning'}),
+    Object.freeze({title:'Belastingdienst Hillen relief',url:'https://www.belastingdienst.nl/wps/wcm/connect/bldcontentnl/belastingdienst/prive/woning/eigenwoningforfait/geen_of_een_kleine_eigenwoningschuld/'})
+  ])
 });
 
 const finite=value=>Number.isFinite(Number(value));
 const number=value=>finite(value)?Number(value):0;
 const nonNegative=value=>Math.max(0,number(value));
 const clamp=(value,min,max)=>Math.min(max,Math.max(min,number(value)));
+const taxContextStack=[];
 
 function progressiveBox1Tax2026(income){
   const value=Number(income);
@@ -142,7 +150,8 @@ function yearValue(value,year,fallback=0){
 
 function browserNumber(id,fallback=0){
   if(typeof document==='undefined')return fallback;
-  const value=Number(document.getElementById(id)?.value);
+  const raw=String(document.getElementById(id)?.value??'').trim().replace(/\s+/g,'').replace(/,/g,'.');
+  const value=Number(raw);
   return Number.isFinite(value)?value:fallback;
 }
 
@@ -161,12 +170,26 @@ function browserTaxContext(){
   };
 }
 
+function activeTaxContext(){return taxContextStack.length?taxContextStack[taxContextStack.length-1]:null;}
+
+function withTaxContext(context,callback){
+  if(typeof callback!=='function')throw new TypeError('withTaxContext requires a synchronous callback.');
+  taxContextStack.push(context&&typeof context==='object'?{...context}:{});
+  try{return callback();}
+  finally{taxContextStack.pop();}
+}
+
 function normalizeTaxConfig(tax={}){
   const explicit=Object.fromEntries(Object.entries(tax||{}).filter(([,value])=>value!==undefined));
-  if(explicit.calculationMode)return explicit;
-  if(finite(explicit.box1IncomeBeforeOwnHome))return{...explicit,calculationMode:'box1-2026'};
-  const browser=browserTaxContext();
-  return browser?{...browser,...explicit,calculationMode:browser.calculationMode}:{...explicit,calculationMode:'manual-rate'};
+  const inherited=activeTaxContext()||browserTaxContext();
+  if(explicit.calculationMode){
+    return inherited?{...inherited,...explicit,calculationMode:explicit.calculationMode}:explicit;
+  }
+  if(finite(explicit.box1IncomeBeforeOwnHome)){
+    return{...(inherited||{}),...explicit,calculationMode:'box1-2026'};
+  }
+  if(inherited)return{...inherited,...explicit,calculationMode:inherited.calculationMode||'manual-rate'};
+  return{...explicit,calculationMode:'manual-rate'};
 }
 
 function additionalCostsForYear(tax,year){
@@ -395,12 +418,26 @@ function decorateCore(core){
   return core;
 }
 
+function decorateScenarioCore(scenarioCore){
+  if(!scenarioCore||scenarioCore.__box1OwnHome2026Decorated)return scenarioCore;
+  if(typeof scenarioCore.runScenario!=='function')throw new TypeError('ScenarioCore.runScenario is required.');
+  const originalRunScenario=scenarioCore.runScenario.bind(scenarioCore);
+  scenarioCore.runScenario=function(config={}){
+    const context=normalizeTaxConfig(config.tax||{});
+    return withTaxContext(context,()=>originalRunScenario(config));
+  };
+  Object.defineProperty(scenarioCore,'__box1OwnHome2026Decorated',{value:true,enumerable:false});
+  return scenarioCore;
+}
+
 return{
   BOX1_2026_RULES,
   progressiveBox1Tax2026,
   ownHomeBox1Tax2026,
   allocateExactTax,
   decorateCore,
-  normalizeTaxConfig
+  decorateScenarioCore,
+  normalizeTaxConfig,
+  withTaxContext
 };
 });
