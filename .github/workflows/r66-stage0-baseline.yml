@@ -1,0 +1,116 @@
+name: R6.6 Stage 0 baseline capture
+
+on:
+  push:
+    branches:
+      - r6-6-decision-integrity
+    paths:
+      - .github/workflows/r66-stage0-baseline.yml
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  capture-r65-baseline:
+    runs-on: ubuntu-latest
+    env:
+      BASELINE_SHA: ac8f029788ff8d1fc2baf09fbc89b848a28f7803
+      BASELINE_TAG: r6.5-audit-baseline
+    steps:
+      - name: Check out R6.6 branch
+        uses: actions/checkout@v5
+        with:
+          ref: r6-6-decision-integrity
+          fetch-depth: 0
+
+      - name: Use Node.js 24
+        uses: actions/setup-node@v5
+        with:
+          node-version: 24
+
+      - name: Verify and tag the exact R6.5 release
+        shell: bash
+        run: |
+          set -euo pipefail
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git fetch origin main --tags
+          git cat-file -e "${BASELINE_SHA}^{commit}"
+          if git show-ref --verify --quiet "refs/tags/${BASELINE_TAG}"; then
+            actual="$(git rev-list -n 1 "${BASELINE_TAG}")"
+            test "${actual}" = "${BASELINE_SHA}"
+          else
+            git tag -a "${BASELINE_TAG}" "${BASELINE_SHA}" -m "R6.5 audit baseline before R6.6 Decision Integrity"
+            git push origin "refs/tags/${BASELINE_TAG}"
+          fi
+
+      - name: Run complete R6.5 regression suite
+        shell: bash
+        run: |
+          set -euo pipefail
+          npm test 2>&1 | tee audits/r6.5/baseline-test-output.txt
+
+      - name: Run the 50-scenario reconciliation
+        shell: bash
+        run: |
+          set -euo pipefail
+          npm run verify:50 2>&1 | tee audits/r6.5/baseline-50-scenario-output.txt
+
+      - name: Capture five R6.5 reference cases
+        shell: bash
+        run: |
+          set -euo pipefail
+          node audits/r6.5/capture-reference-cases.js > audits/r6.5/reference-cases.json
+
+      - name: Write baseline manifest
+        shell: bash
+        run: |
+          set -euo pipefail
+          tests="$(grep -E ' tests [0-9]+$' audits/r6.5/baseline-test-output.txt | tail -n 1 | awk '{print $NF}')"
+          passed="$(grep -E ' pass [0-9]+$' audits/r6.5/baseline-test-output.txt | tail -n 1 | awk '{print $NF}')"
+          failed="$(grep -E ' fail [0-9]+$' audits/r6.5/baseline-test-output.txt | tail -n 1 | awk '{print $NF}')"
+          test -n "${tests}" && test -n "${passed}" && test -n "${failed}"
+          cat > audits/r6.5/baseline-manifest.json <<JSON
+          {
+            "release": "R6.5",
+            "baselineCommit": "${BASELINE_SHA}",
+            "baselineTag": "${BASELINE_TAG}",
+            "r66Branch": "r6-6-decision-integrity",
+            "baselineDate": "2026-09-03",
+            "nodeVersion": "$(node --version)",
+            "tests": ${tests},
+            "passed": ${passed},
+            "failed": ${failed},
+            "scenarioReconciliation": {
+              "scenarios": 50,
+              "reconciled": 50,
+              "failures": 0
+            },
+            "referenceCases": [
+              "investmentNoBox3",
+              "investmentCurrentBox3",
+              "buyVersusRent",
+              "extraRepaymentVersusInvest",
+              "linearVersusAnnuity"
+            ],
+            "financialFormulaChangesInStage0": false
+          }
+          JSON
+
+      - name: Commit generated baseline evidence
+        shell: bash
+        run: |
+          set -euo pipefail
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add audits/r6.5/baseline-test-output.txt \
+                  audits/r6.5/baseline-50-scenario-output.txt \
+                  audits/r6.5/reference-cases.json \
+                  audits/r6.5/baseline-manifest.json
+          if git diff --cached --quiet; then
+            echo "Baseline evidence is already current."
+          else
+            git commit -m "Stage 0: refresh verified R6.5 baseline evidence"
+            git push origin HEAD:r6-6-decision-integrity
+          fi

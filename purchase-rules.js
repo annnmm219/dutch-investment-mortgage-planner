@@ -1,22 +1,25 @@
 (function(root,factory){
-  const api=factory();
+  const Policy2026=typeof module==='object'&&module.exports?require('./policy-2026.js'):root.Policy2026;
+  const api=factory(Policy2026);
   if(typeof module==='object'&&module.exports)module.exports=api;
   if(root)root.PurchaseRules=api;
-})(typeof globalThis!=='undefined'?globalThis:this,function(){
+})(typeof globalThis!=='undefined'?globalThis:this,function(Policy2026){
 'use strict';
+if(!Policy2026)throw new Error('Policy2026 is required by PurchaseRules');
+const POLICY=Policy2026.VALUES;
 
 const nonNegative=v=>Math.max(0,Number(v)||0);
 
-const RULES_2026={
-  starterValueLimit:555000,
-  mainResidenceTransferTaxRate:.02,
-  otherResidenceTransferTaxRate:.08,
-  otherRealEstateTransferTaxRate:.104,
-  nhgLimit:470000,
-  nhgEnergyLimit:498200,
-  nhgFeeRate:.004,
-  standardLtvLimit:1
-};
+const RULES_2026=Object.freeze({
+  starterValueLimit:POLICY.transferTax.starterExemptionValueLimit,
+  mainResidenceTransferTaxRate:POLICY.transferTax.mainResidenceRate,
+  otherResidenceTransferTaxRate:POLICY.transferTax.otherResidenceRate,
+  otherRealEstateTransferTaxRate:POLICY.transferTax.otherRealEstateRate,
+  nhgLimit:POLICY.nhg.standardLimit,
+  nhgEnergyLimit:POLICY.nhg.energyLimit,
+  nhgFeeRate:POLICY.nhg.feeRate,
+  standardLtvLimit:POLICY.ltv.standardLimit
+});
 
 function transferTax2026({propertyValue=0,mode='main',manualAmount=0}={}){
   const value=nonNegative(propertyValue);
@@ -30,7 +33,7 @@ function transferTax2026({propertyValue=0,mode='main',manualAmount=0}={}){
       mode,
       propertyValue:value,
       starterEligible:eligible,
-      warning:eligible?'':'Starter exemption cannot apply above €555,000 in 2026; 2% main-residence transfer tax is used instead.'
+      warning:eligible?'':`Starter exemption cannot apply above €${RULES_2026.starterValueLimit.toLocaleString('en-US')} in 2026; ${(RULES_2026.mainResidenceTransferTaxRate*100).toLocaleString('nl-NL')}% main-residence transfer tax is used instead.`
     };
   }
   if(mode==='other-home')return{amount:value*RULES_2026.otherResidenceTransferTaxRate,rate:RULES_2026.otherResidenceTransferTaxRate,mode,propertyValue:value,starterEligible:null};
@@ -54,7 +57,7 @@ function nhg2026({purchasePrice=0,appraisedValue=0,mortgageAmount=0,mode='none'}
   let warning='';
   if(!eligibleByValue)warning=`The lower of purchase price and appraised value exceeds the ${energy?'energy-enhanced ':''}2026 NHG planning limit of €${limit.toLocaleString('nl-NL')}.`;
   else if(!eligibleByLoan)warning=`The mortgage exceeds the ${energy?'energy-enhanced ':''}2026 NHG planning limit of €${limit.toLocaleString('nl-NL')}.`;
-  else if(energy&&loan>RULES_2026.nhgLimit)warning='NHG above €470,000 is only available for qualifying energy-saving measures; the amount above the normal limit must be used for those measures.';
+  else if(energy&&loan>RULES_2026.nhgLimit)warning=`NHG above €${RULES_2026.nhgLimit.toLocaleString('en-US')} is only available for qualifying energy-saving measures; the amount above the normal limit must be used for those measures.`;
 
   return{
     enabled:true,

@@ -1,16 +1,20 @@
 (function(root,factory){
-  const api=factory();
+  const Policy2026=typeof module==='object'&&module.exports?require('./policy-2026.js'):root.Policy2026;
+  const api=factory(Policy2026);
   if(typeof module==='object'&&module.exports)module.exports=api;
   if(root){
     root.LogicIntegrityUI=api;
     root.MODEL_META=api.MODEL_META;
   }
-})(typeof globalThis!=='undefined'?globalThis:this,function(){
+})(typeof globalThis!=='undefined'?globalThis:this,function(Policy2026){
 'use strict';
+if(!Policy2026)throw new Error('Policy2026 is required by LogicIntegrityUI');
+const POLICY=Policy2026.VALUES;
+const MAX_HRA_YEARS=POLICY.ownHome.maximumQualifyingMortgageMonths/12;
 
 const MODEL_META=Object.freeze({
   version:'R6.5',
-  ruleYear:2026,
+  ruleYear:POLICY.taxYear,
   updated:'2026-09-02',
   stateSchema:4,
   releaseName:'Interface Simplification'
@@ -29,7 +33,7 @@ function optionalNumber(value){
 }
 
 function mortgageTaxContext(){
-  const years=Math.max(0,readNumber('hraRemainingYears',30));
+  const years=Math.max(0,readNumber('hraRemainingYears',MAX_HRA_YEARS));
   const months=Math.max(0,Math.min(11,readNumber('hraRemainingMonths',0)));
   return{
     hraRemainingMonths:Math.round(years*12+months),
@@ -261,7 +265,7 @@ function decorateScenarioCore(SC){
   SC.runScenario=function(config={}){
     const names=scenarioNames(config.mode);
     const purchaseTerm=purchaseTermFromConfig(config);
-    if(purchaseTerm>30&&config.tax?.enabled!==false){
+    if(purchaseTerm>MAX_HRA_YEARS&&config.tax?.enabled!==false){
       return invalidScenario(
         'Mortgage-interest deduction is not modeled for a new purchase mortgage with a contractual term above 30 years. Use 30 years or less, or switch mortgage-interest relief off.',
         names,

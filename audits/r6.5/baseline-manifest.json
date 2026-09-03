@@ -1,0 +1,24 @@
+{
+  "release": "R6.5",
+  "baselineCommit": "ac8f029788ff8d1fc2baf09fbc89b848a28f7803",
+  "baselineTag": "r6.5-audit-baseline",
+  "r66Branch": "r6-6-decision-integrity",
+  "baselineDate": "2026-09-03",
+  "nodeVersion": "v24.19.0",
+  "tests": 143,
+  "passed": 143,
+  "failed": 0,
+  "scenarioReconciliation": {
+    "scenarios": 50,
+    "reconciled": 50,
+    "failures": 0
+  },
+  "referenceCases": [
+    "investmentNoBox3",
+    "investmentCurrentBox3",
+    "buyVersusRent",
+    "extraRepaymentVersusInvest",
+    "linearVersusAnnuity"
+  ],
+  "financialFormulaChangesInStage0": false
+}

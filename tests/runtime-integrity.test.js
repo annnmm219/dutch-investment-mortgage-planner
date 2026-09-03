@@ -8,7 +8,7 @@ const path=require('node:path');
 const ROOT=path.resolve(__dirname,'..');
 const read=file=>fs.readFileSync(path.join(ROOT,file),'utf8');
 
-const EXPECTED_LOCAL_SCRIPTS=['finance-core.js','logic-integrity-ui.js','box3-household.js','purchase-rules.js','app.js','purchase-costs.js','scenario-engine.js','next-euro.js','app-state.js','view-density.js','view-density-state.js','output-integrity.js'];
+const EXPECTED_LOCAL_SCRIPTS=['model-contract.js','policy-2026.js','finance-core.js','logic-integrity-ui.js','box3-household.js','policy-ui.js','purchase-rules.js','app.js','purchase-costs.js','scenario-engine.js','next-euro.js','app-state.js','view-density.js','view-density-state.js','output-integrity.js'];
 
 test('index.html declares the complete browser module order explicitly',()=>{
   const html=read('index.html');
@@ -35,11 +35,17 @@ test('runtime modules do not inject dependency scripts or poll for them',()=>{
 });
 
 test('browser modules fail fast when required dependencies are missing',()=>{
-  const purchase=read('purchase-costs.js'),household=read('box3-household.js'),next=read('next-euro.js'),gate=read('logic-integrity-ui.js');
+  const purchase=read('purchase-costs.js'),household=read('box3-household.js'),next=read('next-euro.js'),gate=read('logic-integrity-ui.js'),core=read('finance-core.js'),rules=read('purchase-rules.js'),policyUi=read('policy-ui.js');
   assert.match(purchase,/PurchaseRules must load before purchase-costs\.js/);
+  assert.match(household,/Policy2026 is required by Box3Household/);
   assert.match(household,/FinanceCore must load before box3-household\.js/);
   assert.match(next,/ScenarioCore is required by NextEuro/);
+  assert.match(gate,/Policy2026 is required by LogicIntegrityUI/);
   assert.match(gate,/FinanceCore must load before logic-integrity-ui\.js/);
+  assert.match(core,/Policy2026 is required by FinanceCore/);
+  assert.match(core,/ModelContract is required by FinanceCore/);
+  assert.match(rules,/Policy2026 is required by PurchaseRules/);
+  assert.match(policyUi,/Policy2026 must load before policy-ui\.js/);
 });
 
 test('public page exposes R6.4, mixed-asset Box 3, and conservative static defaults',()=>{

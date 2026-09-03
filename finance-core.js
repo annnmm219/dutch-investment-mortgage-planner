@@ -1,36 +1,43 @@
 (function(root,factory){
-  const api=factory();
+  const Policy2026=typeof module==='object'&&module.exports?require('./policy-2026.js'):root.Policy2026;
+  const ModelContract=typeof module==='object'&&module.exports?require('./model-contract.js'):root.ModelContract;
+  const api=factory(Policy2026,ModelContract);
   if(typeof module==='object'&&module.exports)module.exports=api;
   if(root)root.FinanceCore=api;
-})(typeof globalThis!=='undefined'?globalThis:this,function(){
+})(typeof globalThis!=='undefined'?globalThis:this,function(Policy2026,ModelContract){
 'use strict';
+if(!Policy2026)throw new Error('Policy2026 is required by FinanceCore');
+if(!ModelContract)throw new Error('ModelContract is required by FinanceCore');
+const POLICY=Policy2026.VALUES;
 
 const clamp=(v,a,b)=>Math.min(b,Math.max(a,v));
 const nonNegative=v=>Math.max(0,Number(v)||0);
 const number=v=>Number.isFinite(Number(v))?Number(v):0;
 
-function deductionRate2026({mode='auto',manualRatePct=37.56,grossIncome=0}={}){
+function deductionRate2026({mode='auto',manualRatePct=POLICY.box1.ownHomeDeductionMaxRate*100,grossIncome=0}={}){
   if(mode==='manual')return clamp(Number(manualRatePct)||0,0,60)/100;
-  return (Number(grossIncome)||0)<=38883?0.3575:0.3756;
+  const income=Number(grossIncome)||0;
+  return income<=POLICY.box1.preAowBrackets[0].upper
+    ?POLICY.box1.preAowBrackets[0].rate
+    :POLICY.box1.ownHomeDeductionMaxRate;
 }
 
 function ewf2026(woz){
   const value=nonNegative(woz);
-  if(value<=12500)return 0;
-  if(value<=25000)return value*.001;
-  if(value<=50000)return value*.002;
-  if(value<=75000)return value*.0025;
-  if(value<=1350000)return value*.0035;
-  return 4725+(value-1350000)*.0235;
+  for(const band of POLICY.eigenwoningforfait.rateBands){
+    if(value<=band.upper)return value*band.rate;
+  }
+  return POLICY.eigenwoningforfait.highValueBase
+    +(value-POLICY.eigenwoningforfait.highValueThreshold)*POLICY.eigenwoningforfait.highValueExcessRate;
 }
 
-function hillenReliefForYear(year=2026,override){
+function hillenReliefForYear(year=POLICY.taxYear,override){
   if(Number.isFinite(Number(override)))return clamp(Number(override),0,1);
-  const y=Math.round(Number(year)||2026);
-  if(y<=2018)return 1;
-  if(y<=2025)return clamp(1-(y-2018)/30,0,1);
-  if(y>=2041)return 0;
-  return clamp(.71867-(y-2026)*.048,0,1);
+  const y=Math.round(Number(year)||POLICY.taxYear);
+  if(y<POLICY.hillen.phaseOutStartYear)return 1;
+  if(y<=2025)return clamp(1-(y-2018)/POLICY.hillen.legacyPhaseOutYears,0,1);
+  if(y>=POLICY.hillen.zeroFromYear)return 0;
+  return clamp(POLICY.hillen.relief2026-(y-POLICY.taxYear)*POLICY.hillen.planningAnnualReductionAfter2026,0,1);
 }
 
 function mortgageTaxBenefit({interest=0,months=1,ownershipMonths,deductionRate=0,wozValue=0,enabled=true,hillenRelief,year=2026}={}){
@@ -121,7 +128,7 @@ function regimeForYear({mode='none',year,futureStart=2028}={}){
 
 function box3TaxForYear({
   regime='none',jan1Portfolio=0,jan1Savings=0,jan1Debt=0,marketGain=0,savingsIncome=0,debtInterest=0,lossCarry=0,allowActualRebuttal=true,
-  taxPartners=1,currentTaxRate=.36,currentAllowance=59357,currentNotional=.06,currentSavingsNotional=.0128,currentDebtNotional=.027,currentDebtThreshold=3800,
+  taxPartners=1,currentTaxRate=POLICY.box3.taxRate,currentAllowance=POLICY.box3.allowancePerPerson,currentNotional=POLICY.box3.investmentDeemedRate,currentSavingsNotional=POLICY.box3.savingsDeemedRate,currentDebtNotional=POLICY.box3.debtDeemedRate,currentDebtThreshold=POLICY.box3.debtThresholdPerPerson,
   futureTaxRate=.36,futureExempt=1800,futureLossThreshold=500
 }={}){
   let tax=0;
@@ -198,7 +205,7 @@ function mortgageSchedule({balance=0,annualRatePct=0,termYears=30,type='annuity'
   const linearPrincipal=initialBalance/termMonths;
   const annuityPayment=monthlyRate===0?initialBalance/termMonths:initialBalance*monthlyRate/(1-Math.pow(1+monthlyRate,-termMonths));
   const taxEnabled=tax.enabled!==false,deductionRate=clamp(Number(tax.deductionRate)||0,0,1),wozValue=nonNegative(tax.wozValue);
-  const hraRemainingMonths=tax.hraRemainingMonths==null?Math.min(termMonths,360):Math.max(0,Math.round(Number(tax.hraRemainingMonths)||0));
+  const hraRemainingMonths=tax.hraRemainingMonths==null?Math.min(termMonths,POLICY.ownHome.maximumQualifyingMortgageMonths):Math.max(0,Math.round(Number(tax.hraRemainingMonths)||0));
   const qualifyingInterestFraction=clamp(Number(tax.qualifyingInterestFraction??1)||0,0,1);
   const homeOwnershipMonths=tax.homeOwnershipMonths==null?horizonMonths:Math.max(0,Math.round(Number(tax.homeOwnershipMonths)||0));
   let outstanding=initialBalance,totalInterest=0,totalScheduledPrincipal=0,totalExtra=0,totalRequestedExtra=0,totalUnusedExtra=0,payoffMonthIndex=null;
@@ -237,7 +244,7 @@ function provisionalBox3({regime,jan1Portfolio,jan1Savings,jan1Debt,marketGain,s
 
 function simulateInvestmentFlows({
   initialPortfolio=0,flows=[],annualReturnPct=0,startYear=2026,startMonth=1,box3Mode='none',taxPartners=1,paySource='portfolio',
-  currentTaxRate=.36,currentAllowance=59357,currentNotional=.06,currentSavingsNotional=.0128,currentDebtNotional=.027,currentDebtThreshold=3800,
+  currentTaxRate=POLICY.box3.taxRate,currentAllowance=POLICY.box3.allowancePerPerson,currentNotional=POLICY.box3.investmentDeemedRate,currentSavingsNotional=POLICY.box3.savingsDeemedRate,currentDebtNotional=POLICY.box3.debtDeemedRate,currentDebtThreshold=POLICY.box3.debtThresholdPerPerson,
   firstJan1Portfolio=0,box3Savings=0,box3Debt=0,firstJan1Savings=null,firstJan1Debt=null,savingsReturnPct=0,debtInterestPct=0,
   savingsFlows=[],box3DebtMonthlyRepayment=0,debtRepayments=[],debtRepaymentSource='external',box3DebtFallbackDestination='invest',futureStart=2028,futureTaxRate=.36,futureExempt=1800,futureLossThreshold=500
 }={}){
@@ -343,7 +350,7 @@ function simulatePlan(config={}){
   const annuityPayment=monthlyMortRate===0?initialMort/mortTermMonths:initialMort*monthlyMortRate/(1-Math.pow(1+monthlyMortRate,-mortTermMonths));
   const totalMonths=phases.reduce((sum,p)=>sum+Math.max(0,Math.round((Number(p.years)||0)*12)),0);
   const monthlySavingsRate=(Number(config.savingsReturnPct)||0)/100/12,monthlyDebtRate=(Number(config.debtInterestPct)||0)/100/12;
-  const hraRemainingMonths=config.hraRemainingMonths==null?Math.min(mortTermMonths,360):Math.max(0,Math.round(Number(config.hraRemainingMonths)||0));
+  const hraRemainingMonths=config.hraRemainingMonths==null?Math.min(mortTermMonths,POLICY.ownHome.maximumQualifyingMortgageMonths):Math.max(0,Math.round(Number(config.hraRemainingMonths)||0));
   const qualifyingInterestFraction=clamp(Number(config.qualifyingInterestFraction??1)||0,0,1);
   const homeOwnershipMonths=config.homeOwnershipMonths==null?totalMonths:Math.max(0,Math.round(Number(config.homeOwnershipMonths)||0));
   const unusedMortgageDestination=['invest','savings','consume'].includes(config.unusedMortgageDestination)?config.unusedMortgageDestination:'invest';

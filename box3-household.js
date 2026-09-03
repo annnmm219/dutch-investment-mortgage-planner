@@ -1,21 +1,26 @@
 (function(root,factory){
-  const api=factory();
+  const Policy2026=typeof module==='object'&&module.exports?require('./policy-2026.js'):root.Policy2026;
+  const api=factory(Policy2026);
   if(typeof module==='object'&&module.exports)module.exports=api;
   if(root)root.Box3Household=api;
-})(typeof globalThis!=='undefined'?globalThis:this,function(){
+})(typeof globalThis!=='undefined'?globalThis:this,function(Policy2026){
 'use strict';
+if(!Policy2026)throw new Error('Policy2026 is required by Box3Household');
+const POLICY=Policy2026.VALUES;
 
 const DEFAULTS={
   savings:0,
   debt:0,
+  // Legacy illustrative actual household rates. These are not statutory
+  // deemed percentages and will be separated in R6.6 Stage 5.
   savingsReturnPct:1.28,
   debtInterestPct:2.70,
   debtMonthlyRepayment:0,
   debtRepaymentSource:'external',
   debtFallbackDestination:'invest',
-  currentSavingsNotional:.0128,
-  currentDebtNotional:.027,
-  currentDebtThreshold:3800,
+  currentSavingsNotional:POLICY.box3.savingsDeemedRate,
+  currentDebtNotional:POLICY.box3.debtDeemedRate,
+  currentDebtThreshold:POLICY.box3.debtThresholdPerPerson,
   firstJan1Savings:null,
   firstJan1Debt:null
 };
@@ -167,9 +172,9 @@ function injectBrowserUI(){
     const advanced=document.createElement('div');
     advanced.className='grid3 advanced-grid';
     advanced.innerHTML=`
-      <div class="field"><label for="currentSavingsNotional">Deemed return on bank deposits %</label><input id="currentSavingsNotional" type="number" min="0" max="30" step="0.01" value="1.28"><p class="inline">2026 provisional bank-deposit percentage.</p></div>
-      <div class="field"><label for="currentDebtNotional">Deemed return on Box 3 debt %</label><input id="currentDebtNotional" type="number" min="0" max="30" step="0.01" value="2.70"><p class="inline">2026 provisional debt percentage.</p></div>
-      <div class="field"><label for="currentDebtThreshold">Debt threshold / person</label><input id="currentDebtThreshold" type="number" min="0" step="100" value="3800"><p class="inline">€3,800 per person in 2026; €7,600 for two fiscal partners.</p></div>
+      <div class="field"><label for="currentSavingsNotional">Deemed return on bank deposits %</label><input id="currentSavingsNotional" type="number" min="0" max="30" step="0.01" value="${(POLICY.box3.savingsDeemedRate*100).toFixed(2)}"><p class="inline">2026 provisional bank-deposit percentage.</p></div>
+      <div class="field"><label for="currentDebtNotional">Deemed return on Box 3 debt %</label><input id="currentDebtNotional" type="number" min="0" max="30" step="0.01" value="${(POLICY.box3.debtDeemedRate*100).toFixed(2)}"><p class="inline">2026 provisional debt percentage.</p></div>
+      <div class="field"><label for="currentDebtThreshold">Debt threshold / person</label><input id="currentDebtThreshold" type="number" min="0" step="100" value="${POLICY.box3.debtThresholdPerPerson}"><p class="inline">€${POLICY.box3.debtThresholdPerPerson.toLocaleString('en-US')} per person in 2026; €${(POLICY.box3.debtThresholdPerPerson*2).toLocaleString('en-US')} for two fiscal partners.</p></div>
       <div class="field"><label for="firstJan1Savings">Jan 1 savings · first plan year</label><input id="firstJan1Savings" type="number" min="0" step="100" placeholder="Required for a mid-year Box 3 plan"><p class="inline">Historical 1 January value. Enter 0 explicitly if none.</p></div>
       <div class="field"><label for="firstJan1Debt">Jan 1 Box 3 debt · first plan year</label><input id="firstJan1Debt" type="number" min="0" step="100" placeholder="Required for a mid-year Box 3 plan"><p class="inline">Historical 1 January value. Enter 0 explicitly if none.</p></div>`;
     currentGrid.insertAdjacentElement('afterend',advanced);
