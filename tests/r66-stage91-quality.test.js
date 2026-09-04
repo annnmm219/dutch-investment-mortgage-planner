@@ -32,3 +32,11 @@ test('stable main mortgage method accepts only supported methods',()=>{
   assert.equal(Q.normalizeMortgageType(''),null);
   assert.equal(Q.normalizeMortgageType('interest-only'),null);
 });
+
+test('imported non-purchase Scenario uses persisted main mortgage method as authority',()=>{
+  assert.equal(Q.authoritativeImportedMortgageType('imported','mortgage-invest','linear','annuity'),'linear');
+  assert.equal(Q.authoritativeImportedMortgageType('imported','linear-annuity','annuity','linear'),'annuity');
+  assert.equal(Q.authoritativeImportedMortgageType('fresh','mortgage-invest','linear','annuity'),'annuity');
+  assert.equal(Q.authoritativeImportedMortgageType('imported','buy-rent','linear','annuity'),'annuity');
+  assert.equal(Q.authoritativeImportedMortgageType('imported','downpayment','linear','annuity'),'annuity');
+});
