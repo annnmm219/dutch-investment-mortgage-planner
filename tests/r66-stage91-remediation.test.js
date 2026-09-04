@@ -61,7 +61,7 @@ test('non-main residence property and mortgage debt are represented in Box 3 tax
   assert.equal(property.nonMainPropertyBox3,true);
   assert.equal(property.yearBuckets[2026].box3OtherPropertyValue,300000);
   assert.equal(property.yearBuckets[2026].box3PropertyDebt,200000);
-  assert.ok(property.yearBuckets[2026].box3OtherPropertyGain>0);
+  assert.ok(property.yearBuckets[2026].propertyGain>0);
   assert.ok(property.totalTax>noProperty.totalTax);
 });
 
