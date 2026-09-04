@@ -16,7 +16,7 @@ const settle=()=>page.evaluate(()=>new Promise(resolve=>requestAnimationFrame(()
 try{
   const url=`http://127.0.0.1:${server.address().port}/`;
   await page.goto(url,{waitUntil:'domcontentloaded'});await page.evaluate(()=>localStorage.clear());await page.reload({waitUntil:'domcontentloaded'});await page.waitForFunction(()=>window.Stage91Quality&&document.getElementById('scenarioSourceImported'));
-  await page.locator('#linearCompare').click();await settle();
+  await page.locator('.tab[data-tab="mortgage"]').click();await page.locator('#linearCompare').click();await settle();
   assert.equal(await page.locator('#linearCompare').getAttribute('aria-pressed'),'true','Linear Mortgage card did not become active');
   await page.locator('.tab[data-tab="scenarios"]').click();await page.locator('#scenarioSourceImported').check();await settle();
   assert.equal(await page.locator('#scenarioMortgageMethodFresh').inputValue(),'linear','Initial Scenario import did not copy Linear');
