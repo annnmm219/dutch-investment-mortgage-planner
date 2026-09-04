@@ -7,6 +7,7 @@
 
 const VERSION='R6.6-stage9.1-quality';
 const MORTGAGE_TYPE_KEY='dimp.stage91.main-mortgage-type.v1';
+const PLANNER_STATE_KEY='dutch-investment-mortgage-planner:r6';
 
 function spreadsheetSafe(value){
   if(value===null||value===undefined)return'';
@@ -20,6 +21,17 @@ function csvEscape(value){
 }
 function rowsToCsv(rows=[]){return rows.map(row=>Array.from(row||[],csvEscape).join(',')).join('\r\n');}
 function normalizeMortgageType(value){return value==='linear'?'linear':value==='annuity'?'annuity':null;}
+function authoritativeImportedMortgageType(sourceMode,mode,persisted,resolvedType){
+  if(sourceMode!=='imported'||mode==='buy-rent'||mode==='downpayment')return normalizeMortgageType(resolvedType);
+  return normalizeMortgageType(persisted)||normalizeMortgageType(resolvedType);
+}
+function readPersistedMortgageType(){
+  if(typeof localStorage==='undefined')return null;
+  try{
+    const stable=normalizeMortgageType(localStorage.getItem(MORTGAGE_TYPE_KEY));if(stable)return stable;
+    const planner=JSON.parse(localStorage.getItem(PLANNER_STATE_KEY)||'null');return normalizeMortgageType(planner?.meta?.mortgageType);
+  }catch(_error){return null;}
+}
 
 function patchOutputIntegrity(){
   const OI=root?.OutputIntegrity;
@@ -33,18 +45,29 @@ function patchOutputIntegrity(){
   Object.defineProperty(OI,'__stage91CsvSafe',{value:true,enumerable:false});
 }
 
+function installScenarioSourceAuthority(){
+  const SC=root?.ScenarioCore;if(!SC||SC.__stage91MortgageSourceAuthority)return;
+  const original=SC.resolveScenarioInputSource.bind(SC);
+  SC.resolveScenarioInputSource=function(args={}){
+    const resolved=original(args),type=authoritativeImportedMortgageType(args.sourceMode,resolved.mode,readPersistedMortgageType(),resolved.mortgageType);
+    if(type&&args.sourceMode==='imported'&&resolved.mode!=='buy-rent'&&resolved.mode!=='downpayment')resolved.mortgageType=type;
+    return resolved;
+  };
+  Object.defineProperty(SC,'__stage91MortgageSourceAuthority',{value:true,enumerable:false});
+}
+
 function installMortgageTypePersistence(){
   if(typeof document==='undefined')return;
   const cards=Array.from(document.querySelectorAll('.compare-card[data-mort-type]'));
   if(!cards.length)return;
   let syncing=false;
   const activeType=()=>normalizeMortgageType(document.querySelector('.compare-card.active[data-mort-type]')?.dataset.mortType);
-  const read=()=>{try{return normalizeMortgageType(localStorage.getItem(MORTGAGE_TYPE_KEY));}catch(_error){return null;}};
+  const read=()=>readPersistedMortgageType();
   const write=type=>{const normalized=normalizeMortgageType(type);if(!normalized)return null;try{localStorage.setItem(MORTGAGE_TYPE_KEY,normalized);}catch(_error){}return normalized;};
   const desired=()=>read()||activeType();
   const restore=()=>{
     const saved=desired();if(!saved)return null;
-    if(!read())write(saved);
+    try{if(!normalizeMortgageType(localStorage.getItem(MORTGAGE_TYPE_KEY)))write(saved);}catch(_error){}
     const active=activeType();if(active===saved)return saved;
     const target=document.querySelector(`.compare-card[data-mort-type="${saved}"]`);
     if(target&&!syncing){syncing=true;try{target.click();}finally{syncing=false;}}
@@ -74,6 +97,7 @@ function installMortgageTypePersistence(){
 function bootBrowser(){
   if(typeof document==='undefined')return;
   patchOutputIntegrity();
+  installScenarioSourceAuthority();
   installMortgageTypePersistence();
   const $=id=>document.getElementById(id);
   const style=document.createElement('style');
@@ -123,5 +147,5 @@ function bootBrowser(){
 }
 
 if(typeof document!=='undefined'){if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',bootBrowser,{once:true});else bootBrowser();}else patchOutputIntegrity();
-return{VERSION,MORTGAGE_TYPE_KEY,spreadsheetSafe,csvEscape,rowsToCsv,normalizeMortgageType,patchOutputIntegrity,installMortgageTypePersistence,bootBrowser};
+return{VERSION,MORTGAGE_TYPE_KEY,PLANNER_STATE_KEY,spreadsheetSafe,csvEscape,rowsToCsv,normalizeMortgageType,authoritativeImportedMortgageType,readPersistedMortgageType,patchOutputIntegrity,installScenarioSourceAuthority,installMortgageTypePersistence,bootBrowser};
 });
