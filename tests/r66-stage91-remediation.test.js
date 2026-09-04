@@ -57,11 +57,12 @@ test('non-main residence purchase receives no Box 1 mortgage relief',()=>{
 test('non-main residence property and mortgage debt are represented in Box 3 tax ledger',()=>{
   const args={initialPortfolio:100000,flows:Array(12).fill(0),annualReturnPct:0,startYear:2026,startMonth:1,box3Mode:'current',taxPartners:1,paySource:'savings',currentTaxRate:.36,currentAllowance:59357,currentNotional:.06,currentSavingsNotional:.0128,currentDebtNotional:.027,currentDebtThreshold:3800,firstJan1Portfolio:100000,box3Savings:100000,box3Debt:0,firstJan1Savings:100000,firstJan1Debt:0,savingsReturnPct:0,debtInterestPct:0,box3DebtMonthlyRepayment:0,debtRepaymentSource:'external',box3DebtFallbackDestination:'invest',futureStart:2028,futureTaxRate:.36,futureExempt:1800,futureLossThreshold:500};
   const noProperty=S91.simulateInvestmentFlowsStage91(args,{});
-  const property=S91.simulateInvestmentFlowsStage91(args,{startValue:300000,growthPct:0,startDebt:200000,debtRows:Array(12).fill(0).map(()=>({interest:600,balance:200000}))});
+  const property=S91.simulateInvestmentFlowsStage91(args,{startValue:300000,growthPct:4,startDebt:200000,debtRows:Array(12).fill(0).map(()=>({interest:300,balance:200000}))});
   assert.equal(property.nonMainPropertyBox3,true);
   assert.equal(property.yearBuckets[2026].box3OtherPropertyValue,300000);
   assert.equal(property.yearBuckets[2026].box3PropertyDebt,200000);
-  assert.notEqual(property.totalTax,noProperty.totalTax);
+  assert.ok(property.yearBuckets[2026].box3OtherPropertyGain>0);
+  assert.ok(property.totalTax>noProperty.totalTax);
 });
 
 test('common monthly investing changes scenario wealth under the same decision inputs',()=>{
