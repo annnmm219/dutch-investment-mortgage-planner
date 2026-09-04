@@ -37,15 +37,22 @@ function installMortgageTypePersistence(){
   if(typeof document==='undefined')return;
   const cards=Array.from(document.querySelectorAll('.compare-card[data-mort-type]'));
   if(!cards.length)return;
+  const read=()=>{try{return normalizeMortgageType(localStorage.getItem(MORTGAGE_TYPE_KEY));}catch(_error){return null;}};
   const write=type=>{const normalized=normalizeMortgageType(type);if(!normalized)return;try{localStorage.setItem(MORTGAGE_TYPE_KEY,normalized);}catch(_error){}};
+  const restore=()=>{
+    const saved=read();if(!saved)return null;
+    const active=normalizeMortgageType(document.querySelector('.compare-card.active[data-mort-type]')?.dataset.mortType);
+    if(active===saved)return saved;
+    const target=document.querySelector(`.compare-card[data-mort-type="${saved}"]`);
+    if(target)target.click();
+    return saved;
+  };
   cards.forEach(card=>card.addEventListener('click',()=>write(card.dataset.mortType)));
   document.getElementById('plannerReset')?.addEventListener('click',()=>{try{localStorage.removeItem(MORTGAGE_TYPE_KEY);}catch(_error){}},{capture:true});
-  let saved=null;try{saved=normalizeMortgageType(localStorage.getItem(MORTGAGE_TYPE_KEY));}catch(_error){}
-  if(!saved)return;
-  const active=normalizeMortgageType(document.querySelector('.compare-card.active[data-mort-type]')?.dataset.mortType);
-  if(active===saved)return;
-  const target=document.querySelector(`.compare-card[data-mort-type="${saved}"]`);
-  if(target)requestAnimationFrame(()=>target.click());
+  document.getElementById('scenarioRefreshImport')?.addEventListener('click',restore,{capture:true});
+  document.getElementById('scenarioSourceImported')?.addEventListener('click',restore,{capture:true});
+  document.querySelectorAll('input[name="scenarioDataSource"]').forEach(el=>el.addEventListener('change',event=>{if(event.target?.value==='imported')restore();},{capture:true}));
+  restore();
 }
 
 function bootBrowser(){
