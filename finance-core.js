@@ -1,36 +1,50 @@
 (function(root,factory){
-  const api=factory();
+  const Policy2026=typeof module==='object'&&module.exports?require('./policy-2026.js'):root.Policy2026;
+  const ModelContract=typeof module==='object'&&module.exports?require('./model-contract.js'):root.ModelContract;
+  const api=factory(Policy2026,ModelContract);
   if(typeof module==='object'&&module.exports)module.exports=api;
   if(root)root.FinanceCore=api;
-})(typeof globalThis!=='undefined'?globalThis:this,function(){
+})(typeof globalThis!=='undefined'?globalThis:this,function(Policy2026,ModelContract){
 'use strict';
+if(!Policy2026)throw new Error('Policy2026 is required by FinanceCore');
+if(!ModelContract)throw new Error('ModelContract is required by FinanceCore');
+const POLICY=Policy2026.VALUES;
 
 const clamp=(v,a,b)=>Math.min(b,Math.max(a,v));
 const nonNegative=v=>Math.max(0,Number(v)||0);
 const number=v=>Number.isFinite(Number(v))?Number(v):0;
 
-function deductionRate2026({mode='auto',manualRatePct=37.56,grossIncome=0}={}){
+function effectiveAnnualPctToMonthly(value){
+  return ModelContract.effectiveAnnualToMonthly((Number(value)||0)/100);
+}
+function nominalAnnualPctToMonthly(value){
+  return ModelContract.nominalAnnualToMonthly((Number(value)||0)/100);
+}
+
+function deductionRate2026({mode='auto',manualRatePct=POLICY.box1.ownHomeDeductionMaxRate*100,grossIncome=0}={}){
   if(mode==='manual')return clamp(Number(manualRatePct)||0,0,60)/100;
-  return (Number(grossIncome)||0)<=38883?0.3575:0.3756;
+  const income=Number(grossIncome)||0;
+  return income<=POLICY.box1.preAowBrackets[0].upper
+    ?POLICY.box1.preAowBrackets[0].rate
+    :POLICY.box1.ownHomeDeductionMaxRate;
 }
 
 function ewf2026(woz){
   const value=nonNegative(woz);
-  if(value<=12500)return 0;
-  if(value<=25000)return value*.001;
-  if(value<=50000)return value*.002;
-  if(value<=75000)return value*.0025;
-  if(value<=1350000)return value*.0035;
-  return 4725+(value-1350000)*.0235;
+  for(const band of POLICY.eigenwoningforfait.rateBands){
+    if(value<=band.upper)return value*band.rate;
+  }
+  return POLICY.eigenwoningforfait.highValueBase
+    +(value-POLICY.eigenwoningforfait.highValueThreshold)*POLICY.eigenwoningforfait.highValueExcessRate;
 }
 
-function hillenReliefForYear(year=2026,override){
+function hillenReliefForYear(year=POLICY.taxYear,override){
   if(Number.isFinite(Number(override)))return clamp(Number(override),0,1);
-  const y=Math.round(Number(year)||2026);
-  if(y<=2018)return 1;
-  if(y<=2025)return clamp(1-(y-2018)/30,0,1);
-  if(y>=2041)return 0;
-  return clamp(.71867-(y-2026)*.048,0,1);
+  const y=Math.round(Number(year)||POLICY.taxYear);
+  if(y<POLICY.hillen.phaseOutStartYear)return 1;
+  if(y<=2025)return clamp(1-(y-2018)/POLICY.hillen.legacyPhaseOutYears,0,1);
+  if(y>=POLICY.hillen.zeroFromYear)return 0;
+  return clamp(POLICY.hillen.relief2026-(y-POLICY.taxYear)*POLICY.hillen.planningAnnualReductionAfter2026,0,1);
 }
 
 function mortgageTaxBenefit({interest=0,months=1,ownershipMonths,deductionRate=0,wozValue=0,enabled=true,hillenRelief,year=2026}={}){
@@ -121,7 +135,7 @@ function regimeForYear({mode='none',year,futureStart=2028}={}){
 
 function box3TaxForYear({
   regime='none',jan1Portfolio=0,jan1Savings=0,jan1Debt=0,marketGain=0,savingsIncome=0,debtInterest=0,lossCarry=0,allowActualRebuttal=true,
-  taxPartners=1,currentTaxRate=.36,currentAllowance=59357,currentNotional=.06,currentSavingsNotional=.0128,currentDebtNotional=.027,currentDebtThreshold=3800,
+  taxPartners=1,currentTaxRate=POLICY.box3.taxRate,currentAllowance=POLICY.box3.allowancePerPerson,currentNotional=POLICY.box3.investmentDeemedRate,currentSavingsNotional=POLICY.box3.savingsDeemedRate,currentDebtNotional=POLICY.box3.debtDeemedRate,currentDebtThreshold=POLICY.box3.debtThresholdPerPerson,
   futureTaxRate=.36,futureExempt=1800,futureLossThreshold=500
 }={}){
   let tax=0;
@@ -191,14 +205,14 @@ function payTaxFromSource({tax=0,paySource='portfolio',portfolio=0,savings=0}={}
 
 function mortgageSchedule({balance=0,annualRatePct=0,termYears=30,type='annuity',months,extraMonthly=0,startYear=2026,startMonth=1,tax={}}={}){
   const initialBalance=nonNegative(balance);
-  const annualRate=clamp(Number(annualRatePct)||0,0,100)/100,monthlyRate=annualRate/12;
+  const annualRate=clamp(Number(annualRatePct)||0,0,100)/100,monthlyRate=ModelContract.nominalAnnualToMonthly(annualRate);
   const termMonths=Math.max(1,Math.round(clamp(Number(termYears)||1,1,100)*12));
   const horizonMonths=Math.max(0,Math.round(months==null?termMonths:months));
   const mortgageType=type==='linear'?'linear':'annuity';
   const linearPrincipal=initialBalance/termMonths;
   const annuityPayment=monthlyRate===0?initialBalance/termMonths:initialBalance*monthlyRate/(1-Math.pow(1+monthlyRate,-termMonths));
   const taxEnabled=tax.enabled!==false,deductionRate=clamp(Number(tax.deductionRate)||0,0,1),wozValue=nonNegative(tax.wozValue);
-  const hraRemainingMonths=tax.hraRemainingMonths==null?Math.min(termMonths,360):Math.max(0,Math.round(Number(tax.hraRemainingMonths)||0));
+  const hraRemainingMonths=tax.hraRemainingMonths==null?Math.min(termMonths,POLICY.ownHome.maximumQualifyingMortgageMonths):Math.max(0,Math.round(Number(tax.hraRemainingMonths)||0));
   const qualifyingInterestFraction=clamp(Number(tax.qualifyingInterestFraction??1)||0,0,1);
   const homeOwnershipMonths=tax.homeOwnershipMonths==null?horizonMonths:Math.max(0,Math.round(Number(tax.homeOwnershipMonths)||0));
   let outstanding=initialBalance,totalInterest=0,totalScheduledPrincipal=0,totalExtra=0,totalRequestedExtra=0,totalUnusedExtra=0,payoffMonthIndex=null;
@@ -237,11 +251,13 @@ function provisionalBox3({regime,jan1Portfolio,jan1Savings,jan1Debt,marketGain,s
 
 function simulateInvestmentFlows({
   initialPortfolio=0,flows=[],annualReturnPct=0,startYear=2026,startMonth=1,box3Mode='none',taxPartners=1,paySource='portfolio',
-  currentTaxRate=.36,currentAllowance=59357,currentNotional=.06,currentSavingsNotional=.0128,currentDebtNotional=.027,currentDebtThreshold=3800,
+  currentTaxRate=POLICY.box3.taxRate,currentAllowance=POLICY.box3.allowancePerPerson,currentNotional=POLICY.box3.investmentDeemedRate,currentSavingsNotional=POLICY.box3.savingsDeemedRate,currentDebtNotional=POLICY.box3.debtDeemedRate,currentDebtThreshold=POLICY.box3.debtThresholdPerPerson,
   firstJan1Portfolio=0,box3Savings=0,box3Debt=0,firstJan1Savings=null,firstJan1Debt=null,savingsReturnPct=0,debtInterestPct=0,
   savingsFlows=[],box3DebtMonthlyRepayment=0,debtRepayments=[],debtRepaymentSource='external',box3DebtFallbackDestination='invest',futureStart=2028,futureTaxRate=.36,futureExempt=1800,futureLossThreshold=500
 }={}){
-  const monthlyReturn=(Number(annualReturnPct)||0)/100/12,monthlySavingsRate=(Number(savingsReturnPct)||0)/100/12,monthlyDebtRate=(Number(debtInterestPct)||0)/100/12;
+  const monthlyReturn=effectiveAnnualPctToMonthly(annualReturnPct),
+    monthlySavingsRate=effectiveAnnualPctToMonthly(savingsReturnPct),
+    monthlyDebtRate=nominalAnnualPctToMonthly(debtInterestPct);
   let portfolio=nonNegative(initialPortfolio),savings=nonNegative(box3Savings),debt=nonNegative(box3Debt);
   let totalTax=0,currentTax=0,futureTax=0,unsettledTaxEstimate=0,externalTax=0,taxPaidFromSavings=0,taxPaidFromPortfolio=0,lossCarry=0;
   let externalDebtRepayment=0,totalDebtRepaid=0,totalDebtInterest=0,cashShortfall=0;
@@ -250,15 +266,16 @@ function simulateInvestmentFlows({
   let yearStartPortfolio=portfolio,yearStartSavings=savings,yearStartDebt=debt;
   let marketGain=0,savingsIncome=0,debtInterest=0;
   const yearBuckets={},series=[],monthlyFlows=Array.isArray(flows)?flows:[],monthlySavingsFlows=Array.isArray(savingsFlows)?savingsFlows:[],monthlyDebtRepayments=Array.isArray(debtRepayments)?debtRepayments:[];
+  const externalCashFlows=Array.from({length:monthlyFlows.length},()=>0);
 
   for(let i=0;i<monthlyFlows.length;i++){
     const growth=portfolio*monthlyReturn;portfolio+=growth;marketGain+=growth;portfolio+=nonNegative(monthlyFlows[i]);
     const saveInterest=savings*monthlySavingsRate;savings+=saveInterest;savingsIncome+=saveInterest;
-    const interestOnDebt=debt*monthlyDebtRate;debtInterest+=interestOnDebt;totalDebtInterest+=interestOnDebt;
+    const interestOnDebt=debt*monthlyDebtRate;debtInterest+=interestOnDebt;totalDebtInterest+=interestOnDebt;externalCashFlows[i]+=interestOnDebt;
 
     const savingFlow=number(monthlySavingsFlows[i]);
     if(savingFlow>=0)savings+=savingFlow;
-    else{const requested=-savingFlow,used=Math.min(savings,requested);savings-=used;cashShortfall+=requested-used;}
+    else{const requested=-savingFlow,used=Math.min(savings,requested),shortfall=requested-used;savings-=used;cashShortfall+=shortfall;externalCashFlows[i]+=shortfall;}
 
     const requestedDebtRepay=monthlyDebtRepayments.length?nonNegative(monthlyDebtRepayments[i]):nonNegative(box3DebtMonthlyRepayment);
     plannedBox3DebtRepayment+=requestedDebtRepay;
@@ -266,7 +283,7 @@ function simulateInvestmentFlows({
     const repay=Math.min(debt,availableDebtBudget);
     if(repay>0){
       if(debtRepaymentSource==='savings')savings-=repay;
-      else externalDebtRepayment+=repay;
+      else{externalDebtRepayment+=repay;externalCashFlows[i]+=repay;}
       debt-=repay;totalDebtRepaid+=repay;
     }
     const debtBudgetShortfall=Math.max(0,requestedDebtRepay-availableDebtBudget);
@@ -275,14 +292,14 @@ function simulateInvestmentFlows({
     unusedBox3DebtRepayment+=unusedDebtBudget;
     if(unusedDebtBudget>0){
       if(box3DebtFallbackDestination==='savings'){
-        if(debtRepaymentSource!=='savings'){savings+=unusedDebtBudget;externalBox3DebtFallback+=unusedDebtBudget;}
+        if(debtRepaymentSource!=='savings'){savings+=unusedDebtBudget;externalBox3DebtFallback+=unusedDebtBudget;externalCashFlows[i]+=unusedDebtBudget;}
         box3DebtFallbackSaved+=unusedDebtBudget;
       }else if(box3DebtFallbackDestination==='consume'){
         if(debtRepaymentSource==='savings')savings-=unusedDebtBudget;
         box3DebtFallbackConsumed+=unusedDebtBudget;
       }else{
         if(debtRepaymentSource==='savings')savings-=unusedDebtBudget;
-        else externalBox3DebtFallback+=unusedDebtBudget;
+        else{externalBox3DebtFallback+=unusedDebtBudget;externalCashFlows[i]+=unusedDebtBudget;}
         portfolio+=unusedDebtBudget;box3DebtFallbackInvested+=unusedDebtBudget;
       }
     }
@@ -304,7 +321,7 @@ function simulateInvestmentFlows({
       if(canSettle){
         lossCarry=taxResult.lossCarry;totalTax+=taxResult.tax;if(regime==='current')currentTax+=taxResult.tax;if(regime==='future')futureTax+=taxResult.tax;
         paid=payTaxFromSource({tax:taxResult.tax,paySource,portfolio,savings});
-        portfolio=paid.portfolio;savings=paid.savings;externalTax+=paid.external;taxPaidFromSavings+=paid.fromSavings;taxPaidFromPortfolio+=paid.fromPortfolio;
+        portfolio=paid.portfolio;savings=paid.savings;externalTax+=paid.external;externalCashFlows[i]+=paid.external;taxPaidFromSavings+=paid.fromSavings;taxPaidFromPortfolio+=paid.fromPortfolio;
       }else unsettledTaxEstimate+=taxResult.tax;
       yearBuckets[year]={year,regime,settled:canSettle,jan1Portfolio,jan1Savings,jan1Debt,marketGain,savingsIncome,debtInterest,endPortfolioBeforeTax:beforePortfolio,endSavingsBeforeTax:beforeSavings,endDebt:beforeDebt,
         endBeforeTax:beforePortfolio,box3Tax:canSettle?taxResult.tax:0,unsettledTax:canSettle?0:taxResult.tax,endAfterTax:portfolio,endPortfolio:portfolio,endSavings:savings,method:canSettle?taxResult.method:`unsettled estimate · ${taxResult.method}`,notionalTax:taxResult.notionalTax,actualTax:taxResult.actualTax,
@@ -317,10 +334,11 @@ function simulateInvestmentFlows({
 
   const netFinancialAssets=portfolio+savings-debt;
   const box3DebtCashConservationDifference=plannedBox3DebtRepayment-totalDebtRepaid-box3DebtFallbackInvested-box3DebtFallbackSaved-box3DebtFallbackConsumed-box3DebtRepaymentShortfall;
-  const householdComparableWealth=netFinancialAssets-externalTax-externalDebtRepayment-externalBox3DebtFallback-totalDebtInterest-unsettledTaxEstimate;
+  const externalCashFlowFutureValue=terminalValueOfDatedCashFlows(externalCashFlows,annualReturnPct);
+  const householdComparableWealth=netFinancialAssets-externalCashFlowFutureValue-unsettledTaxEstimate;
   return{portfolio,savings,box3Debt:debt,netFinancialAssets,totalTax,currentTax,futureTax,unsettledTaxEstimate,externalTax,taxPaidFromSavings,taxPaidFromPortfolio,
     comparableWealth:householdComparableWealth,householdComparableWealth,
-    externalDebtRepayment,totalDebtRepaid,totalDebtInterest,cashShortfall,lossCarry,yearBuckets,series,
+    externalDebtRepayment,totalDebtRepaid,totalDebtInterest,cashShortfall,externalCashFlows,externalCashFlowFutureValue,lossCarry,yearBuckets,series,
     plannedBox3DebtRepayment,unusedBox3DebtRepayment,box3DebtFallbackInvested,box3DebtFallbackSaved,box3DebtFallbackConsumed,box3DebtRepaymentShortfall,externalBox3DebtFallback,box3DebtCashConservationDifference,box3DebtFallbackDestination};
 }
 
@@ -333,17 +351,23 @@ function equalizeCashFlows(a=[],b=[]){
   return{a:flowA,b:flowB,budget};
 }
 
+function terminalValueOfDatedCashFlows(flows=[],annualReturnPct=0){
+  const monthlyReturn=effectiveAnnualPctToMonthly(annualReturnPct);
+  const values=Array.isArray(flows)?flows:[];
+  return values.reduce((total,value,index)=>total+number(value)*Math.pow(1+monthlyReturn,Math.max(0,values.length-index-1)),0);
+}
+
 function simulatePlan(config={}){
   const phases=Array.isArray(config.phases)?config.phases:[];
   const startYear=Number(config.startYear)||2026,startMonth=clamp(Number(config.startMonth)||1,1,12),bonusMonth=clamp(Number(config.bonusMonth)||12,1,12);
-  const annualReturnPct=Number(config.annualReturnPct)||0,monthlyReturn=annualReturnPct/100/12;
-  const mortRatePct=clamp(Number(config.mortRatePct)||0,0,100),monthlyMortRate=mortRatePct/100/12;
+  const annualReturnPct=Number(config.annualReturnPct)||0,monthlyReturn=effectiveAnnualPctToMonthly(annualReturnPct);
+  const mortRatePct=clamp(Number(config.mortRatePct)||0,0,100),monthlyMortRate=nominalAnnualPctToMonthly(mortRatePct);
   const mortTermMonths=Math.max(1,Math.round(clamp(Number(config.mortYears)||1,1,100)*12));
   const initialMort=nonNegative(config.mortBalance),mortType=config.mortType==='linear'?'linear':'annuity',linearPrincipal=initialMort/mortTermMonths;
   const annuityPayment=monthlyMortRate===0?initialMort/mortTermMonths:initialMort*monthlyMortRate/(1-Math.pow(1+monthlyMortRate,-mortTermMonths));
   const totalMonths=phases.reduce((sum,p)=>sum+Math.max(0,Math.round((Number(p.years)||0)*12)),0);
-  const monthlySavingsRate=(Number(config.savingsReturnPct)||0)/100/12,monthlyDebtRate=(Number(config.debtInterestPct)||0)/100/12;
-  const hraRemainingMonths=config.hraRemainingMonths==null?Math.min(mortTermMonths,360):Math.max(0,Math.round(Number(config.hraRemainingMonths)||0));
+  const monthlySavingsRate=effectiveAnnualPctToMonthly(config.savingsReturnPct),monthlyDebtRate=nominalAnnualPctToMonthly(config.debtInterestPct);
+  const hraRemainingMonths=config.hraRemainingMonths==null?Math.min(mortTermMonths,POLICY.ownHome.maximumQualifyingMortgageMonths):Math.max(0,Math.round(Number(config.hraRemainingMonths)||0));
   const qualifyingInterestFraction=clamp(Number(config.qualifyingInterestFraction??1)||0,0,1);
   const homeOwnershipMonths=config.homeOwnershipMonths==null?totalMonths:Math.max(0,Math.round(Number(config.homeOwnershipMonths)||0));
   const unusedMortgageDestination=['invest','savings','consume'].includes(config.unusedMortgageDestination)?config.unusedMortgageDestination:'invest';
@@ -353,7 +377,7 @@ function simulatePlan(config={}){
   let grossInterest=0,extraPaid=0,plannedMortgageExtra=0,unusedMortgageCash=0,fallbackInvested=0,fallbackSaved=0,fallbackConsumed=0,scheduledPrincipal=0,box3Tax=0,currentTax=0,futureTax=0,unsettledTaxEstimate=0,lossCarry=0,externalTax=0,taxPaidFromSavings=0,taxPaidFromPortfolio=0;
   let totalDebtInterest=0,totalDebtRepaid=0,externalDebtRepayment=0,payoffDate=null;
   let plannedBox3DebtRepayment=0,unusedBox3DebtRepayment=0,box3DebtFallbackInvested=0,box3DebtFallbackSaved=0,box3DebtFallbackConsumed=0,box3DebtRepaymentShortfall=0,externalBox3DebtFallback=0;
-  const rawSchedule=[],series=[],yearBuckets={};
+  const rawSchedule=[],series=[],yearBuckets={},externalCashFlows=Array.from({length:totalMonths},()=>0);
   let year=startYear,month=startMonth,global=0;
 
   function bucket(y){
@@ -369,7 +393,7 @@ function simulatePlan(config={}){
       if(b.startPortfolio===null){b.startPortfolio=portfolio;b.startSavings=savings;b.startDebt=box3Debt;}
       const growth=portfolio*monthlyReturn;portfolio+=growth;b.marketGain+=growth;
       const saveInterest=savings*monthlySavingsRate;savings+=saveInterest;b.savingsIncome+=saveInterest;
-      const debtInterest=box3Debt*monthlyDebtRate;b.debtInterest+=debtInterest;totalDebtInterest+=debtInterest;
+      const debtInterest=box3Debt*monthlyDebtRate;b.debtInterest+=debtInterest;totalDebtInterest+=debtInterest;externalCashFlows[monthIndex]+=debtInterest;
 
       const debtRepayRequested=nonNegative(config.box3DebtMonthlyRepayment);
       plannedBox3DebtRepayment+=debtRepayRequested;
@@ -377,7 +401,7 @@ function simulatePlan(config={}){
       const debtRepaidThisMonth=Math.min(box3Debt,availableDebtBudget);
       if(debtRepaidThisMonth>0){
         if(config.debtRepaymentSource==='savings')savings-=debtRepaidThisMonth;
-        else externalDebtRepayment+=debtRepaidThisMonth;
+        else{externalDebtRepayment+=debtRepaidThisMonth;externalCashFlows[monthIndex]+=debtRepaidThisMonth;}
         box3Debt-=debtRepaidThisMonth;totalDebtRepaid+=debtRepaidThisMonth;
       }
       const debtBudgetShortfall=Math.max(0,debtRepayRequested-availableDebtBudget);
@@ -386,14 +410,14 @@ function simulatePlan(config={}){
       unusedBox3DebtRepayment+=unusedDebtBudget;
       if(unusedDebtBudget>0){
         if(box3DebtFallbackDestination==='savings'){
-          if(config.debtRepaymentSource!=='savings'){savings+=unusedDebtBudget;externalBox3DebtFallback+=unusedDebtBudget;}
+          if(config.debtRepaymentSource!=='savings'){savings+=unusedDebtBudget;externalBox3DebtFallback+=unusedDebtBudget;externalCashFlows[monthIndex]+=unusedDebtBudget;}
           box3DebtFallbackSaved+=unusedDebtBudget;
         }else if(box3DebtFallbackDestination==='consume'){
           if(config.debtRepaymentSource==='savings')savings-=unusedDebtBudget;
           box3DebtFallbackConsumed+=unusedDebtBudget;
         }else{
           if(config.debtRepaymentSource==='savings')savings-=unusedDebtBudget;
-          else externalBox3DebtFallback+=unusedDebtBudget;
+          else{externalBox3DebtFallback+=unusedDebtBudget;externalCashFlows[monthIndex]+=unusedDebtBudget;}
           portfolio+=unusedDebtBudget;invested+=unusedDebtBudget;b.contrib+=unusedDebtBudget;box3DebtFallbackInvested+=unusedDebtBudget;
         }
       }
@@ -452,7 +476,7 @@ function simulatePlan(config={}){
           lossCarry=taxResult.lossCarry;b.box3Tax=taxResult.tax;box3Tax+=taxResult.tax;
           if(regime==='current')currentTax+=taxResult.tax;if(regime==='future')futureTax+=taxResult.tax;
           const paid=payTaxFromSource({tax:taxResult.tax,paySource:config.box3PaySource,portfolio,savings});
-          portfolio=paid.portfolio;savings=paid.savings;externalTax+=paid.external;taxPaidFromSavings+=paid.fromSavings;taxPaidFromPortfolio+=paid.fromPortfolio;
+          portfolio=paid.portfolio;savings=paid.savings;externalTax+=paid.external;externalCashFlows[monthIndex]+=paid.external;taxPaidFromSavings+=paid.fromSavings;taxPaidFromPortfolio+=paid.fromPortfolio;
           b.taxPaidFromSavings=paid.fromSavings;b.taxPaidFromPortfolio=paid.fromPortfolio;b.externalTax=paid.external;
         }else{b.box3Tax=0;b.unsettledTax=taxResult.tax;unsettledTaxEstimate+=taxResult.tax;}
         b.endAfterTax=portfolio;b.endSavings=savings;b.endDebt=box3Debt;
@@ -466,13 +490,14 @@ function simulatePlan(config={}){
   const schedule=allocation.rows,mortTax=allocation.totalTaxBenefit;
   Object.values(yearBuckets).forEach(b=>{const taxBucket=allocation.annualBuckets[b.year];b.mortInterest=taxBucket?.grossInterest??b.mortInterest;b.deductibleInterest=taxBucket?.deductibleInterest??0;b.mortMonths=taxBucket?.ownershipMonths??0;b.mortTax=taxBucket?.taxBenefit??0;b.hillenRelief=taxBucket?.hillenRelief??0;});
   const netFinancialAssets=portfolio+savings-box3Debt;
+  const externalCashFlowFutureValue=terminalValueOfDatedCashFlows(externalCashFlows,annualReturnPct);
   const cashConservationDifference=plannedMortgageExtra-extraPaid-fallbackInvested-fallbackSaved-fallbackConsumed;
   const box3DebtCashConservationDifference=plannedBox3DebtRepayment-totalDebtRepaid-box3DebtFallbackInvested-box3DebtFallbackSaved-box3DebtFallbackConsumed-box3DebtRepaymentShortfall;
-  return{portfolio,savings,box3Debt,netFinancialAssets,householdComparableWealth:netFinancialAssets-externalTax-externalDebtRepayment-externalBox3DebtFallback-totalDebtInterest-unsettledTaxEstimate,invested,mort,initialMort,grossInterest,mortTax,netInterest:grossInterest-mortTax,extraPaid,plannedMortgageExtra,unusedMortgageCash,fallbackInvested,fallbackSaved,fallbackConsumed,cashConservationDifference,unusedMortgageDestination,scheduledPrincipal,
+  return{portfolio,savings,box3Debt,netFinancialAssets,householdComparableWealth:netFinancialAssets-externalCashFlowFutureValue-unsettledTaxEstimate,invested,mort,initialMort,grossInterest,mortTax,netInterest:grossInterest-mortTax,extraPaid,plannedMortgageExtra,unusedMortgageCash,fallbackInvested,fallbackSaved,fallbackConsumed,cashConservationDifference,unusedMortgageDestination,scheduledPrincipal,
     grossScheduledTotal:grossInterest+scheduledPrincipal,firstScheduled:schedule.length?schedule[0].gross:0,box3Tax,currentTax,futureTax,unsettledTaxEstimate,externalTax,taxPaidFromSavings,taxPaidFromPortfolio,
-    totalDebtInterest,totalDebtRepaid,externalDebtRepayment,lossCarry,payoffDate,schedule,series,yearBuckets,horizonMonths:global,mortType,hraRemainingMonths,qualifyingInterestFraction,homeOwnershipMonths,
+    totalDebtInterest,totalDebtRepaid,externalDebtRepayment,externalCashFlows,externalCashFlowFutureValue,lossCarry,payoffDate,schedule,series,yearBuckets,horizonMonths:global,mortType,hraRemainingMonths,qualifyingInterestFraction,homeOwnershipMonths,
     plannedBox3DebtRepayment,unusedBox3DebtRepayment,box3DebtFallbackInvested,box3DebtFallbackSaved,box3DebtFallbackConsumed,box3DebtRepaymentShortfall,externalBox3DebtFallback,box3DebtCashConservationDifference,box3DebtFallbackDestination};
 }
 
-return{clamp,deductionRate2026,ewf2026,hillenReliefForYear,mortgageTaxBenefit,allocateAnnualMortgageTax,regimeForYear,box3TaxForYear,payTaxFromSource,mortgageSchedule,simulateInvestmentFlows,equalizeCashFlows,simulatePlan};
+return{clamp,effectiveAnnualPctToMonthly,nominalAnnualPctToMonthly,deductionRate2026,ewf2026,hillenReliefForYear,mortgageTaxBenefit,allocateAnnualMortgageTax,regimeForYear,box3TaxForYear,payTaxFromSource,terminalValueOfDatedCashFlows,mortgageSchedule,simulateInvestmentFlows,equalizeCashFlows,simulatePlan};
 });

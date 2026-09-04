@@ -14,7 +14,7 @@ const DEFAULTS=Object.freeze({
   box3Mode:'current',
   box3PaySource:'savings',
   box3Debt:0,
-  box3DebtInterest:2.70,
+  box3DebtInterest:4,
   box3DebtMonthlyRepayment:0,
   box3DebtRepaymentSource:'external',
   box3DebtFallbackDestination:'invest',
@@ -43,7 +43,8 @@ const DEFAULTS=Object.freeze({
   maintenanceAnnual:1500,
   ownerTaxesAnnual:0,
   insuranceAnnual:0,
-  groundLeaseAnnual:0
+  groundLeaseAnnual:0,
+  ownerCostGrowthPct:2
 });
 
 function normalizeView(){return DEFAULT_VIEW;}
@@ -118,7 +119,8 @@ function collectAdvancedState(values={}){
   if(values.scenarioReturnOverrideEnabled)add('scenario','scenario-return','Custom scenario return');
   const customSensitivity=!near(values.sensitivityLow,DEFAULTS.sensitivityLow)||!near(values.sensitivityHigh,DEFAULTS.sensitivityHigh)||!near(values.sensitivityStep,DEFAULTS.sensitivityStep);
   if(customSensitivity)add('scenario','sensitivity','Custom return sensitivity range');
-  const customOwner=!near(values.vveMonthly,DEFAULTS.vveMonthly)||!near(values.maintenanceAnnual,DEFAULTS.maintenanceAnnual)||!near(values.ownerTaxesAnnual,DEFAULTS.ownerTaxesAnnual)||!near(values.insuranceAnnual,DEFAULTS.insuranceAnnual)||!near(values.groundLeaseAnnual,DEFAULTS.groundLeaseAnnual);
+  const ownerCostGrowth=values.ownerCostGrowthPct==null?DEFAULTS.ownerCostGrowthPct:number(values.ownerCostGrowthPct);
+  const customOwner=!near(values.vveMonthly,DEFAULTS.vveMonthly)||!near(values.maintenanceAnnual,DEFAULTS.maintenanceAnnual)||!near(values.ownerTaxesAnnual,DEFAULTS.ownerTaxesAnnual)||!near(values.insuranceAnnual,DEFAULTS.insuranceAnnual)||!near(values.groundLeaseAnnual,DEFAULTS.groundLeaseAnnual)||!near(ownerCostGrowth,DEFAULTS.ownerCostGrowthPct);
   if(customOwner)add('scenario','owner-costs',`Customized owner-cost split: ${money(monthlyOwnerCost(values))}/mo`);
   return items;
 }
@@ -332,7 +334,7 @@ function bootBrowser(){
   }
 
   function ensureScenarioReturn(){
-    if($('scenarioReturnOverrideEnabled'))return;
+    if($('scenarioReturnOverrideEnabled')||$('scenarioSourceCard'))return;
     const input=$('scenarioReturnNew'),wrap=input?.closest('.field'),grid=wrap?.parentElement;
     if(!input||!wrap||!grid)return;
     const global=$('annualReturn');
@@ -350,7 +352,7 @@ function bootBrowser(){
   }
 
   function ensureOwnerLight(){
-    if(document.querySelector('[data-r65-role="owner-total"]'))return;
+    if(document.querySelector('[data-r65-role="owner-total"]')||$('scenarioOwnerTotalNew'))return;
     const advanced=field('scenarioVveNew'),grid=advanced?.parentElement;
     if(!advanced||!grid)return;
     const wrap=document.createElement('div');wrap.className='field r65-owner-total';
@@ -383,6 +385,7 @@ function bootBrowser(){
   }
 
   function ensureScenarioWozFields(){
+    if($('scenarioSourceCard'))return;
     const definitions=[['buy-rent','scenarioBuyWozNew','Scenario WOZ value'],['downpayment','scenarioDpWozNew','Scenario WOZ value'],['sell-rent','scenarioSellWozNew','Current-home WOZ value']];
     definitions.forEach(([mode,id,label])=>{
       if($(id))return;
@@ -398,7 +401,7 @@ function bootBrowser(){
     const card=$('scenarioMonthlyBudgetNew')?.closest('.card');if(!card)return;
     const details=createDetails('r65ScenarioAdvanced','Advanced scenario assumptions');
     const body=bodyOf(details),grid=document.createElement('div');grid.className='r65-advanced-grid';body.appendChild(grid);
-    const ids=['scenarioMortgageMethodNew','scenarioUpfrontCashTreatmentNew','scenarioVveNew','scenarioMaintenanceNew','scenarioOwnerTaxesNew','scenarioInsuranceNew','scenarioGroundLeaseNew'];
+    const ids=['scenarioMortgageMethodNew','scenarioUpfrontCashTreatmentNew'];
     ids.forEach(id=>{const el=field(id);if(el)grid.appendChild(el);});
     document.querySelectorAll('.r65-scenario-woz-field').forEach(el=>grid.appendChild(el));
     card.appendChild(details);
@@ -489,7 +492,7 @@ function bootBrowser(){
   function compactBudgetStatus(){
     const el=$('scenarioBudgetStatusNew');if(!el)return;
     if(el.classList.contains('warn')){el.classList.remove('r65-compact-ok');return;}
-    el.classList.add('r65-compact-ok');el.innerHTML='<span class="r65-status-ok">Within entered monthly budget</span>';
+    el.classList.add('r65-compact-ok');el.innerHTML=$('scenarioMonthlyBudgetNew')?.value?'<span class="r65-status-ok">Starting housing cost is within your comfortable limit</span>':'<span class="r65-status-ok">Optional comfortable housing limit not entered</span>';
   }
 
   function mortgageTermMonths(){const purchase=$('mortgageMode')?.value==='purchase';const years=purchase?number($('purchaseYears')?.value,30):number($('mortYears')?.value,25);return Math.max(0,Math.round(Math.min(years,30)*12));}
@@ -497,10 +500,10 @@ function bootBrowser(){
   function domState(){
     const firstValues=[$('firstJan1Portfolio')?.value,$('firstJan1Savings')?.value,$('firstJan1Debt')?.value];
     return{
-      bonusMonth:number($('bonusMonth')?.value,12),box3Mode:$('box3Mode')?.value||'current',box3PaySource:$('box3PaySource')?.value||'savings',box3Debt:number($('box3Debt')?.value),box3DebtInterest:number($('box3DebtInterest')?.value,2.70),box3DebtMonthlyRepayment:number($('box3DebtMonthlyRepayment')?.value),box3DebtRepaymentSource:$('box3DebtRepaymentSource')?.value||'external',box3DebtFallbackDestination:$('box3DebtFallbackDestination')?.value||'invest',
+      bonusMonth:number($('bonusMonth')?.value,12),box3Mode:$('box3Mode')?.value||'current',box3PaySource:$('box3PaySource')?.value||'savings',box3Debt:number($('box3Debt')?.value),box3DebtInterest:number($('box3DebtInterest')?.value,4),box3DebtMonthlyRepayment:number($('box3DebtMonthlyRepayment')?.value),box3DebtRepaymentSource:$('box3DebtRepaymentSource')?.value||'external',box3DebtFallbackDestination:$('box3DebtFallbackDestination')?.value||'invest',
       currentTaxRate:number($('currentTaxRate')?.value,36),currentAllowance:number($('currentAllowance')?.value,59357),currentNotional:number($('currentNotional')?.value,6),currentSavingsNotional:number($('currentSavingsNotional')?.value,1.28),currentDebtNotional:number($('currentDebtNotional')?.value,2.70),currentDebtThreshold:number($('currentDebtThreshold')?.value,3800),futureStart:number($('futureStart')?.value,2028),futureTaxRate:number($('futureTaxRate')?.value,36),futureExempt:number($('futureExempt')?.value,1800),futureLossThreshold:number($('futureLossThreshold')?.value,500),jan1Assumption:Boolean($('assumePlanStartAsJan1')?.checked),jan1SnapshotEntered:firstValues.some(value=>value!==undefined&&value!==''),
       deductionMode:$('deductionMode')?.value||'auto',hraRemainingMonths:Math.max(0,Math.round(number($('hraRemainingYears')?.value,30)*12+number($('hraRemainingMonths')?.value))),defaultHraMonths:mortgageTermMonths(),qualifyingShare:number($('qualifyingBox1DebtPct')?.value,100),hillenOverrideEnabled:Boolean($('hillenOverrideEnabled')?.checked),hillenOverridePct:number($('hillenOverridePct')?.value,71.867),unusedMortgageDestination:$('unusedMortgageDestination')?.value||'invest',mortgageReportHorizon:$('mortgageReportHorizon')?.value||'investment',transferTaxMode:$('purchaseTransferTaxMode')?.value||'main',appraisedValue:number($('purchaseAppraisedValue')?.value),housePrice:number($('housePrice')?.value),nhgMode:$('purchaseNhgMode')?.value||'none',
-      upfrontCashTreatment:$('scenarioUpfrontCashTreatmentNew')?.value||'invest',scenarioMortgageMethod:$('scenarioMortgageMethodNew')?.value||'selected',scenarioWoz:activeScenarioWoz(),scenarioReturnOverrideEnabled:Boolean($('scenarioReturnOverrideEnabled')?.checked),sensitivityLow:number($('sensitivityLowNew')?.value,2),sensitivityHigh:number($('sensitivityHighNew')?.value,10),sensitivityStep:number($('sensitivityStepNew')?.value,2),vveMonthly:number($('scenarioVveNew')?.value,250),maintenanceAnnual:number($('scenarioMaintenanceNew')?.value,1500),ownerTaxesAnnual:number($('scenarioOwnerTaxesNew')?.value),insuranceAnnual:number($('scenarioInsuranceNew')?.value),groundLeaseAnnual:number($('scenarioGroundLeaseNew')?.value)
+      upfrontCashTreatment:$('scenarioUpfrontCashTreatmentNew')?.value||'invest',scenarioMortgageMethod:$('scenarioMortgageMethodNew')?.value||'selected',scenarioWoz:activeScenarioWoz(),scenarioReturnOverrideEnabled:Boolean($('scenarioReturnOverrideEnabled')?.checked),sensitivityLow:number($('sensitivityLowNew')?.value,2),sensitivityHigh:number($('sensitivityHighNew')?.value,10),sensitivityStep:number($('sensitivityStepNew')?.value,2),vveMonthly:number($('scenarioVveNew')?.value,250),maintenanceAnnual:number($('scenarioMaintenanceNew')?.value,1500),ownerTaxesAnnual:number($('scenarioOwnerTaxesNew')?.value),insuranceAnnual:number($('scenarioInsuranceNew')?.value),groundLeaseAnnual:number($('scenarioGroundLeaseNew')?.value),ownerCostGrowthPct:number($('scenarioOwnerCostGrowthNew')?.value,2)
     };
   }
   function setBadge(details,count){
@@ -522,12 +525,13 @@ function bootBrowser(){
   function assumptionRows(){
     const rows=[],seen=new Set();
     document.querySelectorAll('input,select').forEach(el=>{if(el.type==='hidden'||el.disabled)return;const key=el.id||`${el.dataset?.i||''}:${el.dataset?.field||''}:${el.name||''}`;if(!key||seen.has(key))return;seen.add(key);const value=(el.type==='checkbox'||el.type==='radio')?(el.checked?'Yes':'No'):(el.selectedOptions?.[0]?.textContent||el.value);rows.push({section:el.closest('.panel')?.id?.replace('tab-','')||'Planner',label:labelForControl(el),value});});
-    [['Results','Investment portfolio','sPortfolio'],['Results','Savings / cash at end','householdSavingsEnd'],['Results','Mortgage remaining','sMortgage'],['Results','Scenario verdict','scenarioVerdictNew'],['Results','Next € break-even','nextEuroBreakEven']].forEach(([section,label,id])=>{const el=$(id);if(el)rows.push({section,label,value:String(el.textContent||'').trim().replace(/\s+/g,' ')});});
+    const canonicalRows=window.OutputIntegrity?.canonicalExportRows?.({plan:window.__DIMP_CANONICAL_RESULT,comparison:window.__DIMP_CANONICAL_COMPARISON,nextEuro:window.__DIMP_CANONICAL_NEXT_EURO})||[];
+    canonicalRows.forEach(([section,label,value])=>rows.push({section,label,value}));
     return rows;
   }
-  function renderAssumptionLog(){const log=$('assumptionLog');if(!log)return;const meta=window.MODEL_META||{};const lines=[`Model: ${meta.version||'R6.5'} · rule year ${meta.ruleYear||2026}`,`Generated: ${new Date().toISOString()}`,''];assumptionRows().forEach(row=>lines.push(`[${row.section}] ${row.label}: ${row.value}`));log.textContent=lines.join('\n');}
-  function exportAssumptionCsv(){const meta=window.MODEL_META||{};const rows=[{section:'Model',label:'Version',value:meta.version||'R6.5'},{section:'Model',label:'Rule year',value:meta.ruleYear||2026},{section:'Model',label:'Generated',value:new Date().toISOString()},...assumptionRows()];const blob=new Blob(['\uFEFF'+assumptionsToCsv(rows)],{type:'text/csv;charset=utf-8'});const url=URL.createObjectURL(blob),link=document.createElement('a');link.href=url;link.download=`dutch-investment-mortgage-plan-${meta.version||'R6.5'}-${new Date().toISOString().slice(0,10)}.csv`;document.body.appendChild(link);link.click();link.remove();URL.revokeObjectURL(url);}
-  function setModelMarker(){const meta=window.MODEL_META,marker=$('modelVersion');if(meta&&marker)marker.textContent=`Calculation build ${meta.version} · ${meta.ruleYear} rules · updated 2 Sep 2026`;}
+  function renderAssumptionLog(){const log=$('assumptionLog');if(!log)return;const meta=window.MODEL_META||{};const lines=[`Model: ${meta.version||'R6.6'} · rule year ${meta.ruleYear||2026}`,`Generated: ${new Date().toISOString()}`,''];assumptionRows().forEach(row=>lines.push(`[${row.section}] ${row.label}: ${row.value}`));log.textContent=lines.join('\n');}
+  function exportAssumptionCsv(){const meta=window.MODEL_META||{};const rows=[{section:'Model',label:'Version',value:meta.version||'R6.6'},{section:'Model',label:'Rule year',value:meta.ruleYear||2026},{section:'Model',label:'Generated',value:new Date().toISOString()},...assumptionRows()];const blob=new Blob(['\uFEFF'+assumptionsToCsv(rows)],{type:'text/csv;charset=utf-8'});const url=URL.createObjectURL(blob),link=document.createElement('a');link.href=url;link.download=`dutch-investment-mortgage-plan-${meta.version||'R6.6'}-${new Date().toISOString().slice(0,10)}.csv`;document.body.appendChild(link);link.click();link.remove();URL.revokeObjectURL(url);}
+  function setModelMarker(){const meta=window.MODEL_META,marker=$('modelVersion');if(meta&&marker)marker.textContent=`Calculation build ${meta.version} · ${meta.ruleYear} rules · updated 3 Sep 2026`;}
 
   function refresh(){
     compactSaveBar();syncBox3();syncJan1Gate();syncPurchaseLight();syncHillenControls();syncScenarioReturn();syncOwnerLight();syncScenarioVisibility();compactBudgetStatus();updateBadges();setModelMarker();

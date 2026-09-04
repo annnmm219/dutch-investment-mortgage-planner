@@ -17,9 +17,20 @@ jobs:
         uses: actions/setup-node@v5
         with:
           node-version: 24
-      - name: Install Playwright runtime
-        run: npm install --no-save playwright@1.55.0
+      - name: Install pinned dependencies
+        run: npm ci
       - name: Install Chromium
         run: npx playwright install --with-deps chromium
-      - name: Verify the page remains responsive
-        run: node scripts/browser-responsiveness-smoke.mjs
+      - name: Verify browser contracts
+        shell: bash
+        run: |
+          set -o pipefail
+          npm run test:e2e 2>&1 | tee browser-test.log
+      - name: Retain browser transcript
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: stage91-browser-test-${{ github.sha }}
+          path: browser-test.log
+          if-no-files-found: error
+          retention-days: 14

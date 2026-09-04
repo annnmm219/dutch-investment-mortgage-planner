@@ -1,0 +1,74 @@
+{
+  "stage": "R6.6 Stage 2",
+  "title": "Effective annual rate semantics",
+  "stage1Commit": "b07a8c4e168a5a545084806a04171d7bf18714c0",
+  "publicMainCommit": "ac8f029788ff8d1fc2baf09fbc89b848a28f7803",
+  "branch": "r6-6-decision-integrity",
+  "verifiedAt": "2026-09-03",
+  "nodeVersion": "v24.19.0",
+  "tests": 162,
+  "passed": 162,
+  "failed": 0,
+  "scenarioReconciliation": {
+    "scenarios": 50,
+    "reconciled": 50,
+    "failures": 0
+  },
+  "scenariosWithNumericChanges": 50,
+  "scenarioLeaderChanges": 0,
+  "leaderChanges": [],
+  "canonical": {
+    "investment": {
+      "unit": "EUR",
+      "before": 811649.7475359607,
+      "after": 761225.504266203,
+      "change": -50424.2432697577,
+      "expected": 761225.5042662042
+    },
+    "savings": {
+      "unit": "EUR",
+      "before": 102018.4355681501,
+      "after": 102000,
+      "change": -18.4355681501,
+      "expected": 102000
+    },
+    "homeGrowth": {
+      "unit": "EUR",
+      "before": 182120.8979236675,
+      "after": 181136.1584103386,
+      "change": -984.7395133289,
+      "expected": 181136.1584103355
+    },
+    "rentGrowth": {
+      "unit": "EUR-per-month",
+      "before": 1030.4159569135,
+      "after": 1030,
+      "change": -0.4159569135,
+      "expected": 1030
+    },
+    "nextEuro": {
+      "unit": "percentage-points",
+      "before": 3.9999771118,
+      "after": 4.0741348267,
+      "change": 0.0741577149,
+      "expected": 4.074154292
+    },
+    "mortgageFirstPayment": {
+      "unit": "EUR",
+      "before": 1670.9535341291,
+      "after": 1670.9535341291,
+      "change": 0
+    },
+    "mortgageTotalInterest": {
+      "unit": "EUR",
+      "before": 251543.2722864856,
+      "after": 251543.2722864856,
+      "change": 0
+    }
+  },
+  "mortgageControlUnchanged": true,
+  "chromiumResponsive": true,
+  "financialFormulaChanges": true,
+  "publicMainChanged": false,
+  "stage3Activated": false
+}

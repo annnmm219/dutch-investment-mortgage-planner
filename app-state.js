@@ -6,7 +6,8 @@
 'use strict';
 
 const STORAGE_KEY='dutch-investment-mortgage-planner:r6';
-const SCHEMA_VERSION=1;
+const STATE_KIND='dimp.planner-state.v2';
+const SCHEMA_VERSION=2;
 
 function controlKey(el){
   if(!el)return null;
@@ -29,13 +30,32 @@ function captureControls(controls,meta={}){
     const key=controlKey(el),type=String(el.type||'').toLowerCase();
     values[key]=(type==='checkbox'||type==='radio')?{kind:'checked',value:Boolean(el.checked)}:{kind:'value',value:String(el.value??'')};
   });
-  return{schema:SCHEMA_VERSION,savedAt:new Date().toISOString(),controls:values,meta:{activeTab:typeof meta.activeTab==='string'?meta.activeTab:null,mortgageType:meta.mortgageType==='linear'?'linear':meta.mortgageType==='annuity'?'annuity':null}};
+  return{kind:STATE_KIND,schema:SCHEMA_VERSION,savedAt:new Date().toISOString(),controls:values,meta:{activeTab:['investment','mortgage','scenarios'].includes(meta.activeTab)?meta.activeTab:null,mortgageType:meta.mortgageType==='linear'?'linear':meta.mortgageType==='annuity'?'annuity':null}};
+}
+function validControlKey(key){return/^id:[A-Za-z][A-Za-z0-9_-]*$/.test(key)||/^phase:\d+:[A-Za-z][A-Za-z0-9_-]*$/.test(key)}
+function normalizeControls(raw){
+  const controls={};
+  Object.entries(raw&&typeof raw==='object'?raw:{}).forEach(([key,entry])=>{
+    if(!validControlKey(key)||!entry||typeof entry!=='object')return;
+    if(entry.kind==='checked'&&typeof entry.value==='boolean')controls[key]={kind:'checked',value:entry.value};
+    if(entry.kind==='value'&&(typeof entry.value==='string'||typeof entry.value==='number')&&String(entry.value).length<=500)controls[key]={kind:'value',value:String(entry.value)};
+  });
+  return controls;
+}
+function migrateV1(value){
+  if(value?.schema!==1||!value.controls||typeof value.controls!=='object')return null;
+  const controls=normalizeControls(value.controls);
+  if(!controls['id:grossAnnualIncome']&&controls['id:grossIncome'])controls['id:grossAnnualIncome']={...controls['id:grossIncome']};
+  return{kind:STATE_KIND,schema:SCHEMA_VERSION,savedAt:typeof value.savedAt==='string'?value.savedAt:null,controls,meta:value.meta,migratedFrom:1};
 }
 function normalizePayload(raw){
   let value=raw;
   if(typeof raw==='string'){try{value=JSON.parse(raw)}catch{return null;}}
-  if(!value||typeof value!=='object'||value.schema!==SCHEMA_VERSION||!value.controls||typeof value.controls!=='object')return null;
-  return{schema:SCHEMA_VERSION,savedAt:typeof value.savedAt==='string'?value.savedAt:null,controls:{...value.controls},meta:{activeTab:typeof value.meta?.activeTab==='string'?value.meta.activeTab:null,mortgageType:value.meta?.mortgageType==='linear'?'linear':value.meta?.mortgageType==='annuity'?'annuity':null}};
+  if(!value||typeof value!=='object')return null;
+  if(value.schema===1)value=migrateV1(value);
+  if(!value||value.schema!==SCHEMA_VERSION||value.kind!==STATE_KIND||!value.controls||typeof value.controls!=='object')return null;
+  const activeTab=['investment','mortgage','scenarios'].includes(value.meta?.activeTab)?value.meta.activeTab:null;
+  return{kind:STATE_KIND,schema:SCHEMA_VERSION,savedAt:typeof value.savedAt==='string'?value.savedAt:null,controls:normalizeControls(value.controls),meta:{activeTab,mortgageType:value.meta?.mortgageType==='linear'?'linear':value.meta?.mortgageType==='annuity'?'annuity':null},migratedFrom:value.migratedFrom===1?1:null};
 }
 function applyEntry(el,entry){
   if(!el||!entry||typeof entry!=='object')return false;
@@ -142,7 +162,8 @@ function bootBrowser(){
       phaseKeys.forEach(key=>{const el=byKey(key);if(el&&applyEntry(el,payload.controls[key]))dispatch(el)});
       if(payload.meta.mortgageType)document.querySelector(`.compare-card[data-mort-type="${payload.meta.mortgageType}"]`)?.click();
       if(payload.meta.activeTab)document.querySelector(`.tab[data-tab="${payload.meta.activeTab}"]`)?.click();
-      if(payload.savedAt){const d=new Date(payload.savedAt);setStatus(Number.isNaN(d.getTime())?'Saved locally':`Restored local save · ${d.toLocaleDateString('nl-NL')}`)}else setStatus('Restored local save');
+      if(payload.migratedFrom===1){const migrated={...payload,migratedFrom:undefined};safeSet(JSON.stringify(migrated));setStatus('Restored and upgraded local save');}
+      else if(payload.savedAt){const d=new Date(payload.savedAt);setStatus(Number.isNaN(d.getTime())?'Saved locally':`Restored local save · ${d.toLocaleDateString('nl-NL')}`)}else setStatus('Restored local save');
     }finally{restoring=false;}
   }
 
@@ -250,9 +271,9 @@ function bootBrowser(){
     renderMortgageSchedule(r.selected.rows);renderMortgageCompare(r);
   }
 
-  function reframeNextEuro(){const card=$('nextEuroCard'),engine=$('decisionEngine'),mode=$('comparisonType')?.value;if(!card||!engine)return;const builder=engine.querySelector('.scenario-builder');if(builder&&card.previousElementSibling!==builder)builder.insertAdjacentElement('afterend',card);card.classList.toggle('hidden',mode!=='mortgage-invest');const label=card.querySelector('.section-label'),note=card.querySelector('.section-note');if(label)label.textContent='Extra cash: invest or repay?';if(note)note.textContent='If you have money left each month, this compares putting the same amount into investments versus making an extra mortgage repayment. The break-even return is the annual investment return needed for both choices to end with the same modeled wealth.';[['nextEuroAmount','Extra money available each month'],['nextEuroYears','Compare for, years'],['nextEuroReturn','Expected investment return %']].forEach(([id,text])=>{const l=document.querySelector(`label[for="${id}"]`);if(l)l.textContent=text;});const items=card.querySelectorAll('.summary-item .k');if(items[0])items[0].textContent='Investment return needed to tie';if(items[1])items[1].textContent='Better choice at your return';if(items[2])items[2].textContent='Difference after selected period';}
-  function scenarioAssumptions(){const mode=$('comparisonType')?.value;if(!mode)return;const relevance={'scenarioMortgageMethodNew':['buy-rent','downpayment','mortgage-invest','sell-rent'],'scenarioUpfrontCashTreatmentNew':['buy-rent','downpayment'],'scenarioHomeGrowthNew':['buy-rent','downpayment','sell-rent'],'scenarioRentGrowthNew':['buy-rent','sell-rent'],'scenarioSellingCostNew':['buy-rent','downpayment','sell-rent'],'scenarioVveNew':['buy-rent','downpayment','mortgage-invest','linear-annuity','sell-rent'],'scenarioMaintenanceNew':['buy-rent','downpayment','mortgage-invest','linear-annuity','sell-rent'],'scenarioOwnerTaxesNew':['buy-rent','downpayment','mortgage-invest','linear-annuity','sell-rent'],'scenarioInsuranceNew':['buy-rent','downpayment','mortgage-invest','linear-annuity','sell-rent'],'scenarioGroundLeaseNew':['buy-rent','downpayment','mortgage-invest','linear-annuity','sell-rent']};Object.entries(relevance).forEach(([id,modes])=>$(id)?.closest('.field')?.classList.toggle('hidden',!modes.includes(mode)));const shared=$('scenarioMonthlyBudgetNew')?.closest('.card'),head=shared?.querySelector('.section-head .section-note');if(head)head.textContent='Only assumptions used by the selected comparison are shown. Owner-only costs remain visible where they affect the affordability check.';const builder=document.querySelector('#decisionEngine .scenario-builder .section-note');if(builder)builder.textContent='Choose one decision. Purchase comparisons use the Savings / cash balance in Investment, so spending cash changes later Box 3.';const cashNote=$('scenarioCashSourceNoteNew');if(cashNote)cashNote.innerHTML=cashNote.innerHTML.replace('Investment → Household financial balances','Investment → Savings / cash');}
-  function reframeComparableWealth(){const mode=$('comparisonType')?.value,resultA=$('strategyAResultNew'),resultB=$('strategyBResultNew');if(!resultA||!resultB)return;if(mode==='linear-annuity'||mode==='mortgage-invest'){[resultA,resultB].forEach(card=>{const lab=card.querySelector('.strategy-label-new');if(lab)lab.textContent='Net position excluding the home*';});const resultCard=resultA.closest('.card'),sectionNote=resultCard?.querySelector('.section-head .section-note');if(sectionNote)sectionNote.textContent='For this decision, the home is the same on both sides and is excluded. Net position = investments + savings − Box 3 debt − remaining mortgage.';let expl=$('uxPositionExplanation');if(!expl&&$('scenarioVerdictNew')){expl=document.createElement('div');expl.id='uxPositionExplanation';expl.className='callout ux-position-note';$('scenarioVerdictNew').insertAdjacentElement('afterend',expl);}if(expl){expl.classList.remove('hidden');expl.innerHTML=mode==='linear-annuity'?'<strong>Why can Annuity win even with a larger mortgage balance?</strong><br><span>An annuity mortgage usually has a lower monthly payment early on. The model invests that payment difference. So the comparison is not mortgage balance alone: a larger investment portfolio can outweigh the extra mortgage debt.</span>':'<strong>How this comparison works:</strong><br><span>The same extra monthly amount either reduces mortgage principal or is invested. The winner is based on investments + savings − other debt − remaining mortgage, with the common home value excluded.</span>';}}else{const expl=$('uxPositionExplanation');if(expl)expl.classList.add('hidden');}}
+  function reframeNextEuro(){const card=$('nextEuroCard'),engine=$('decisionEngine'),mode=$('comparisonType')?.value;if(!card||!engine)return;const result=$('scenarioVerdictNew')?.closest('.card');if(result&&card.previousElementSibling!==result)result.insertAdjacentElement('afterend',card);card.classList.toggle('hidden',mode!=='mortgage-invest');const label=card.querySelector('.section-label'),note=card.querySelector('.section-note');if(label)label.textContent='Extra cash: invest or repay?';if(note)note.textContent='If you have money left each month, this compares putting the same amount into investments versus making an extra mortgage repayment. The break-even return is the annual investment return needed for both choices to end with the same modeled wealth.';[['nextEuroAmount','Extra money available each month'],['nextEuroYears','Compare for, years'],['nextEuroReturn','Expected investment return %']].forEach(([id,text])=>{const l=document.querySelector(`label[for="${id}"]`);if(l)l.textContent=text;});const items=card.querySelectorAll('.summary-item .k');if(items[0])items[0].textContent='Investment return needed to tie';if(items[1])items[1].textContent='Higher modeled wealth at your return';if(items[2])items[2].textContent='Difference after selected period';}
+  function scenarioAssumptions(){const mode=$('comparisonType')?.value;if(!mode)return;const relevance={'scenarioMortgageMethodNew':['buy-rent','downpayment','mortgage-invest','sell-rent'],'scenarioUpfrontCashTreatmentNew':['buy-rent','downpayment'],'scenarioHomeGrowthNew':['buy-rent','downpayment','sell-rent'],'scenarioRentGrowthNew':['buy-rent','sell-rent'],'scenarioSellingCostNew':['buy-rent','downpayment','sell-rent'],'scenarioVveNew':['buy-rent','downpayment','mortgage-invest','linear-annuity','sell-rent'],'scenarioMaintenanceNew':['buy-rent','downpayment','mortgage-invest','linear-annuity','sell-rent'],'scenarioOwnerTaxesNew':['buy-rent','downpayment','mortgage-invest','linear-annuity','sell-rent'],'scenarioInsuranceNew':['buy-rent','downpayment','mortgage-invest','linear-annuity','sell-rent'],'scenarioGroundLeaseNew':['buy-rent','downpayment','mortgage-invest','linear-annuity','sell-rent']};Object.entries(relevance).forEach(([id,modes])=>$(id)?.closest('.field')?.classList.toggle('hidden',!modes.includes(mode)));const shared=$('scenarioMonthlyBudgetNew')?.closest('.card'),head=shared?.querySelector('.section-head .section-note');if(head)head.textContent='Only assumptions used by the selected comparison are shown. Owner costs remain visible where they affect cash flows or the optional starting-cost check.';const builder=document.querySelector('#decisionEngine .scenario-builder .section-note');if(builder)builder.textContent='Choose one decision. All personal inputs used in the result are shown inside Scenarios.';}
+  function reframeComparableWealth(){const mode=$('comparisonType')?.value,resultA=$('strategyAResultNew'),resultB=$('strategyBResultNew');if(!resultA||!resultB)return;if(mode==='linear-annuity'||mode==='mortgage-invest'){[resultA,resultB].forEach(card=>{const lab=card.querySelector('.strategy-label-new');if(lab)lab.textContent='Net position excluding the home*';});const resultCard=resultA.closest('.card'),sectionNote=resultCard?.querySelector('.section-head .section-note');if(sectionNote)sectionNote.textContent='For this decision, the home is the same on both sides and is excluded. Net position = investments + savings − Box 3 debt − remaining mortgage.';let expl=$('uxPositionExplanation');if(!expl&&$('scenarioVerdictNew')){expl=document.createElement('div');expl.id='uxPositionExplanation';expl.className='callout ux-position-note';$('scenarioVerdictNew').insertAdjacentElement('afterend',expl);}if(expl){expl.classList.remove('hidden');expl.innerHTML=mode==='linear-annuity'?'<strong>Why can Annuity show higher modeled wealth with a larger mortgage balance?</strong><br><span>An annuity mortgage usually has a lower monthly payment early on. The model invests that payment difference. Under the entered assumptions, a larger investment portfolio can outweigh the extra mortgage debt.</span>':'<strong>How this comparison works:</strong><br><span>The same extra monthly amount either reduces mortgage principal or is invested. Modeled wealth is investments + savings − other debt − remaining mortgage, with the common home value excluded.</span>';}}else{const expl=$('uxPositionExplanation');if(expl)expl.classList.add('hidden');}}
 
   let uxRefreshing=false;
   function refreshUx(){
@@ -293,7 +314,7 @@ function bootBrowser(){
   observeUxTargets();
 }
 
-return{STORAGE_KEY,SCHEMA_VERSION,controlKey,isPersistable,captureControls,normalizePayload,applyEntry,normalizeDecimalString,parseFlexibleNumber,clampFlexibleValue,estimateTaxableIncome2026,monthlyEquivalentExtra,mortgageReportingMonths,bootBrowser};
+return{STORAGE_KEY,STATE_KIND,SCHEMA_VERSION,controlKey,isPersistable,captureControls,validControlKey,normalizeControls,migrateV1,normalizePayload,applyEntry,normalizeDecimalString,parseFlexibleNumber,clampFlexibleValue,estimateTaxableIncome2026,monthlyEquivalentExtra,mortgageReportingMonths,bootBrowser};
 });
 
 if(typeof window!=='undefined'&&window.document)window.PlannerState.bootBrowser();
