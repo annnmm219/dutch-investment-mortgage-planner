@@ -33,6 +33,13 @@ test('stable main mortgage method accepts only supported methods',()=>{
   assert.equal(Q.normalizeMortgageType('interest-only'),null);
 });
 
+test('Scenario manual deduction rate is active only in manual treatment mode',()=>{
+  assert.equal(Q.manualRateActive('manual'),true);
+  assert.equal(Q.manualRateActive('auto'),false);
+  assert.equal(Q.manualRateActive('none'),false);
+  assert.equal(Q.manualRateActive(''),false);
+});
+
 test('imported non-purchase Scenario uses persisted main mortgage method as authority',()=>{
   assert.equal(Q.authoritativeImportedMortgageType('imported','mortgage-invest','linear','annuity'),'linear');
   assert.equal(Q.authoritativeImportedMortgageType('imported','linear-annuity','annuity','linear'),'annuity');
