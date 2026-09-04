@@ -29,6 +29,6 @@ test('rowsToCsv applies the safe escape to every cell',()=>{
 test('stable main mortgage method accepts only supported methods',()=>{
   assert.equal(Q.normalizeMortgageType('linear'),'linear');
   assert.equal(Q.normalizeMortgageType('annuity'),'annuity');
-  assert.equal(Q.normalizeMortgageType(''),'null'.replace('null','')||null);
+  assert.equal(Q.normalizeMortgageType(''),null);
   assert.equal(Q.normalizeMortgageType('interest-only'),null);
 });
