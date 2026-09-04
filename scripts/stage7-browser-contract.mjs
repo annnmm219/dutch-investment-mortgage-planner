@@ -57,8 +57,8 @@ try{
   await page.locator('.tab[data-tab="scenarios"]').click();
   await page.locator('#scenarioSourceFresh').check();
   await page.evaluate(()=>{
-    const values={scenarioStartPortfolioFresh:'50000',scenarioStartSavingsFresh:'100000',scenarioStartDebtFresh:'0',scenarioIncomeFresh:'60000',scenarioWozFresh:'350000',scenarioOwnerTotalNew:'350',scenarioBuyPriceNew:'350000',scenarioBuyCostsNew:'8000',scenarioDownPaymentNew:'35000',scenarioRentNew:'1600',scenarioBuyRateNew:'4',scenarioBuyYearsNew:'30'};
-    for(const [id,value] of Object.entries(values)){const el=document.getElementById(id);el.value=value;el.dispatchEvent(new Event('input',{bubbles:true}));}
+    const values={scenarioStartPortfolioFresh:'50000',scenarioStartSavingsFresh:'100000',scenarioStartDebtFresh:'0',scenarioIncomeFresh:'60000',scenarioWozFresh:'350000',scenarioOwnerTotalNew:'350',scenarioBuyPriceNew:'350000',scenarioBuyCostsNew:'8000',scenarioDownPaymentNew:'35000',scenarioRentNew:'1600',scenarioBuyRateNew:'4',scenarioBuyYearsNew:'30',scenarioCommonMonthlyInvestmentFresh:'0',scenarioDebtFallbackFresh:'invest',scenarioPurchaseQualifyingDebtPctNew:'100',scenarioPurchaseHraYearsNew:'30'};
+    for(const [id,value] of Object.entries(values)){const el=document.getElementById(id);el.value=value;el.dispatchEvent(new Event('input',{bubbles:true}));el.dispatchEvent(new Event('change',{bubbles:true}));}
   });
   await fillAndInput('#scenarioBuyPriceNew','');
   await page.waitForFunction(()=>window.__DIMP_CANONICAL_COMPARISON?.status==='invalid-input');
@@ -82,7 +82,7 @@ try{
   const migration=await page.evaluate(key=>({annualReturn:document.getElementById('annualReturn').value,grossAnnualIncome:document.getElementById('grossAnnualIncome').value,state:JSON.parse(localStorage.getItem(key)),status:document.getElementById('plannerSaveStatus').textContent}),STORAGE_KEY);
   if(migration.annualReturn!=='6'||migration.grossAnnualIncome!=='80000'||migration.state.schema!==2||migration.state.kind!=='dimp.planner-state.v2')throw new Error(`schema 1 migration failed: ${JSON.stringify(migration)}`);
   if(pageErrors.length)throw new Error(`Browser page errors:\n${pageErrors.join('\n\n')}`);
-  console.log(JSON.stringify({stage:7,strictValidation:true,savedStateMigration:true,localBrowserCommand:'npm run test:e2e',pageErrors:0},null,2));
+  console.log(JSON.stringify({stage:7,strictValidation:true,savedStateMigration:true,stage91RequiredScenarioInputs:true,localBrowserCommand:'npm run test:e2e',pageErrors:0},null,2));
   console.log('Stage 7 browser input and saved-state contracts passed.');
 }finally{
   await browser.close();
