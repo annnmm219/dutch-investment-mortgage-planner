@@ -8,7 +8,7 @@ const path=require('node:path');
 const ROOT=path.resolve(__dirname,'..');
 const read=file=>fs.readFileSync(path.join(ROOT,file),'utf8');
 
-const EXPECTED_LOCAL_SCRIPTS=['model-contract.js','policy-2026.js','finance-core.js','box1-2026.js','logic-integrity-ui.js','box3-household.js','policy-ui.js','purchase-rules.js','output-integrity.js','input-integrity.js','app.js','purchase-costs.js','scenario-engine.js','box1-2026-ui.js','next-euro.js','app-state.js','view-density.js','view-density-state.js','stage9-1-remediation.js'];
+const EXPECTED_LOCAL_SCRIPTS=['model-contract.js','policy-2026.js','finance-core.js','box1-2026.js','logic-integrity-ui.js','box3-household.js','policy-ui.js','purchase-rules.js','output-integrity.js','input-integrity.js','app.js','purchase-costs.js','scenario-engine.js','box1-2026-ui.js','next-euro.js','app-state.js','view-density.js','view-density-state.js','stage9-1-remediation.js','stage9-1-quality.js'];
 
 test('index.html declares the complete browser module order explicitly',()=>{
   const html=read('index.html');
@@ -22,7 +22,7 @@ test('every explicitly loaded local browser module exists in the repository',()=
 });
 
 test('runtime modules do not inject dependency scripts or poll for them',()=>{
-  const purchase=read('purchase-costs.js'),household=read('box3-household.js'),state=read('app-state.js'),density=read('view-density.js'),late=read('view-density-state.js'),stage91=read('stage9-1-remediation.js');
+  const purchase=read('purchase-costs.js'),household=read('box3-household.js'),state=read('app-state.js'),density=read('view-density.js'),late=read('view-density-state.js'),stage91=read('stage9-1-remediation.js'),quality=read('stage9-1-quality.js');
   assert.doesNotMatch(purchase,/createElement\(['"]script['"]\)/i);
   assert.doesNotMatch(purchase,/\.src\s*=\s*['"](?:purchase-rules|box3-household)\.js['"]/i);
   assert.doesNotMatch(household,/createElement\(['"]script['"]\)/i);
@@ -34,6 +34,8 @@ test('runtime modules do not inject dependency scripts or poll for them',()=>{
   assert.doesNotMatch(late,/createElement\(['"]script['"]\)/i);
   assert.doesNotMatch(stage91,/createElement\(['"]script['"]\)/i);
   assert.doesNotMatch(stage91,/setInterval\s*\(/);
+  assert.doesNotMatch(quality,/createElement\(['"]script['"]\)/i);
+  assert.doesNotMatch(quality,/setInterval\s*\(/);
 });
 
 test('browser modules fail fast when required dependencies are missing',()=>{
@@ -93,13 +95,14 @@ test('R5 loads Next Euro after ScenarioCore and the Box 1 scenario bridge',()=>{
   assert.match(next,/not a risk-adjusted/i);
 });
 
-test('R6 persistence, density restoration and Stage 9.1 remediation load in deterministic order',()=>{
+test('R6 persistence, density restoration and Stage 9.1 layers load in deterministic order',()=>{
   const html=read('index.html'),state=read('app-state.js'),late=read('view-density-state.js');
   assert.ok(html.indexOf('output-integrity.js')<html.indexOf('app.js'));
   assert.ok(html.indexOf('next-euro.js')<html.indexOf('app-state.js'));
   assert.ok(html.indexOf('app-state.js')<html.indexOf('view-density.js'));
   assert.ok(html.indexOf('view-density.js')<html.indexOf('view-density-state.js'));
   assert.ok(html.indexOf('view-density-state.js')<html.indexOf('stage9-1-remediation.js'));
+  assert.ok(html.indexOf('stage9-1-remediation.js')<html.indexOf('stage9-1-quality.js'));
   assert.match(state,/Private browser save/);
   assert.match(state,/stored only in this browser/);
   assert.match(state,/Reset examples/);
@@ -114,8 +117,22 @@ test('R6.6 and Stage 9.1 cache-bust every local browser asset',()=>{
   const local=[...html.matchAll(/<script\s+src="((?!https?:\/\/)[^"]+)"/g)].map(m=>m[1]);
   assert.equal(local.length,EXPECTED_LOCAL_SCRIPTS.length);
   local.forEach(src=>{
-    if(src.startsWith('stage9-1-remediation.js'))assert.match(src,/\?v=R6\.6-stage9\.1$/);
+    if(src.startsWith('stage9-1-'))assert.match(src,/\?v=R6\.6-stage9\.1$/);
     else assert.match(src,/\?v=R6\.6-stage9$/);
   });
-  assert.match(html,/styles\.css\?v=R6\.6-stage9/);
+  assert.match(html,/styles\.css\?v=R6\.6-stage9\.1/);
+});
+
+test('third-party browser assets use explicit integrity controls and no remote font dependency',()=>{
+  const html=read('index.html');
+  assert.doesNotMatch(html,/fonts\.googleapis\.com|fonts\.gstatic\.com/i);
+  assert.match(html,/Chart\.js\/4\.4\.1\/chart\.umd\.js"\s+integrity="sha512-[^"]+"\s+crossorigin="anonymous"\s+referrerpolicy="no-referrer"/i);
+});
+
+test('Stage 9.1 quality layer provides accessible chart table and spreadsheet-safe export hooks',()=>{
+  const quality=read('stage9-1-quality.js');
+  assert.match(quality,/spreadsheetSafe/);
+  assert.match(quality,/stage91ChartTable/);
+  assert.match(quality,/aria-describedby/);
+  assert.match(quality,/exportAssumptionsCsv/);
 });
