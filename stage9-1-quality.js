@@ -100,7 +100,7 @@ function installScenarioConditionalControls(){
   const treatment=document.getElementById('scenarioTaxTreatmentFresh'),manual=document.getElementById('scenarioManualDeductionFresh');
   if(!treatment||!manual)return;
   const field=manual.closest('.field');
-  const sync=()=>{const active=manualRateActive(treatment.value);manual.disabled=!active;field?.classList.toggle('hidden',!active);};
+  const sync=()=>{manual.disabled=false;field?.classList.toggle('hidden',!manualRateActive(treatment.value));};
   treatment.addEventListener('input',sync);treatment.addEventListener('change',sync);
   document.querySelectorAll('input[name="scenarioDataSource"]').forEach(el=>el.addEventListener('change',()=>queueMicrotask(sync)));
   document.getElementById('scenarioRefreshImport')?.addEventListener('click',()=>queueMicrotask(sync));
