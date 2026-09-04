@@ -62,6 +62,12 @@ async function prepareControl(page,id){
 async function setControl(page,id,value){
   await prepareControl(page,id);
   const loc=page.locator(`#${id}`),tag=await loc.evaluate(el=>el.tagName.toLowerCase()),type=await loc.getAttribute('type');
+  if(await loc.isDisabled()){
+    const current=(type==='checkbox'||type==='radio')?await loc.isChecked():await loc.inputValue();
+    const equivalent=typeof current==='boolean'?current===Boolean(value):String(current)===String(value)||(String(current).trim()===''&&Number(value)===0)||Number(current)===Number(value);
+    if(equivalent)return;
+    throw new Error(`${id} is disabled with ${JSON.stringify(current)} but dataset requires ${JSON.stringify(value)}`);
+  }
   if(type==='checkbox'||type==='radio'){if(Boolean(value))await loc.check();else await loc.uncheck();}
   else if(tag==='select')await loc.selectOption(String(value));
   else await loc.fill(String(value));
