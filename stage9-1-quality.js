@@ -21,6 +21,7 @@ function csvEscape(value){
 }
 function rowsToCsv(rows=[]){return rows.map(row=>Array.from(row||[],csvEscape).join(',')).join('\r\n');}
 function normalizeMortgageType(value){return value==='linear'?'linear':value==='annuity'?'annuity':null;}
+function manualRateActive(treatment){return treatment==='manual';}
 function authoritativeImportedMortgageType(sourceMode,mode,persisted,resolvedType){
   if(sourceMode!=='imported'||mode==='buy-rent'||mode==='downpayment')return normalizeMortgageType(resolvedType);
   return normalizeMortgageType(persisted)||normalizeMortgageType(resolvedType);
@@ -94,11 +95,24 @@ function installMortgageTypePersistence(){
   restore();queueMicrotask(enforceImported);
 }
 
+function installScenarioConditionalControls(){
+  if(typeof document==='undefined')return;
+  const treatment=document.getElementById('scenarioTaxTreatmentFresh'),manual=document.getElementById('scenarioManualDeductionFresh');
+  if(!treatment||!manual)return;
+  const field=manual.closest('.field');
+  const sync=()=>{const active=manualRateActive(treatment.value);manual.disabled=!active;field?.classList.toggle('hidden',!active);};
+  treatment.addEventListener('input',sync);treatment.addEventListener('change',sync);
+  document.querySelectorAll('input[name="scenarioDataSource"]').forEach(el=>el.addEventListener('change',()=>queueMicrotask(sync)));
+  document.getElementById('scenarioRefreshImport')?.addEventListener('click',()=>queueMicrotask(sync));
+  sync();
+}
+
 function bootBrowser(){
   if(typeof document==='undefined')return;
   patchOutputIntegrity();
   installScenarioSourceAuthority();
   installMortgageTypePersistence();
+  installScenarioConditionalControls();
   const $=id=>document.getElementById(id);
   const style=document.createElement('style');
   style.id='stage91QualityStyle';
@@ -147,5 +161,5 @@ function bootBrowser(){
 }
 
 if(typeof document!=='undefined'){if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',bootBrowser,{once:true});else bootBrowser();}else patchOutputIntegrity();
-return{VERSION,MORTGAGE_TYPE_KEY,PLANNER_STATE_KEY,spreadsheetSafe,csvEscape,rowsToCsv,normalizeMortgageType,authoritativeImportedMortgageType,readPersistedMortgageType,patchOutputIntegrity,installScenarioSourceAuthority,installMortgageTypePersistence,bootBrowser};
+return{VERSION,MORTGAGE_TYPE_KEY,PLANNER_STATE_KEY,spreadsheetSafe,csvEscape,rowsToCsv,normalizeMortgageType,manualRateActive,authoritativeImportedMortgageType,readPersistedMortgageType,patchOutputIntegrity,installScenarioSourceAuthority,installMortgageTypePersistence,installScenarioConditionalControls,bootBrowser};
 });
