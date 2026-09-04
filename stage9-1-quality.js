@@ -37,22 +37,38 @@ function installMortgageTypePersistence(){
   if(typeof document==='undefined')return;
   const cards=Array.from(document.querySelectorAll('.compare-card[data-mort-type]'));
   if(!cards.length)return;
+  let syncing=false;
+  const activeType=()=>normalizeMortgageType(document.querySelector('.compare-card.active[data-mort-type]')?.dataset.mortType);
   const read=()=>{try{return normalizeMortgageType(localStorage.getItem(MORTGAGE_TYPE_KEY));}catch(_error){return null;}};
-  const write=type=>{const normalized=normalizeMortgageType(type);if(!normalized)return;try{localStorage.setItem(MORTGAGE_TYPE_KEY,normalized);}catch(_error){}};
+  const write=type=>{const normalized=normalizeMortgageType(type);if(!normalized)return null;try{localStorage.setItem(MORTGAGE_TYPE_KEY,normalized);}catch(_error){}return normalized;};
+  const desired=()=>read()||activeType();
   const restore=()=>{
-    const saved=read();if(!saved)return null;
-    const active=normalizeMortgageType(document.querySelector('.compare-card.active[data-mort-type]')?.dataset.mortType);
-    if(active===saved)return saved;
+    const saved=desired();if(!saved)return null;
+    if(!read())write(saved);
+    const active=activeType();if(active===saved)return saved;
     const target=document.querySelector(`.compare-card[data-mort-type="${saved}"]`);
-    if(target)target.click();
+    if(target&&!syncing){syncing=true;try{target.click();}finally{syncing=false;}}
     return saved;
   };
-  cards.forEach(card=>card.addEventListener('click',()=>write(card.dataset.mortType)));
+  const imported=()=>document.querySelector('input[name="scenarioDataSource"]:checked')?.value==='imported';
+  const enforceImported=()=>{
+    if(!imported())return null;
+    const type=restore();if(!type)return null;
+    const field=document.getElementById('scenarioMortgageMethodFresh');
+    if(field&&field.value!==type){field.value=type;field.dispatchEvent(new Event('change',{bubbles:true}));}
+    return type;
+  };
+  cards.forEach(card=>card.addEventListener('click',()=>{if(!syncing)write(card.dataset.mortType);}));
   document.getElementById('plannerReset')?.addEventListener('click',()=>{try{localStorage.removeItem(MORTGAGE_TYPE_KEY);}catch(_error){}},{capture:true});
-  document.getElementById('scenarioRefreshImport')?.addEventListener('click',restore,{capture:true});
-  document.getElementById('scenarioSourceImported')?.addEventListener('click',restore,{capture:true});
-  document.querySelectorAll('input[name="scenarioDataSource"]').forEach(el=>el.addEventListener('change',event=>{if(event.target?.value==='imported')restore();},{capture:true}));
-  restore();
+  const refresh=document.getElementById('scenarioRefreshImport'),source=document.getElementById('scenarioSourceImported');
+  refresh?.addEventListener('click',restore,{capture:true});
+  refresh?.addEventListener('click',()=>queueMicrotask(enforceImported));
+  source?.addEventListener('click',restore,{capture:true});
+  source?.addEventListener('change',()=>queueMicrotask(enforceImported));
+  document.querySelectorAll('input[name="scenarioDataSource"]').forEach(el=>el.addEventListener('change',event=>{if(event.target?.value==='imported'){restore();queueMicrotask(enforceImported);}},{capture:true}));
+  const observer=new MutationObserver(()=>{if(!syncing&&read()&&activeType()!==read())queueMicrotask(restore);});
+  cards.forEach(card=>observer.observe(card,{attributes:true,attributeFilter:['class','aria-pressed']}));
+  restore();queueMicrotask(enforceImported);
 }
 
 function bootBrowser(){
