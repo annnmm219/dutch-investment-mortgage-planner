@@ -14,6 +14,7 @@ page.on('pageerror',error=>errors.push(String(error?.stack||error)));
 await page.route(/^https:\/\//,route=>route.abort());page.setDefaultTimeout(15000);
 const settle=()=>page.evaluate(()=>new Promise(resolve=>requestAnimationFrame(()=>requestAnimationFrame(resolve))));
 async function state(label){const x=await page.evaluate(()=>({active:document.querySelector('.compare-card.active[data-mort-type]')?.dataset.mortType||null,linearPressed:document.getElementById('linearCompare')?.getAttribute('aria-pressed'),annuityPressed:document.getElementById('annuityCompare')?.getAttribute('aria-pressed'),stable:localStorage.getItem(window.Stage91Quality?.MORTGAGE_TYPE_KEY||'dimp.stage91.main-mortgage-type.v1'),saved:JSON.parse(localStorage.getItem('dutch-investment-mortgage-planner:r6')||'null')?.meta?.mortgageType||null,source:document.querySelector('input[name="scenarioDataSource"]:checked')?.value||null,mode:document.getElementById('comparisonType')?.value||null,scenario:document.getElementById('scenarioMortgageMethodFresh')?.value||null,config:window.__DIMP_ACTIVE_SCENARIO_CONFIG?.mortgageType||null,valid:window.__DIMP_CANONICAL_COMPARISON?.valid??null,reason:window.__DIMP_CANONICAL_COMPARISON?.reason||null}));console.log(label,JSON.stringify(x));return x;}
+async function activeIds(){return page.evaluate(()=>Array.from(document.querySelectorAll('#tab-scenarios input,#tab-scenarios select')).filter(el=>{if(!el.id||el.name==='scenarioDataSource'||el.disabled||el.closest('.hidden'))return false;const cs=getComputedStyle(el);return cs.display!=='none'&&cs.visibility!=='hidden';}).map(el=>el.id).sort());}
 async function fill(id,value){const el=page.locator(`#${id}`);await el.fill(String(value));await el.dispatchEvent('input');await el.dispatchEvent('change');await settle();}
 try{
   const url=`http://127.0.0.1:${server.address().port}/`;
@@ -42,7 +43,13 @@ try{
   s=await state('after-portfolio-reset');assert.equal(s.active,'linear','Resetting a planner value changed the main Mortgage method');assert.equal(s.stable,'linear','Resetting a planner value overwrote the stable Mortgage method');
   await page.locator('.tab[data-tab="scenarios"]').click();await page.locator('#scenarioRefreshImport').click();await settle();
   s=await state('after-third-refresh');assert.equal(s.scenario,'linear','Second explicit Refresh imported a different mortgage method');if(s.config!==null)assert.equal(s.config,'linear','Second explicit Refresh produced a non-Linear active config');
+
+  const importedIds=await activeIds();await page.locator('#scenarioSourceFresh').check();await settle();const freshIds=await activeIds();
+  const onlyImported=importedIds.filter(id=>!freshIds.includes(id)),onlyFresh=freshIds.filter(id=>!importedIds.includes(id));
+  console.log('active-input-set-diff',JSON.stringify({onlyImported,onlyFresh,importedCount:importedIds.length,freshCount:freshIds.length}));
+  if(onlyImported.length||onlyFresh.length)throw new Error(`Active input set differs by route: ${JSON.stringify({onlyImported,onlyFresh})}`);
+
   if(errors.length)throw new Error(`Browser page errors:\n${errors.join('\n\n')}`);
-  console.log(JSON.stringify({stage:'R6.6 Stage 9.1',mode:'mortgage-invest',mortgageMethod:'linear',initialImport:true,reloadPreserved:true,refreshAfterPlannerEdits:true,scenarioOwnedEditsPreserved:true,pageErrors:0},null,2));
-  console.log('Stage 9.1 mortgage-invest method persistence contract passed.');
+  console.log(JSON.stringify({stage:'R6.6 Stage 9.1',mode:'mortgage-invest',mortgageMethod:'linear',initialImport:true,reloadPreserved:true,refreshAfterPlannerEdits:true,activeInputSetsMatch:true,pageErrors:0},null,2));
+  console.log('Stage 9.1 mortgage-invest method and active-input contract passed.');
 }finally{await browser.close();await new Promise(resolve=>server.close(resolve));}
