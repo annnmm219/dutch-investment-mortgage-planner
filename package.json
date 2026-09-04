@@ -5,10 +5,10 @@
   "description": "Static Dutch investment and mortgage planning tool",
   "scripts": {
     "test": "node --test tests/*.test.js",
-    "test:e2e": "node scripts/browser-responsiveness-smoke.mjs && node scripts/stage7-browser-contract.mjs && node scripts/stage9-browser-contract.mjs && node scripts/stage91-browser-50x50.mjs",
+    "test:e2e": "node scripts/browser-responsiveness-smoke.mjs && node scripts/stage7-browser-contract.mjs && node scripts/stage9-browser-contract.mjs && node scripts/stage91-browser-parity.mjs",
     "verify:50": "node scripts/verify-50-scenarios.js",
     "verify:stage9": "node scripts/verify-stage9-input-routes.js",
-    "verify:stage91-browser": "node scripts/stage91-browser-50x50.mjs"
+    "verify:stage91-browser": "node scripts/stage91-browser-parity.mjs"
   },
   "engines": {
     "node": ">=24"
