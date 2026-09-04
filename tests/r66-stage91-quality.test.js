@@ -25,3 +25,10 @@ test('rowsToCsv applies the safe escape to every cell',()=>{
   const csv=Q.rowsToCsv([['Section','Value'],['User','=1+1'],['Comma','a,b']]);
   assert.equal(csv,"Section,Value\r\nUser,'=1+1\r\nComma,\"a,b\"");
 });
+
+test('stable main mortgage method accepts only supported methods',()=>{
+  assert.equal(Q.normalizeMortgageType('linear'),'linear');
+  assert.equal(Q.normalizeMortgageType('annuity'),'annuity');
+  assert.equal(Q.normalizeMortgageType(''),'null'.replace('null','')||null);
+  assert.equal(Q.normalizeMortgageType('interest-only'),null);
+});
