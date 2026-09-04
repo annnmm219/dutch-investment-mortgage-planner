@@ -6,6 +6,7 @@
 'use strict';
 
 const VERSION='R6.6-stage9.1-quality';
+const MORTGAGE_TYPE_KEY='dimp.stage91.main-mortgage-type.v1';
 
 function spreadsheetSafe(value){
   if(value===null||value===undefined)return'';
@@ -18,6 +19,7 @@ function csvEscape(value){
   return /[",\n\r]/.test(text)?`"${text.replace(/"/g,'""')}"`:text;
 }
 function rowsToCsv(rows=[]){return rows.map(row=>Array.from(row||[],csvEscape).join(',')).join('\r\n');}
+function normalizeMortgageType(value){return value==='linear'?'linear':value==='annuity'?'annuity':null;}
 
 function patchOutputIntegrity(){
   const OI=root?.OutputIntegrity;
@@ -31,9 +33,25 @@ function patchOutputIntegrity(){
   Object.defineProperty(OI,'__stage91CsvSafe',{value:true,enumerable:false});
 }
 
+function installMortgageTypePersistence(){
+  if(typeof document==='undefined')return;
+  const cards=Array.from(document.querySelectorAll('.compare-card[data-mort-type]'));
+  if(!cards.length)return;
+  const write=type=>{const normalized=normalizeMortgageType(type);if(!normalized)return;try{localStorage.setItem(MORTGAGE_TYPE_KEY,normalized);}catch(_error){}};
+  cards.forEach(card=>card.addEventListener('click',()=>write(card.dataset.mortType)));
+  document.getElementById('plannerReset')?.addEventListener('click',()=>{try{localStorage.removeItem(MORTGAGE_TYPE_KEY);}catch(_error){}},{capture:true});
+  let saved=null;try{saved=normalizeMortgageType(localStorage.getItem(MORTGAGE_TYPE_KEY));}catch(_error){}
+  if(!saved)return;
+  const active=normalizeMortgageType(document.querySelector('.compare-card.active[data-mort-type]')?.dataset.mortType);
+  if(active===saved)return;
+  const target=document.querySelector(`.compare-card[data-mort-type="${saved}"]`);
+  if(target)requestAnimationFrame(()=>target.click());
+}
+
 function bootBrowser(){
   if(typeof document==='undefined')return;
   patchOutputIntegrity();
+  installMortgageTypePersistence();
   const $=id=>document.getElementById(id);
   const style=document.createElement('style');
   style.id='stage91QualityStyle';
@@ -82,5 +100,5 @@ function bootBrowser(){
 }
 
 if(typeof document!=='undefined'){if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',bootBrowser,{once:true});else bootBrowser();}else patchOutputIntegrity();
-return{VERSION,spreadsheetSafe,csvEscape,rowsToCsv,patchOutputIntegrity,bootBrowser};
+return{VERSION,MORTGAGE_TYPE_KEY,spreadsheetSafe,csvEscape,rowsToCsv,normalizeMortgageType,patchOutputIntegrity,installMortgageTypePersistence,bootBrowser};
 });
