@@ -13,18 +13,29 @@ const browser=await chromium.launch({headless:true}),page=await browser.newPage(
 page.on('pageerror',error=>errors.push(String(error?.stack||error)));
 await page.route(/^https:\/\//,route=>route.abort());page.setDefaultTimeout(15000);
 const settle=()=>page.evaluate(()=>new Promise(resolve=>requestAnimationFrame(()=>requestAnimationFrame(resolve))));
+async function state(label){const x=await page.evaluate(()=>({active:document.querySelector('.compare-card.active[data-mort-type]')?.dataset.mortType||null,linearPressed:document.getElementById('linearCompare')?.getAttribute('aria-pressed'),annuityPressed:document.getElementById('annuityCompare')?.getAttribute('aria-pressed'),stable:localStorage.getItem(window.Stage91Quality?.MORTGAGE_TYPE_KEY||'dimp.stage91.main-mortgage-type.v1'),saved:JSON.parse(localStorage.getItem('dutch-investment-mortgage-planner:r6')||'null')?.meta?.mortgageType||null,scenario:document.getElementById('scenarioMortgageMethodFresh')?.value||null}));console.log(label,JSON.stringify(x));return x;}
 try{
   const url=`http://127.0.0.1:${server.address().port}/`;
   await page.goto(url,{waitUntil:'domcontentloaded'});await page.evaluate(()=>localStorage.clear());await page.reload({waitUntil:'domcontentloaded'});await page.waitForFunction(()=>window.Stage91Quality&&document.getElementById('scenarioSourceImported'));
   await page.locator('.tab[data-tab="mortgage"]').click();await page.locator('#linearCompare').click();await settle();
-  assert.equal(await page.locator('#linearCompare').getAttribute('aria-pressed'),'true','Linear Mortgage card did not become active');
+  let s=await state('after-select-linear');assert.equal(s.active,'linear','Linear Mortgage card did not become active');
   await page.locator('.tab[data-tab="scenarios"]').click();await page.locator('#scenarioSourceImported').check();await settle();
-  assert.equal(await page.locator('#scenarioMortgageMethodFresh').inputValue(),'linear','Initial Scenario import did not copy Linear');
+  s=await state('after-initial-import');assert.equal(s.scenario,'linear','Initial Scenario import did not copy Linear');
   await page.reload({waitUntil:'domcontentloaded'});await page.waitForFunction(()=>window.Stage91Quality&&window.__DIMP_CANONICAL_COMPARISON);await settle();
-  assert.equal(await page.locator('#linearCompare').getAttribute('aria-pressed'),'true','Main Mortgage method drifted after reload');
+  s=await state('after-reload');assert.equal(s.active,'linear','Main Mortgage method drifted after reload');
   await page.locator('.tab[data-tab="scenarios"]').click();await page.locator('#scenarioRefreshImport').click();await settle();
-  assert.equal(await page.locator('#scenarioMortgageMethodFresh').inputValue(),'linear','Explicit Refresh imported a different mortgage method after reload');
+  s=await state('after-first-refresh');assert.equal(s.scenario,'linear','Explicit Refresh imported a different mortgage method after reload');
+
+  await page.locator('.tab[data-tab="investment"]').click();await page.locator('#startPortfolio').fill('99999');await settle();
+  s=await state('after-portfolio-edit');assert.equal(s.active,'linear','Portfolio edit changed the main Mortgage method');assert.equal(s.stable,'linear','Portfolio edit overwrote the stable Mortgage method');
+  await page.locator('.tab[data-tab="scenarios"]').click();await page.locator('#scenarioRefreshImport').click();await settle();
+  s=await state('after-second-refresh');assert.equal(s.scenario,'linear','Refresh after a planner edit imported a different mortgage method');
+
+  await page.locator('.tab[data-tab="investment"]').click();await page.locator('#startPortfolio').fill('0');await settle();
+  s=await state('after-portfolio-reset');assert.equal(s.active,'linear','Resetting a planner value changed the main Mortgage method');assert.equal(s.stable,'linear','Resetting a planner value overwrote the stable Mortgage method');
+  await page.locator('.tab[data-tab="scenarios"]').click();await page.locator('#scenarioRefreshImport').click();await settle();
+  s=await state('after-third-refresh');assert.equal(s.scenario,'linear','Second explicit Refresh imported a different mortgage method');
   if(errors.length)throw new Error(`Browser page errors:\n${errors.join('\n\n')}`);
-  console.log(JSON.stringify({stage:'R6.6 Stage 9.1',mortgageMethod:'linear',initialImport:true,reloadPreserved:true,refreshPreserved:true,pageErrors:0},null,2));
+  console.log(JSON.stringify({stage:'R6.6 Stage 9.1',mortgageMethod:'linear',initialImport:true,reloadPreserved:true,refreshAfterPlannerEdits:true,pageErrors:0},null,2));
   console.log('Stage 9.1 mortgage-method import persistence contract passed.');
 }finally{await browser.close();await new Promise(resolve=>server.close(resolve));}
