@@ -134,7 +134,7 @@ function bootBrowser(){
   const $=id=>document.getElementById(id);
   const style=document.createElement('style');
   style.id='stage91QualityStyle';
-  style.textContent=`:root{--muted:#66665f}@media(prefers-color-scheme:dark){:root{--muted:#b8b8b1}}.stage91-chart-table{margin-top:12px}.stage91-chart-table table{min-width:620px}.stage91-chart-table tbody td{font-variant-numeric:tabular-nums}.stage91-chart-table .table-wrap{max-height:360px}`;
+  style.textContent=`:root{--muted:#66665f}@media(prefers-color-scheme:dark){:root{--muted:#b8b8b1}}.compare-card[data-mort-type] *{pointer-events:none}.stage91-chart-table{margin-top:12px}.stage91-chart-table table{min-width:620px}.stage91-chart-table tbody td{font-variant-numeric:tabular-nums}.stage91-chart-table .table-wrap{max-height:360px}`;
   document.head.appendChild(style);
 
   function labelFor(el){
