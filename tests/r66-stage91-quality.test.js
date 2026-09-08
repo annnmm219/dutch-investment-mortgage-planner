@@ -40,6 +40,13 @@ test('Scenario manual deduction rate is active only in manual treatment mode',()
   assert.equal(Q.manualRateActive(''),false);
 });
 
+test('mortgage method authority prefers explicit Stage 9.1 state, then live selection, then legacy planner state',()=>{
+  assert.equal(Q.mortgageAuthority('linear','annuity','annuity'),'linear');
+  assert.equal(Q.mortgageAuthority(null,'linear','annuity'),'linear');
+  assert.equal(Q.mortgageAuthority(null,null,'linear'),'linear');
+  assert.equal(Q.mortgageAuthority(null,null,null),null);
+});
+
 test('imported non-purchase Scenario uses persisted main mortgage method as authority',()=>{
   assert.equal(Q.authoritativeImportedMortgageType('imported','mortgage-invest','linear','annuity'),'linear');
   assert.equal(Q.authoritativeImportedMortgageType('imported','linear-annuity','annuity','linear'),'annuity');
