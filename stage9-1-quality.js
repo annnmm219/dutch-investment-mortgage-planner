@@ -69,7 +69,8 @@ function installScenarioSourceAuthority(){
 function installMortgageTypePersistence(){
   if(typeof document==='undefined')return;
   const cards=Array.from(document.querySelectorAll('.compare-card[data-mort-type]'));
-  if(!cards.length)return;
+  document.documentElement.dataset.stage91MortgageCardsAtBoot=String(cards.length);
+  document.documentElement.dataset.stage91MortgagePersistence='delegated';
   let syncing=false;
   const activeType=()=>visibleMortgageType();
   const read=()=>readPersistedMortgageType();
