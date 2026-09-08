@@ -22,17 +22,26 @@ function csvEscape(value){
 function rowsToCsv(rows=[]){return rows.map(row=>Array.from(row||[],csvEscape).join(',')).join('\r\n');}
 function normalizeMortgageType(value){return value==='linear'?'linear':value==='annuity'?'annuity':null;}
 function manualRateActive(treatment){return treatment==='manual';}
+function mortgageAuthority(explicitStage91,visibleSelection,legacyPlanner){
+  return normalizeMortgageType(explicitStage91)||normalizeMortgageType(visibleSelection)||normalizeMortgageType(legacyPlanner);
+}
 function authoritativeImportedMortgageType(sourceMode,mode,persisted,resolvedType){
   if(sourceMode!=='imported'||mode==='buy-rent'||mode==='downpayment')return normalizeMortgageType(resolvedType);
   return normalizeMortgageType(persisted)||normalizeMortgageType(resolvedType);
 }
 function readPersistedMortgageType(){
   if(typeof localStorage==='undefined')return null;
-  try{
-    const stable=normalizeMortgageType(localStorage.getItem(MORTGAGE_TYPE_KEY));if(stable)return stable;
-    const planner=JSON.parse(localStorage.getItem(PLANNER_STATE_KEY)||'null');return normalizeMortgageType(planner?.meta?.mortgageType);
-  }catch(_error){return null;}
+  try{return normalizeMortgageType(localStorage.getItem(MORTGAGE_TYPE_KEY));}catch(_error){return null;}
 }
+function readLegacyPlannerMortgageType(){
+  if(typeof localStorage==='undefined')return null;
+  try{const planner=JSON.parse(localStorage.getItem(PLANNER_STATE_KEY)||'null');return normalizeMortgageType(planner?.meta?.mortgageType);}catch(_error){return null;}
+}
+function visibleMortgageType(){
+  if(typeof document==='undefined')return null;
+  return normalizeMortgageType(document.querySelector('.compare-card.active[data-mort-type]')?.dataset.mortType);
+}
+function readMortgageAuthority(){return mortgageAuthority(readPersistedMortgageType(),visibleMortgageType(),readLegacyPlannerMortgageType());}
 
 function patchOutputIntegrity(){
   const OI=root?.OutputIntegrity;
@@ -50,7 +59,7 @@ function installScenarioSourceAuthority(){
   const SC=root?.ScenarioCore;if(!SC||SC.__stage91MortgageSourceAuthority)return;
   const original=SC.resolveScenarioInputSource.bind(SC);
   SC.resolveScenarioInputSource=function(args={}){
-    const resolved=original(args),type=authoritativeImportedMortgageType(args.sourceMode,resolved.mode,readPersistedMortgageType(),resolved.mortgageType);
+    const resolved=original(args),type=authoritativeImportedMortgageType(args.sourceMode,resolved.mode,readMortgageAuthority(),resolved.mortgageType);
     if(type&&args.sourceMode==='imported'&&resolved.mode!=='buy-rent'&&resolved.mode!=='downpayment')resolved.mortgageType=type;
     return resolved;
   };
@@ -62,14 +71,15 @@ function installMortgageTypePersistence(){
   const cards=Array.from(document.querySelectorAll('.compare-card[data-mort-type]'));
   if(!cards.length)return;
   let syncing=false;
-  const activeType=()=>normalizeMortgageType(document.querySelector('.compare-card.active[data-mort-type]')?.dataset.mortType);
+  const activeType=()=>visibleMortgageType();
   const read=()=>readPersistedMortgageType();
   const write=type=>{const normalized=normalizeMortgageType(type);if(!normalized)return null;try{localStorage.setItem(MORTGAGE_TYPE_KEY,normalized);}catch(_error){}return normalized;};
-  const desired=()=>read()||activeType();
+  const desired=()=>mortgageAuthority(read(),activeType(),readLegacyPlannerMortgageType());
   const restore=()=>{
     const saved=desired();if(!saved)return null;
-    try{if(!normalizeMortgageType(localStorage.getItem(MORTGAGE_TYPE_KEY)))write(saved);}catch(_error){}
-    const active=activeType();if(active===saved)return saved;
+    const explicit=read(),active=activeType();
+    if(!explicit&&active)return active;
+    if(active===saved)return saved;
     const target=document.querySelector(`.compare-card[data-mort-type="${saved}"]`);
     if(target&&!syncing){syncing=true;try{target.click();}finally{syncing=false;}}
     return saved;
@@ -77,12 +87,12 @@ function installMortgageTypePersistence(){
   const imported=()=>document.querySelector('input[name="scenarioDataSource"]:checked')?.value==='imported';
   const enforceImported=()=>{
     if(!imported())return null;
-    const type=restore();if(!type)return null;
+    const type=restore()||readMortgageAuthority();if(!type)return null;
     const field=document.getElementById('scenarioMortgageMethodFresh');
     if(field&&field.value!==type){field.value=type;field.dispatchEvent(new Event('change',{bubbles:true}));}
     return type;
   };
-  cards.forEach(card=>card.addEventListener('click',()=>{if(!syncing)write(card.dataset.mortType);}));
+  cards.forEach(card=>card.addEventListener('click',event=>{if(!syncing&&event.isTrusted)write(card.dataset.mortType);}));
   document.getElementById('plannerReset')?.addEventListener('click',()=>{try{localStorage.removeItem(MORTGAGE_TYPE_KEY);}catch(_error){}},{capture:true});
   const refresh=document.getElementById('scenarioRefreshImport'),source=document.getElementById('scenarioSourceImported');
   refresh?.addEventListener('click',restore,{capture:true});
@@ -161,5 +171,5 @@ function bootBrowser(){
 }
 
 if(typeof document!=='undefined'){if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',bootBrowser,{once:true});else bootBrowser();}else patchOutputIntegrity();
-return{VERSION,MORTGAGE_TYPE_KEY,PLANNER_STATE_KEY,spreadsheetSafe,csvEscape,rowsToCsv,normalizeMortgageType,manualRateActive,authoritativeImportedMortgageType,readPersistedMortgageType,patchOutputIntegrity,installScenarioSourceAuthority,installMortgageTypePersistence,installScenarioConditionalControls,bootBrowser};
+return{VERSION,MORTGAGE_TYPE_KEY,PLANNER_STATE_KEY,spreadsheetSafe,csvEscape,rowsToCsv,normalizeMortgageType,manualRateActive,mortgageAuthority,authoritativeImportedMortgageType,readPersistedMortgageType,readLegacyPlannerMortgageType,visibleMortgageType,readMortgageAuthority,patchOutputIntegrity,installScenarioSourceAuthority,installMortgageTypePersistence,installScenarioConditionalControls,bootBrowser};
 });
