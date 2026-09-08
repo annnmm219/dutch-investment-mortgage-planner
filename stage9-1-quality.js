@@ -94,11 +94,13 @@ function installMortgageTypePersistence(){
   };
   cards.forEach(card=>card.addEventListener('click',event=>{if(!syncing&&event.isTrusted)write(card.dataset.mortType);}));
   document.getElementById('plannerReset')?.addEventListener('click',()=>{try{localStorage.removeItem(MORTGAGE_TYPE_KEY);}catch(_error){}},{capture:true});
-  const refresh=document.getElementById('scenarioRefreshImport'),source=document.getElementById('scenarioSourceImported');
+  const refresh=document.getElementById('scenarioRefreshImport'),source=document.getElementById('scenarioSourceImported'),comparison=document.getElementById('comparisonType');
   refresh?.addEventListener('click',restore,{capture:true});
   refresh?.addEventListener('click',()=>queueMicrotask(enforceImported));
   source?.addEventListener('click',restore,{capture:true});
   source?.addEventListener('change',()=>queueMicrotask(enforceImported));
+  comparison?.addEventListener('input',()=>queueMicrotask(enforceImported));
+  comparison?.addEventListener('change',()=>queueMicrotask(enforceImported));
   document.querySelectorAll('input[name="scenarioDataSource"]').forEach(el=>el.addEventListener('change',event=>{if(event.target?.value==='imported'){restore();queueMicrotask(enforceImported);}},{capture:true}));
   const observer=new MutationObserver(()=>{if(!syncing&&read()&&activeType()!==read())queueMicrotask(restore);});
   cards.forEach(card=>observer.observe(card,{attributes:true,attributeFilter:['class','aria-pressed']}));
