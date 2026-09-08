@@ -92,7 +92,12 @@ function installMortgageTypePersistence(){
     if(field&&field.value!==type){field.value=type;field.dispatchEvent(new Event('change',{bubbles:true}));}
     return type;
   };
-  cards.forEach(card=>card.addEventListener('click',()=>{if(!syncing)write(card.dataset.mortType);}));
+  document.addEventListener('click',event=>{
+    const card=event.target?.closest?.('.compare-card[data-mort-type]');
+    if(!card||syncing)return;
+    write(card.dataset.mortType);
+    queueMicrotask(restore);
+  },true);
   document.getElementById('plannerReset')?.addEventListener('click',()=>{try{localStorage.removeItem(MORTGAGE_TYPE_KEY);}catch(_error){}},{capture:true});
   const refresh=document.getElementById('scenarioRefreshImport'),source=document.getElementById('scenarioSourceImported'),comparison=document.getElementById('comparisonType');
   refresh?.addEventListener('click',restore,{capture:true});
