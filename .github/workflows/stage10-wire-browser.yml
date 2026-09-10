@@ -1,0 +1,44 @@
+name: Stage 10 browser wiring
+
+on:
+  push:
+    branches: [r6-6-decision-integrity]
+    paths:
+      - '.github/workflows/stage10-wire-browser.yml'
+
+permissions:
+  contents: write
+
+jobs:
+  wire:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check out Stage 10 branch
+        uses: actions/checkout@v5
+        with:
+          ref: r6-6-decision-integrity
+          fetch-depth: 0
+      - name: Insert Stage 10 browser modules
+        shell: bash
+        run: |
+          python - <<'PY'
+          from pathlib import Path
+          p=Path('index.html')
+          s=p.read_text()
+          old='<script src="stage9-1-quality.js?v=R6.6-stage9.1"></script>'
+          new='''<script src="stage9-1-quality.js?v=R6.6-stage10"></script>\n<script src="release-identity.js?v=R6.6-stage10"></script>\n<script src="stage10-remediation.js?v=R6.6-stage10"></script>'''
+          if old not in s:
+              raise SystemExit('Expected Stage 9.1 quality script tag not found exactly once')
+          if s.count(old) != 1:
+              raise SystemExit(f'Expected one Stage 9.1 quality script tag, found {s.count(old)}')
+          p.write_text(s.replace(old,new))
+          PY
+      - name: Commit browser wiring and remove one-time workflow
+        shell: bash
+        run: |
+          rm .github/workflows/stage10-wire-browser.yml
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git add index.html .github/workflows/stage10-wire-browser.yml
+          git commit -m 'Stage 10: wire remediation into browser runtime'
+          git push origin HEAD:r6-6-decision-integrity
