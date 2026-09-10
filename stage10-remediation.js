@@ -80,8 +80,16 @@ function calculateScenarioPurchase2026(input={}){
   const warnings=[transferTax.warning,nhg.warning,ltv.overStandardLimit&&!ltv.overSupportedLimit?'Mortgage exceeds 100% of appraisal only through the entered qualifying energy-finance allowance.':ltv.warning].filter(Boolean);
   return{source:'scenario-local-2026-rules-stage10',valid:errors.length===0,propertyPrice:price,appraisedValue:appraisal,availableSavings:cash,baseCosts:base,transferTaxBase,transferTax,nhg,nhgFee,nhgNonEnergyCostStack:nhg.nonEnergyCostStack,qualifyingEnergyExpenditure:energySpend,transactionCosts:totalCosts,totalCosts,buyerCashTowardPrice:down,buyerCashForCosts,totalBuyerCash,mortgageProceeds,totalUses,totalSources,identityDifference,remainingSavings,fundingShortfall,shortfall:fundingShortfall,funded:fundingShortfall<=TOL,appraisalGap,minimumBuyerCashForAppraisalGap:appraisalGap,ltv,warnings,errors};
 }
+function unsupportedStandaloneNhg(prior,input={}){
+  const mode=['standard','energy'].includes(input.nhgMode)?input.nhgMode:'none';
+  if(mode==='none')return prior(input);
+  if(finiteOrNull(input.nhgNonEnergyCostStack)!==null)return prior(input);
+  const base=prior({...input,nhgMode:'none'}),energy=mode==='energy';
+  return{...base,nhg:{enabled:true,eligible:false,energy,limit:energy?NHG_ENERGY:NHG_STANDARD,fee:0,warning:'Exact NHG eligibility requires the official non-energy cost stack (items a–g) and, for the enhanced route, qualifying energy expenditure. Use the Scenario purchase-rule section for this exact check.'},nhgFee:0};
+}
+function ownerCostMode(config={}){return config.ownerCostMode?(config.ownerCostMode==='itemized'?'itemized':'total'):(config.ownerCostTotalMonthly==null?'itemized':'total');}
 function annualGroundLeaseByYear(config={},months=0){
-  const result={};if(config.ownerCostMode!=='itemized')return result;
+  const result={};if(ownerCostMode(config)!=='itemized')return result;
   const base=nonNegative(config.groundLeaseAnnual)/12,g=FC.effectiveAnnualPctToMonthly(config.ownerCostGrowthPct||0);let year=finite(config.startYear,2026),month=clamp(config.startMonth||1,1,12);
   for(let i=0;i<Math.max(0,Math.round(months));i++){result[year]=(result[year]||0)+base*Math.pow(1+g,i);month++;if(month===13){month=1;year++;}}
   return result;
@@ -136,8 +144,9 @@ function validateStage10Config(config={}){
 }
 function installPatches(){
   if(SC.__stage10Patched)return;
-  const priorResolve=SC.resolveScenarioInputSource.bind(SC),priorRun=SC.runScenario.bind(SC),priorSim=FC.simulateInvestmentFlows.bind(FC),priorTax=FC.box3TaxForYear.bind(FC),priorMortgage=FC.mortgageSchedule.bind(FC),priorCanonicalRows=OI.canonicalExportRows.bind(OI);
+  const priorResolve=SC.resolveScenarioInputSource.bind(SC),priorRun=SC.runScenario.bind(SC),priorSim=FC.simulateInvestmentFlows.bind(FC),priorTax=FC.box3TaxForYear.bind(FC),priorMortgage=FC.mortgageSchedule.bind(FC),priorCanonicalRows=OI.canonicalExportRows.bind(OI),priorMainPurchase=PR.calculatePurchase2026.bind(PR);
   PR.nhg2026=nhg2026Exact;
+  PR.calculatePurchase2026=function(input={}){return unsupportedStandaloneNhg(priorMainPurchase,input);};
   PR.calculateScenarioPurchase2026=function(input={}){
     const merged={...input};
     if(activeRun&&isPurchase(activeRun.config.mode)){
@@ -186,8 +195,9 @@ function browserBoot(){
     const priorWoz=$('scenarioPropertyPrivateUseWozNew'),days=nonNegative($('scenarioPropertyPrivateUseDaysNew')?.value);if(priorWoz)priorWoz.required=purchase&&nonMain&&box3==='current'&&days>0;const warning=$('scenarioNonMainFutureWarning');if(warning)warning.classList.toggle('hidden',!(purchase&&nonMain&&(box3==='future'||box3==='transition')));
   }
   engine.addEventListener('input',sync,true);engine.addEventListener('change',sync,true);sync();
+  const purchaseNhg=$('purchaseNhgMode');if(purchaseNhg&&!$('stage10StandaloneNhgNote')){const note=document.createElement('p');note.id='stage10StandaloneNhgNote';note.className='inline';note.textContent='Exact NHG eligibility needs the official a–g cost stack and energy allocation. Use the Scenario purchase-rule section for the decision-grade NHG check; this Mortgage-tab selector will not return an NHG pass without those inputs.';purchaseNhg.insertAdjacentElement('afterend',note);}
   const identity=releaseIdentity();document.documentElement.dataset.calculationSourceSha=identity.calculationSourceSha||'unfrozen';let marker=$('stage10ReleaseIdentity');if(!marker){marker=document.createElement('div');marker.id='stage10ReleaseIdentity';marker.className='foot';const footer=$('modelVersion');footer?.insertAdjacentElement('beforebegin',marker);}if(marker)marker.textContent=identity.valid?`Calculation source: ${identity.calculationSourceSha}`:'Calculation source identity not frozen — do not treat this build as final release evidence.';
 }
 installPatches();if(typeof document!=='undefined'){if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',browserBoot,{once:true});else browserBoot();}
-return{VERSION,NHG_STANDARD,NHG_ENERGY,NHG_FEE,OWN_USE_RATE_2026,normalizePropertyUse,inferredPropertyUse,isNonMain,propertyTransferTaxAlignment,nhg2026Exact,calculateScenarioPurchase2026,annualGroundLeaseByYear,purchaseFundingForCall,additionalDeductibleCostsByYear,propertyIncomeSchedule,isPropertyInvestmentCall,releaseIdentity,releaseIdentityRows,validateStage10Config,installPatches,browserBoot};
+return{VERSION,NHG_STANDARD,NHG_ENERGY,NHG_FEE,OWN_USE_RATE_2026,normalizePropertyUse,inferredPropertyUse,isNonMain,propertyTransferTaxAlignment,nhg2026Exact,calculateScenarioPurchase2026,unsupportedStandaloneNhg,ownerCostMode,annualGroundLeaseByYear,purchaseFundingForCall,additionalDeductibleCostsByYear,propertyIncomeSchedule,isPropertyInvestmentCall,releaseIdentity,releaseIdentityRows,validateStage10Config,installPatches,browserBoot};
 });
