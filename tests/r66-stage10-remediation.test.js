@@ -80,9 +80,12 @@ test('F-01 current Box 3 actual return includes gross rent and 2026 5.06% privat
   assert.equal(a.valid,true,a.reason||'baseline non-main scenario invalid');
   assert.equal(b.valid,true,b.reason||'direct-return non-main scenario invalid');
   const ay=a.stage91Ledgers[0].yearBuckets[2026],by=b.stage91Ledgers[0].yearBuckets[2026];
-  assert.ok(by.actualTax>ay.actualTax);
-  const expected=(12000+400000*.0506)*.36;
-  assert.ok(Math.abs((by.actualTax-ay.actualTax)-expected)<.01,`actual-tax delta should include rent + own-use addition: ${by.actualTax-ay.actualTax} vs ${expected}`);
+  const baseActual=ay.marketGain+ay.propertyGain+ay.savingsIncome-ay.debtInterest-ay.propertyDebtInterest;
+  const directReturn=12000+400000*.0506;
+  const expectedZeroTax=Math.max(0,baseActual)*.36;
+  const expectedDirectTax=Math.max(0,baseActual+directReturn)*.36;
+  assert.ok(Math.abs(ay.actualTax-expectedZeroTax)<.01,`baseline actual tax mismatch: ${ay.actualTax} vs ${expectedZeroTax}`);
+  assert.ok(Math.abs(by.actualTax-expectedDirectTax)<.01,`actual tax must include full rent + own-use addition before zero floor: ${by.actualTax} vs ${expectedDirectTax}`);
   assert.ok(b.A.invest>a.A.invest,'received rent should remain a real cash inflow, not tax-only income');
 });
 
