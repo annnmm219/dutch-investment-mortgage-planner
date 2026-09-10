@@ -8,7 +8,7 @@ const path=require('node:path');
 const ROOT=path.resolve(__dirname,'..');
 const read=file=>fs.readFileSync(path.join(ROOT,file),'utf8');
 
-const EXPECTED_LOCAL_SCRIPTS=['model-contract.js','policy-2026.js','finance-core.js','box1-2026.js','logic-integrity-ui.js','box3-household.js','policy-ui.js','purchase-rules.js','output-integrity.js','input-integrity.js','app.js','purchase-costs.js','scenario-engine.js','box1-2026-ui.js','next-euro.js','app-state.js','view-density.js','view-density-state.js','stage9-1-remediation.js','stage9-1-quality.js'];
+const EXPECTED_LOCAL_SCRIPTS=['model-contract.js','policy-2026.js','finance-core.js','box1-2026.js','logic-integrity-ui.js','box3-household.js','policy-ui.js','purchase-rules.js','output-integrity.js','input-integrity.js','app.js','purchase-costs.js','scenario-engine.js','box1-2026-ui.js','next-euro.js','app-state.js','view-density.js','view-density-state.js','stage9-1-remediation.js','stage9-1-quality.js','release-identity.js','stage10-remediation.js'];
 
 test('index.html declares the complete browser module order explicitly',()=>{
   const html=read('index.html');
@@ -22,7 +22,7 @@ test('every explicitly loaded local browser module exists in the repository',()=
 });
 
 test('runtime modules do not inject dependency scripts or poll for them',()=>{
-  const purchase=read('purchase-costs.js'),household=read('box3-household.js'),state=read('app-state.js'),density=read('view-density.js'),late=read('view-density-state.js'),stage91=read('stage9-1-remediation.js'),quality=read('stage9-1-quality.js');
+  const purchase=read('purchase-costs.js'),household=read('box3-household.js'),state=read('app-state.js'),density=read('view-density.js'),late=read('view-density-state.js'),stage91=read('stage9-1-remediation.js'),quality=read('stage9-1-quality.js'),stage10=read('stage10-remediation.js');
   assert.doesNotMatch(purchase,/createElement\(['"]script['"]\)/i);
   assert.doesNotMatch(purchase,/\.src\s*=\s*['"](?:purchase-rules|box3-household)\.js['"]/i);
   assert.doesNotMatch(household,/createElement\(['"]script['"]\)/i);
@@ -36,10 +36,12 @@ test('runtime modules do not inject dependency scripts or poll for them',()=>{
   assert.doesNotMatch(stage91,/setInterval\s*\(/);
   assert.doesNotMatch(quality,/createElement\(['"]script['"]\)/i);
   assert.doesNotMatch(quality,/setInterval\s*\(/);
+  assert.doesNotMatch(stage10,/createElement\(['"]script['"]\)/i);
+  assert.doesNotMatch(stage10,/setInterval\s*\(/);
 });
 
 test('browser modules fail fast when required dependencies are missing',()=>{
-  const purchase=read('purchase-costs.js'),household=read('box3-household.js'),scenario=read('scenario-engine.js'),next=read('next-euro.js'),gate=read('logic-integrity-ui.js'),core=read('finance-core.js'),rules=read('purchase-rules.js'),policyUi=read('policy-ui.js'),box1=read('box1-2026.js'),box1Ui=read('box1-2026-ui.js'),stage91=read('stage9-1-remediation.js');
+  const purchase=read('purchase-costs.js'),household=read('box3-household.js'),scenario=read('scenario-engine.js'),next=read('next-euro.js'),gate=read('logic-integrity-ui.js'),core=read('finance-core.js'),rules=read('purchase-rules.js'),policyUi=read('policy-ui.js'),box1=read('box1-2026.js'),box1Ui=read('box1-2026-ui.js'),stage91=read('stage9-1-remediation.js'),stage10=read('stage10-remediation.js');
   assert.match(purchase,/PurchaseRules must load before purchase-costs\.js/);
   assert.match(household,/Policy2026 is required by Box3Household/);
   assert.match(household,/FinanceCore must load before box3-household\.js/);
@@ -56,6 +58,7 @@ test('browser modules fail fast when required dependencies are missing',()=>{
   assert.match(box1,/FinanceCore is required by Box1OwnHome2026/);
   assert.match(box1Ui,/ScenarioCore must load before box1-2026-ui\.js/);
   assert.match(stage91,/Stage 9\.1 requires FinanceCore, PurchaseRules and ScenarioCore/);
+  assert.match(stage10,/Stage 10 requires FinanceCore, PurchaseRules, ScenarioCore, OutputIntegrity and Stage91Remediation/);
 });
 
 test('public page exposes R6.6, mixed-asset Box 3, and conservative static defaults',()=>{
@@ -95,7 +98,7 @@ test('R5 loads Next Euro after ScenarioCore and the Box 1 scenario bridge',()=>{
   assert.match(next,/not a risk-adjusted/i);
 });
 
-test('R6 persistence, density restoration and Stage 9.1 layers load in deterministic order',()=>{
+test('R6 persistence, Stage 9.1 and Stage 10 layers load in deterministic order',()=>{
   const html=read('index.html'),state=read('app-state.js'),late=read('view-density-state.js');
   assert.ok(html.indexOf('output-integrity.js')<html.indexOf('app.js'));
   assert.ok(html.indexOf('next-euro.js')<html.indexOf('app-state.js'));
@@ -103,6 +106,8 @@ test('R6 persistence, density restoration and Stage 9.1 layers load in determini
   assert.ok(html.indexOf('view-density.js')<html.indexOf('view-density-state.js'));
   assert.ok(html.indexOf('view-density-state.js')<html.indexOf('stage9-1-remediation.js'));
   assert.ok(html.indexOf('stage9-1-remediation.js')<html.indexOf('stage9-1-quality.js'));
+  assert.ok(html.indexOf('stage9-1-quality.js')<html.indexOf('release-identity.js'));
+  assert.ok(html.indexOf('release-identity.js')<html.indexOf('stage10-remediation.js'));
   assert.match(state,/Private browser save/);
   assert.match(state,/stored only in this browser/);
   assert.match(state,/Reset examples/);
@@ -112,12 +117,13 @@ test('R6 persistence, density restoration and Stage 9.1 layers load in determini
   assert.match(late,/scenarioBuyWozNew/);
 });
 
-test('R6.6 and Stage 9.1 cache-bust every local browser asset',()=>{
+test('R6.6 browser assets use explicit stage cache-busting',()=>{
   const html=read('index.html');
   const local=[...html.matchAll(/<script\s+src="((?!https?:\/\/)[^"]+)"/g)].map(m=>m[1]);
   assert.equal(local.length,EXPECTED_LOCAL_SCRIPTS.length);
   local.forEach(src=>{
-    if(src.startsWith('stage9-1-'))assert.match(src,/\?v=R6\.6-stage9\.1$/);
+    if(src.startsWith('stage9-1-remediation'))assert.match(src,/\?v=R6\.6-stage9\.1$/);
+    else if(src.startsWith('stage9-1-quality')||src.startsWith('release-identity')||src.startsWith('stage10-remediation'))assert.match(src,/\?v=R6\.6-stage10$/);
     else assert.match(src,/\?v=R6\.6-stage9$/);
   });
   assert.match(html,/styles\.css\?v=R6\.6-stage9\.1/);
@@ -135,4 +141,14 @@ test('Stage 9.1 quality layer provides accessible chart table and spreadsheet-sa
   assert.match(quality,/stage91ChartTable/);
   assert.match(quality,/aria-describedby/);
   assert.match(quality,/exportAssumptionsCsv/);
+});
+
+test('Stage 10 browser layer exposes independent property classification and release provenance',()=>{
+  const stage10=read('stage10-remediation.js'),identity=read('release-identity.js');
+  assert.match(stage10,/scenarioPropertyUseNew/);
+  assert.match(stage10,/scenarioNhgNonEnergyCostStackNew/);
+  assert.match(stage10,/scenarioPropertyRentalIncomeNew/);
+  assert.match(stage10,/scenarioPropertyPrivateUseDaysNew/);
+  assert.match(stage10,/Calculation source commit/);
+  assert.match(identity,/calculationSourceSha/);
 });
