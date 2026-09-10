@@ -1,0 +1,106 @@
+{
+  "audit": {
+    "name": "R6.6 Stage 10 Independent Final Audit",
+    "date": "2026-09-10",
+    "audited_candidate": "caa998f47346270c886606a3f0dc852a0864eaf8",
+    "status": "FAIL_NOT_RELEASE_READY",
+    "merge_authorized": false
+  },
+  "summary": {
+    "release_blockers_or_major": 6,
+    "hygiene_findings": 1,
+    "accepted_or_minor_limitations": 2,
+    "closed_checks": 6
+  },
+  "findings": [
+    {
+      "id": "F-01",
+      "severity": "BLOCKER",
+      "status": "OPEN",
+      "area": "Box 3 current law / non-main property",
+      "title": "2026 actual return omits rental income and private-use addition for non-main property",
+      "release_blocker": true,
+      "required_action": "Model applicable rental/direct property income and 2026 private-use addition, or block current-law tax-adjusted non-main-property scenarios until complete inputs are available."
+    },
+    {
+      "id": "F-02",
+      "severity": "BLOCKER",
+      "status": "OPEN",
+      "area": "Proposed Box 3 / non-main property",
+      "title": "Future/transition path taxes non-main real-estate appreciation as annual accrual instead of the proposal's real-estate-specific treatment",
+      "release_blocker": true,
+      "required_action": "Implement the current bill's real-estate-specific capital-gains/direct-return treatment or disable proposed/transition Box 3 for non-main-property scenarios."
+    },
+    {
+      "id": "F-03",
+      "severity": "BLOCKER",
+      "status": "OPEN",
+      "area": "NHG 2026",
+      "title": "Enhanced NHG check does not independently cap the non-energy cost stack at EUR 470,000",
+      "release_blocker": true,
+      "required_action": "Separate official a-g non-energy costs from h energy measures; enforce a-g <= 470000 and a-h <= 498200."
+    },
+    {
+      "id": "F-04",
+      "severity": "BLOCKER",
+      "status": "OPEN",
+      "area": "Property classification",
+      "title": "Manual transfer-tax mode implicitly falls through as a main residence for Box 1 / Box 3 routing",
+      "release_blocker": true,
+      "required_action": "Add an independent property-use/main-residence classification and stop using transfer-tax mode as the Box 1/Box 3 classifier."
+    },
+    {
+      "id": "F-05",
+      "severity": "MAJOR",
+      "status": "OPEN",
+      "area": "Box 1 integration",
+      "title": "Exposed erfpacht and deductible purchase-financing costs are not passed into Box 1 deductible own-home costs",
+      "release_blocker": true,
+      "required_action": "Explicitly classify deductible financing costs and periodic erfpacht, then pass qualifying amounts into the annual Box 1 bridge, or block affected tax-adjusted comparisons."
+    },
+    {
+      "id": "F-06",
+      "severity": "RELEASE_GOVERNANCE_BLOCKER",
+      "status": "OPEN",
+      "area": "Release identity / exports",
+      "title": "Exports and calculation evidence lack immutable exact source/build identity",
+      "release_blocker": true,
+      "required_action": "Inject GITHUB_SHA or another immutable build identity at deployment/build time and include it in exported calculation evidence."
+    },
+    {
+      "id": "F-07",
+      "severity": "MEDIUM",
+      "status": "OPEN",
+      "area": "Dependency hygiene",
+      "title": "Development Playwright dependency reports an advisory and lockfile contains an extraneous absolute-path entry",
+      "release_blocker": false,
+      "required_action": "Regenerate the lockfile in a clean environment and upgrade/re-audit the development dependency before security-clean sign-off."
+    },
+    {
+      "id": "F-08",
+      "severity": "ACCEPTED_LIMITATION",
+      "status": "ACCEPTABLE_WITH_DISCLOSURE",
+      "area": "Tax cash-flow timing",
+      "title": "Box 3 payment is modeled at calendar-year end rather than actual assessment/payment date",
+      "release_blocker": false,
+      "required_action": "Retain explicit deterministic timing disclosure."
+    },
+    {
+      "id": "F-09",
+      "severity": "MINOR",
+      "status": "ACCEPTABLE_WITH_DISCLOSURE",
+      "area": "Next Euro numerical method",
+      "title": "0.1 percentage-point break-even scan is a numerical search and cannot mathematically prove every arbitrarily close double crossing",
+      "release_blocker": false,
+      "required_action": "Describe as a numerical search; adaptive subdivision is optional later hardening."
+    }
+  ],
+  "closed_checks": [
+    {"id": "C-01", "status": "CLOSED", "title": "2026 Box 1 rates and 11.94-point own-home adjustment verified"},
+    {"id": "C-02", "status": "CLOSED", "title": "Hillen 2026 rate verified; former Article 2.10 source conflict resolved in favor of implemented cap"},
+    {"id": "C-03", "status": "CLOSED", "title": "2026 current Box 3 headline parameters verified"},
+    {"id": "C-04", "status": "CLOSED", "title": "2026 transfer-tax rates and starter ceiling verified"},
+    {"id": "C-05", "status": "CLOSED", "title": "Stage 9.1 deterministic/state/browser parity evidence remains valid"},
+    {"id": "C-06", "status": "CLOSED", "title": "CSV injection, accessible chart table and third-party integrity controls verified"}
+  ]
+}
