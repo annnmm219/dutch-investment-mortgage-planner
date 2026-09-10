@@ -42,7 +42,7 @@ function stage10Config(raw,index){
   }
   return next;
 }
-function expectedLegalChange(config){
+function correctionInputPresent(config){
   if(config.tax?.enabled===false)return false;
   const groundLease=config.ownerCostMode==='itemized'&&Number(config.groundLeaseAnnual||0)>0;
   const purchase=(config.mode==='buy-rent'||config.mode==='downpayment')&&Number(config.purchaseRules?.deductibleFinancingCosts||0)>0;
@@ -64,15 +64,20 @@ function run(){
     const after=SC.runScenario(copy(item.config));
     assert.equal(after.valid,true,`${item.id} Stage 10 invalid: ${after.reason||''}`);
     const resultChanged=changed(item.before.A.net,after.A.net)||changed(item.before.B.net,after.B.net);
-    const expected=expectedLegalChange(item.config),leaderAfter=leader(after),leaderChanged=item.beforeLeader!==leaderAfter;
-    assert.equal(resultChanged,expected,`${item.id} ${resultChanged?'changed without an expected deductible-cost correction':'did not change despite an expected deductible-cost correction'}`);
+    const taxEffectChanged=changed(item.before.A.mortTax,after.A.mortTax)||changed(item.before.B.mortTax,after.B.mortTax);
+    const correctionExpected=correctionInputPresent(item.config),leaderAfter=leader(after),leaderChanged=item.beforeLeader!==leaderAfter;
+    if(taxEffectChanged)assert.equal(correctionExpected,true,`${item.id} changed Box 1 tax without a Stage 10 deductible-cost input`);
+    if(resultChanged)assert.equal(taxEffectChanged,true,`${item.id} changed comparable wealth without a corresponding Box 1 tax correction`);
+    if(correctionExpected)assert.equal(taxEffectChanged,true,`${item.id} has a deductible-cost correction input but no Box 1 tax effect`);
     const canonical=OI.canonicalComparisonResult(after,{mode:item.mode,years:item.config.horizonYears,returnPct:item.config.investmentReturnPct});
     assert.equal(canonical.valid,true,`${item.id} canonical result invalid`);
-    rows.push({id:item.id,mode:item.mode,resultChanged,expectedChange:expected,leaderBefore:item.beforeLeader,leaderAfter,leaderChanged,aBefore:item.before.A.net,aAfter:after.A.net,bBefore:item.before.B.net,bAfter:after.B.net});
+    rows.push({id:item.id,mode:item.mode,resultChanged,taxEffectChanged,correctionExpected,leaderBefore:item.beforeLeader,leaderAfter,leaderChanged,aBefore:item.before.A.net,aAfter:after.A.net,bBefore:item.before.B.net,bAfter:after.B.net,aTaxBefore:item.before.A.mortTax,aTaxAfter:after.A.mortTax,bTaxBefore:item.before.B.mortTax,bTaxAfter:after.B.mortTax});
   }
-  const unexplained=rows.filter(row=>row.resultChanged!==row.expectedChange),leaderRows=rows.filter(row=>row.leaderChanged),changedRows=rows.filter(row=>row.resultChanged);
+  const unexplained=rows.filter(row=>(row.resultChanged&&!row.taxEffectChanged)||(row.taxEffectChanged&&!row.correctionExpected)||(row.correctionExpected&&!row.taxEffectChanged));
+  const leaderRows=rows.filter(row=>row.leaderChanged),changedRows=rows.filter(row=>row.resultChanged),taxRows=rows.filter(row=>row.taxEffectChanged);
   const summary={
     stage:'R6.6 Stage 10 deterministic matrix',scenarios:rows.length,reconciled:rows.length,
+    taxEffectChanges:taxRows.length,taxEffectChangeIds:taxRows.map(row=>row.id),
     numericalChanges:changedRows.length,changedIds:changedRows.map(row=>row.id),
     leaderChanges:leaderRows.length,leaderChangeIds:leaderRows.map(row=>row.id),
     unexplainedChanges:unexplained.length,
@@ -81,9 +86,9 @@ function run(){
   assert.equal(rows.length,50);
   assert.equal(summary.unexplainedChanges,0);
   console.log(JSON.stringify(summary,null,2));
-  console.log(`Stage 10: 50/50 deterministic scenarios reconciled; ${summary.numericalChanges} explained legal corrections; ${summary.leaderChanges} leader changes surfaced for review.`);
+  console.log(`Stage 10: 50/50 deterministic scenarios reconciled; ${summary.taxEffectChanges} explained Box 1 corrections; ${summary.numericalChanges} comparable-wealth changes; ${summary.leaderChanges} leader changes surfaced for review.`);
   return{summary,rows};
 }
 
 if(require.main===module)run();
-module.exports={stage10Config,expectedLegalChange,run};
+module.exports={stage10Config,correctionInputPresent,run};
