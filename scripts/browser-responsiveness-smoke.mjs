@@ -85,11 +85,12 @@ async function responsivePing(label){
       howFold:Boolean(document.getElementById('r65ScenarioHow')),
       saveText:document.getElementById('plannerSaveStatus')?.textContent||'',
       scenarioReturn:document.getElementById('scenarioReturnNew')?.value||'',
-      returnLabel:document.querySelector('[data-r65-role="scenario-return-label"]')?.textContent||''
+      sourceMode:document.querySelector('input[name="scenarioDataSource"]:checked')?.value||'',
+      sourceStatus:document.getElementById('scenarioSourceStatus')?.textContent||''
     }),100))),
     delay(5000).then(()=>{throw new Error(`${label}: browser main thread did not answer within 5 seconds`);})
   ]);
-  if(!result.version.includes('R6.5'))throw new Error(`${label}: wrong model version: ${result.version}`);
+  if(!result.version.includes('R6.6'))throw new Error(`${label}: wrong model version: ${result.version}`);
   if(result.phases<1)throw new Error(`${label}: phase UI did not initialize`);
   if(result.callbacks>1000)throw new Error(`${label}: excessive MutationObserver callbacks (${result.callbacks})`);
   if(result.globalSwitchVisible||result.globalBannerVisible)throw new Error(`${label}: obsolete global density UI is visible`);
@@ -105,19 +106,22 @@ try{
 
   await page.locator('#annualReturn').fill('7');
   await page.locator('#annualReturn').dispatchEvent('input');
-  await page.waitForFunction(()=>document.getElementById('scenarioReturnNew')?.value==='7');
-  const inherited=await responsivePing('inherited investment return');
-  if(!/7.*from Investment/i.test(inherited.returnLabel))throw new Error(`scenario return did not clearly inherit Investment: ${inherited.returnLabel}`);
+  const beforeImport=await responsivePing('planner edit before scenario import');
+  if(beforeImport.sourceMode)throw new Error(`scenario selected a data source silently: ${beforeImport.sourceMode}`);
 
   await page.locator('.tab[data-tab="scenarios"]').click();
+  await page.locator('#scenarioSourceImported').check();
+  await page.waitForFunction(()=>document.getElementById('scenarioReturnNew')?.value==='7');
+  const imported=await responsivePing('explicit planner snapshot');
+  if(imported.sourceMode!=='imported'||!/Existing data copied/i.test(imported.sourceStatus))throw new Error(`scenario import was not explicit: ${JSON.stringify(imported)}`);
   await page.selectOption('#comparisonType','mortgage-invest');
+  await page.locator('#scenarioExtraMonthlyNew').fill('500');
+  await page.locator('#scenarioOwnerTotalNew').fill('491.33');
   await delay(500);
   const scenario=await responsivePing('scenario rerender');
 
   await page.locator('#r65ScenarioAdvanced > summary').click();
   await page.locator('#r65ScenarioHow > summary').click();
-  await page.locator('[data-r65-role="owner-total"]').fill('491.33');
-  await page.locator('[data-r65-role="owner-total"]').dispatchEvent('input');
   await delay(500);
   const localFolds=await responsivePing('local advanced folds');
 
@@ -127,8 +131,8 @@ try{
   const mortgage=await responsivePing('mortgage assumptions fold');
 
   if(pageErrors.length)throw new Error(`Browser page errors:\n${pageErrors.join('\n\n')}`);
-  console.log(JSON.stringify({release:'R6.5',responsive:true,initial,inherited,scenario,localFolds,mortgage,pageErrors:0},null,2));
-  console.log('R6.5 Chromium interface and responsiveness smoke test passed.');
+  console.log(JSON.stringify({release:'R6.6',responsive:true,initial,beforeImport,imported,scenario,localFolds,mortgage,pageErrors:0},null,2));
+  console.log('R6.6 Chromium interface and responsiveness smoke test passed.');
 }finally{
   await browser.close();
   await new Promise(resolve=>server.close(resolve));

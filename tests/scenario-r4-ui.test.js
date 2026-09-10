@@ -33,7 +33,7 @@ test('R4 conservative defaults remain present in later calculation builds',()=>{
   assert.match(household,/annualReturn\.value='5'/);
   assert.match(household,/mode\.value==='transition'/);
   assert.match(household,/mode\.value='current'/);
-  assert.match(gate,/version:'R6\.5'/);
+  assert.match(gate,/version:'R6\.6'/);
   assert.match(gate,/MODEL_META/);
   assert.doesNotMatch(household,/Calculation build R\d+/);
 });

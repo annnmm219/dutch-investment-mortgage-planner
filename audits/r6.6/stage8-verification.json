@@ -1,0 +1,48 @@
+{
+  "stage": "R6.6 Stage 8",
+  "status": "complete-and-verified-locally",
+  "stage7EvidenceHead": "dce95f6b23b0052be2ba7233bc22a6cdf68705c3",
+  "release": {
+    "version": "R6.6",
+    "name": "Decision Integrity",
+    "ruleYear": 2026,
+    "verifiedAt": "2026-09-03"
+  },
+  "verification": {
+    "nodeTests": {
+      "passed": 232,
+      "failed": 0
+    },
+    "deterministicScenarios": {
+      "passed": 50,
+      "failed": 0,
+      "modes": 5
+    },
+    "stage7ToStage8": {
+      "numericalChanges": 0,
+      "leaderChanges": 0,
+      "changedFields": []
+    },
+    "browserContracts": {
+      "passed": 2,
+      "failed": 0,
+      "pageErrors": 0
+    },
+    "syntax": "passed",
+    "diffCheck": "passed"
+  },
+  "adjudication": {
+    "newCalculationDefects": 0,
+    "hillenAdjustmentBase": "statutory-qualifying-cost-ceiling",
+    "hillenExampleAdjustmentBase": 3500,
+    "hillenExampleAdjustment": 417.9,
+    "criticalWrongSignTaxEffect": 115.05,
+    "futureBox3Status": "proposed-not-enacted"
+  },
+  "releaseGate": {
+    "localReady": true,
+    "pushed": false,
+    "merged": false,
+    "publicDeploymentVerified": false
+  }
+}

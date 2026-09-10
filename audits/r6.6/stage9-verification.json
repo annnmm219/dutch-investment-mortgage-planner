@@ -1,0 +1,46 @@
+{
+  "stage": "R6.6 Stage 9",
+  "status": "complete-and-verified-locally",
+  "stage8LocalHead": "023eee8",
+  "stage8GitHubEvidenceHead": "69a44762eb9d7bf55990ba7666fe3d1223a63043",
+  "verification": {
+    "nodeTests": {
+      "passed": 239,
+      "failed": 0
+    },
+    "routeComparison": {
+      "matchedDatasets": 50,
+      "importedCalculations": 50,
+      "freshCalculations": 50,
+      "totalCalculations": 100,
+      "equalPairs": 50,
+      "mismatches": 0,
+      "modes": 5
+    },
+    "existingDeterministicScenarios": {
+      "passed": 50,
+      "failed": 0
+    },
+    "browserContracts": {
+      "passed": 3,
+      "failed": 0,
+      "pageErrors": 0
+    },
+    "syntax": "passed",
+    "diffCheck": "passed"
+  },
+  "sourceOwnership": {
+    "explicitChoiceRequired": true,
+    "importedDataIsSnapshot": true,
+    "explicitRefreshRequired": true,
+    "freshRouteReadsPlannerTabs": false,
+    "purchaseInputsRemainScenarioOwned": true,
+    "nextEuroUsesActiveScenarioSnapshot": true
+  },
+  "releaseGate": {
+    "localReady": true,
+    "pushed": false,
+    "merged": false,
+    "publicDeploymentVerified": false
+  }
+}

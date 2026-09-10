@@ -16,7 +16,7 @@ function scenarioBase(mode='buy-rent'){
     mortgage:{balance:0,ratePct:0,years:10},tax:{enabled:false,deductionRate:0,wozValue:400000,hraRemainingMonths:120,qualifyingInterestFraction:1},
     box3:{mode:'none',taxPartners:1,paySource:'savings',savings:0,debt:0,savingsReturnPct:0,debtInterestPct:0},
     homeGrowthPct:0,rentGrowthPct:0,sellingCostPct:0,vveMonthly:0,maintenanceAnnual:0,ownerTaxesAnnual:0,insuranceAnnual:0,groundLeaseAnnual:0,
-    buyRent:{price:0,downPayment:0,monthlyRent:0,mortgageRatePct:0,mortgageYears:10},downpayment:{price:0,downA:0,downB:0,mortgageRatePct:0,mortgageYears:10},mortgageInvest:{extraMonthly:0},sellRent:{homeValue:0,monthlyRent:0}
+    buyRent:{purchaseCosts:0,mortgageType:'annuity',price:0,downPayment:0,monthlyRent:0,mortgageRatePct:0,mortgageYears:10},downpayment:{purchaseCosts:0,mortgageType:'annuity',price:0,downA:0,downB:0,mortgageRatePct:0,mortgageYears:10},mortgageInvest:{extraMonthly:0},sellRent:{homeValue:0,monthlyRent:0}
   };
 }
 
@@ -81,14 +81,14 @@ test('repay-vs-invest conserves the monthly amount after early mortgage payoff',
 });
 
 test('purchase comparison is invalid when starting savings cannot fund required upfront cash',()=>{
-  const c=scenarioBase('buy-rent');c.purchaseCosts=5000;c.box3.savings=10000;c.buyRent={price:120000,downPayment:20000,monthlyRent:1000,mortgageRatePct:0,mortgageYears:10};
+  const c=scenarioBase('buy-rent');c.purchaseCosts=5000;c.box3.savings=10000;c.buyRent={purchaseCosts:c.purchaseCosts||0,mortgageType:'annuity',price:120000,downPayment:20000,monthlyRent:1000,mortgageRatePct:0,mortgageYears:10};
   const x=SC.runScenario(c);
   assert.equal(x.valid,false);
   assert.match(x.reason,/starting savings/i);
 });
 
 test('buy scenario mortgage tax defaults WOZ to the scenario home instead of the main-tab property',()=>{
-  const c=scenarioBase('buy-rent');c.tax={enabled:true,deductionRate:.3756,wozValue:400000,hraRemainingMonths:360,qualifyingInterestFraction:1};c.box3.savings=120000;c.buyRent={price:120000,downPayment:20000,monthlyRent:1000,mortgageRatePct:4,mortgageYears:30};
+  const c=scenarioBase('buy-rent');c.tax={enabled:true,deductionRate:.3756,wozValue:400000,hraRemainingMonths:360,qualifyingInterestFraction:1};c.box3.savings=120000;c.buyRent={purchaseCosts:c.purchaseCosts||0,mortgageType:'annuity',price:120000,downPayment:20000,monthlyRent:1000,mortgageRatePct:4,mortgageYears:30};
   const x=SC.runScenario(c);
   assert.equal(x.valid,true);
   const direct=FC.mortgageSchedule({balance:100000,annualRatePct:4,termYears:30,type:'annuity',months:12,startYear:2026,startMonth:1,tax:{enabled:true,deductionRate:.3756,wozValue:120000,hraRemainingMonths:360}});

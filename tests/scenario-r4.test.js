@@ -51,8 +51,8 @@ function base(mode){
     ownerTaxesAnnual:0,
     insuranceAnnual:0,
     groundLeaseAnnual:0,
-    buyRent:{price:0,downPayment:0,monthlyRent:0,mortgageRatePct:0,mortgageYears:10},
-    downpayment:{price:0,downA:0,downB:0,mortgageRatePct:0,mortgageYears:10},
+    buyRent:{purchaseCosts:0,mortgageType:'annuity',price:0,downPayment:0,monthlyRent:0,mortgageRatePct:0,mortgageYears:10},
+    downpayment:{purchaseCosts:0,mortgageType:'annuity',price:0,downA:0,downB:0,mortgageRatePct:0,mortgageYears:10},
     mortgageInvest:{extraMonthly:0},
     sellRent:{homeValue:0,monthlyRent:0}
   };
@@ -62,7 +62,7 @@ test('Buy vs Rent spends household savings before Box 3, lowering the buyer tax 
   const c=base('buy-rent');
   c.investmentReturnPct=10;
   c.box3={...c.box3,mode:'current',paySource:'external',savings:100000};
-  c.buyRent={price:60000,downPayment:60000,monthlyRent:0,mortgageRatePct:0,mortgageYears:10};
+  c.buyRent={purchaseCosts:c.purchaseCosts||0,mortgageType:'annuity',price:60000,downPayment:60000,monthlyRent:0,mortgageRatePct:0,mortgageYears:10};
   const x=SC.runScenario(c);
   approx(x.A.box3,0,1e-9,'buyer Box 3');
   assert.ok(x.B.box3>0,'renter should have positive Box 3 on the larger retained financial balance');
@@ -74,7 +74,7 @@ test('Buy vs Rent can keep unused upfront cash in savings instead of investing i
   c.box3.savings=25000;
   c.purchaseCosts=5000;
   c.upfrontCashTreatment='savings';
-  c.buyRent={price:120000,downPayment:20000,monthlyRent:1000,mortgageRatePct:0,mortgageYears:10};
+  c.buyRent={purchaseCosts:c.purchaseCosts||0,mortgageType:'annuity',price:120000,downPayment:20000,monthlyRent:1000,mortgageRatePct:0,mortgageYears:10};
   const x=SC.runScenario(c);
   approx(x.A.savings,0,1e-9,'buyer ending savings');
   approx(x.B.savings,25000,1e-9,'renter ending savings');
@@ -86,7 +86,7 @@ test('Down-payment comparison falls back to the household starting-savings balan
   const c=base('downpayment');
   c.box3.savings=45000;
   c.purchaseCosts=5000;
-  c.downpayment={price:120000,downA:40000,downB:20000,mortgageRatePct:0,mortgageYears:10};
+  c.downpayment={purchaseCosts:c.purchaseCosts||0,mortgageType:'annuity',price:120000,downA:40000,downB:20000,mortgageRatePct:0,mortgageYears:10};
   const x=SC.runScenario(c);
   approx(x.A.net,50000,1e-6,'larger down payment wealth');
   approx(x.B.net,50000,1e-6,'smaller down payment wealth');
@@ -96,6 +96,8 @@ test('Down-payment comparison falls back to the household starting-savings balan
 
 test('Owner-only costs feed Buy vs Rent cash-flow equalisation and affordability',()=>{
   const c=base('buy-rent');
+  c.upfrontCashTreatment='savings';
+  c.buyRent={...c.buyRent,price:1,cash:1,downPayment:1,wozValue:1};
   c.vveMonthly=100;
   c.maintenanceAnnual=1200;
   c.ownerTaxesAnnual=1200;
