@@ -103,7 +103,7 @@ function additionalDeductibleCostsByYear(config={},months=0,mortgageCallIndex=0)
   if(existing&&typeof existing==='object'&&!Array.isArray(existing))Object.entries(existing).forEach(([year,value])=>{out[year]=(out[year]||0)+nonNegative(value);});
   else if(Number.isFinite(Number(existing)))years.forEach(year=>{out[year]=(out[year]||0)+nonNegative(existing);});
   if(isPurchase(config.mode)&&inferredPropertyUse(config.purchaseRules)==='main-residence'){
-    const funding=purchaseFundingForCall(config,mortgageCallIndex),firstYear=String(finite(config.startYear,2026)),explicit=nonNegative(config.purchaseRules?.deductibleFinancingCosts),nhgFee=nonNegative(funding?.nhgFee);out[firstYear]=(out[firstYear]||0)+explicit+nhgFee;
+    const funding=purchaseFundingForCall(config,mortgageCallIndex),firstYear=String(finite(config.startYear,2026)),explicit=nonNegative(config.purchaseRules?.deductibleFinancingCosts),qualifyingShare=clamp(config.purchaseRules?.qualifyingInterestFraction??config.tax?.qualifyingInterestFraction??1,0,1),deductibleNhgFee=nonNegative(funding?.nhgFee)*qualifyingShare;out[firstYear]=(out[firstYear]||0)+explicit+deductibleNhgFee;
   }
   return out;
 }
