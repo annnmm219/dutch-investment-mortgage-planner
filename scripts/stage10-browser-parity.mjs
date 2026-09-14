@@ -87,8 +87,9 @@ async function one(page,d,view){
     if(d.propertyUse==='non-main'){
       assert.equal(imported.cfg.purchaseRules.grossRentalIncomeAnnual,d.rentalIncome,`${label}: rental income missing`);
       assert.equal(imported.cfg.purchaseRules.privateUseDays,d.privateUseDays,`${label}: private-use days missing`);
-      assert.ok((imported.ledgers[0]?.propertyRentalIncome||0)>0,`${label}: rental income absent from property ledger`);
-      assert.ok((imported.ledgers[0]?.propertyOwnUseAddition||0)>0,`${label}: own-use addition absent from property ledger`);
+      const propertyLedger=imported.ledgers.find(x=>x?.nonMainPropertyBox3)||imported.ledgers[0],propertyBuckets=Object.values(propertyLedger?.yearBuckets||{});
+      assert.ok(propertyBuckets.some(x=>(x?.propertyRentalIncome||0)>0),`${label}: rental income absent from property ledger`);
+      assert.ok(propertyBuckets.some(x=>(x?.propertyOwnUseAddition||0)>0),`${label}: own-use addition absent from property ledger`);
       assert.equal(imported.canonical.strategies.A.mortTax,0,`${label}: non-main property received Box 1 relief`);
     }
   }
