@@ -1,0 +1,32 @@
+name: Stage 10 NHG deduction share hotfix
+on:
+  push:
+    branches: [r6-6-decision-integrity]
+    paths: ['.github/workflows/stage10-nhg-deduction-share-hotfix.yml']
+permissions:
+  contents: write
+jobs:
+  patch:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v5
+        with:
+          ref: r6-6-decision-integrity
+          fetch-depth: 0
+      - name: Apportion NHG fee to Box 1 qualifying debt share
+        run: |
+          node <<'NODE'
+          const fs=require('fs');
+          const p='stage10-remediation.js';
+          let s=fs.readFileSync(p,'utf8');
+          const old="    const explicit=nonNegative(config.purchaseRules?.deductibleFinancingCosts);\n    const nhgFee=nonNegative(funding?.nhgFee);\n    out[firstYear]=(out[firstYear]||0)+explicit+nhgFee;";
+          const next="    const explicit=nonNegative(config.purchaseRules?.deductibleFinancingCosts);\n    const qualifyingShare=clamp(config.purchaseRules?.qualifyingInterestFraction??config.tax?.qualifyingInterestFraction??1,0,1);\n    const deductibleNhgFee=nonNegative(funding?.nhgFee)*qualifyingShare;\n    out[firstYear]=(out[firstYear]||0)+explicit+deductibleNhgFee;";
+          if(!s.includes(old)) throw new Error('Stage 10 NHG deductible-cost target not found');
+          fs.writeFileSync(p,s.replace(old,next));
+          NODE
+          rm .github/workflows/stage10-nhg-deduction-share-hotfix.yml
+          git config user.name github-actions[bot]
+          git config user.email 41898282+github-actions[bot]@users.noreply.github.com
+          git add stage10-remediation.js .github/workflows/stage10-nhg-deduction-share-hotfix.yml
+          git commit -m "Stage 10: apportion NHG Box 1 deduction"
+          git push origin HEAD:r6-6-decision-integrity
