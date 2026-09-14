@@ -1,14 +1,20 @@
 {
   "audit": {
-    "name": "R6.6 Stage 10 Independent Final Audit",
-    "date": "2026-09-10",
-    "audited_candidate": "caa998f47346270c886606a3f0dc852a0864eaf8",
-    "status": "FAIL_NOT_RELEASE_READY",
+    "name": "R6.6 Stage 10 Independent Audit",
+    "first_audit_date": "2026-09-10",
+    "first_audited_candidate": "caa998f47346270c886606a3f0dc852a0864eaf8",
+    "first_status": "FAIL_NOT_RELEASE_READY",
+    "second_audit_date": "2026-09-14",
+    "calculation_source": "31c08ffea3cb94e66692ad4c9505b2b7b8778e61",
+    "freeze_metadata_commit": "bd262a5dd93e9bea3075d3c22647751c975cf290",
+    "build_id": "R6.6-stage10-31c08ffe",
+    "second_status": "PASS_ORIGINAL_SIX_REMEDIATIONS_PUBLIC_RELEASE_HARDENING_PENDING",
     "merge_authorized": false
   },
   "summary": {
-    "release_blockers_or_major": 6,
-    "hygiene_findings": 1,
+    "original_release_blockers_closed": 6,
+    "new_public_release_blockers": 2,
+    "dependency_hygiene_findings_open": 1,
     "accepted_or_minor_limitations": 2,
     "closed_checks": 6
   },
@@ -16,56 +22,56 @@
     {
       "id": "F-01",
       "severity": "BLOCKER",
-      "status": "OPEN",
+      "status": "CLOSED_REMEDIATED",
       "area": "Box 3 current law / non-main property",
-      "title": "2026 actual return omits rental income and private-use addition for non-main property",
-      "release_blocker": true,
-      "required_action": "Model applicable rental/direct property income and 2026 private-use addition, or block current-law tax-adjusted non-main-property scenarios until complete inputs are available."
+      "title": "2026 actual return omitted rental income and private-use addition for non-main property",
+      "release_blocker": false,
+      "closure": "Current-law non-main property now models rental/pacht cash income and the 2026 5.06% private-use addition, includes them in the actual-return comparison, and exposes the components in annual audit buckets."
     },
     {
       "id": "F-02",
       "severity": "BLOCKER",
-      "status": "OPEN",
+      "status": "CLOSED_REMEDIATED",
       "area": "Proposed Box 3 / non-main property",
-      "title": "Future/transition path taxes non-main real-estate appreciation as annual accrual instead of the proposal's real-estate-specific treatment",
-      "release_blocker": true,
-      "required_action": "Implement the current bill's real-estate-specific capital-gains/direct-return treatment or disable proposed/transition Box 3 for non-main-property scenarios."
+      "title": "Future/transition path used generic accrual treatment for non-main real estate",
+      "release_blocker": false,
+      "closure": "Tax-adjusted non-main-property scenarios are explicitly blocked under Future or Transition Box 3 until the proposal's real-estate-specific capital-gains/direct-return branch is implemented."
     },
     {
       "id": "F-03",
       "severity": "BLOCKER",
-      "status": "OPEN",
+      "status": "CLOSED_REMEDIATED",
       "area": "NHG 2026",
-      "title": "Enhanced NHG check does not independently cap the non-energy cost stack at EUR 470,000",
-      "release_blocker": true,
-      "required_action": "Separate official a-g non-energy costs from h energy measures; enforce a-g <= 470000 and a-h <= 498200."
+      "title": "Enhanced NHG check did not independently cap the non-energy cost stack at EUR 470,000",
+      "release_blocker": false,
+      "closure": "For the supported existing-home purchase route, the exact NHG gate independently enforces a-g <= EUR 470,000 and a-h <= EUR 498,200 plus the related loan/energy caps. The simplified Mortgage-tab route cannot return an NHG pass without exact inputs."
     },
     {
       "id": "F-04",
       "severity": "BLOCKER",
-      "status": "OPEN",
+      "status": "CLOSED_REMEDIATED",
       "area": "Property classification",
-      "title": "Manual transfer-tax mode implicitly falls through as a main residence for Box 1 / Box 3 routing",
-      "release_blocker": true,
-      "required_action": "Add an independent property-use/main-residence classification and stop using transfer-tax mode as the Box 1/Box 3 classifier."
+      "title": "Manual transfer-tax mode could fall through as a main residence for Box 1 / Box 3 routing",
+      "release_blocker": false,
+      "closure": "Property-use classification is now explicit and independent from transfer-tax mode; manual transfer tax no longer decides Box 1 versus Box 3 treatment."
     },
     {
       "id": "F-05",
       "severity": "MAJOR",
-      "status": "OPEN",
+      "status": "CLOSED_REMEDIATED",
       "area": "Box 1 integration",
-      "title": "Exposed erfpacht and deductible purchase-financing costs are not passed into Box 1 deductible own-home costs",
-      "release_blocker": true,
-      "required_action": "Explicitly classify deductible financing costs and periodic erfpacht, then pass qualifying amounts into the annual Box 1 bridge, or block affected tax-adjusted comparisons."
+      "title": "Erfpacht and qualifying purchase-financing costs were not passed into deductible own-home costs",
+      "release_blocker": false,
+      "closure": "Itemized periodic erfpacht and the explicitly classified deductible financing-cost subset are routed into the annual Box 1 bridge. The automatic NHG fee is limited to the Box 1 qualifying-debt share; hidden/non-itemized ground lease is not silently deducted."
     },
     {
       "id": "F-06",
       "severity": "RELEASE_GOVERNANCE_BLOCKER",
-      "status": "OPEN",
+      "status": "CLOSED_REMEDIATED",
       "area": "Release identity / exports",
-      "title": "Exports and calculation evidence lack immutable exact source/build identity",
-      "release_blocker": true,
-      "required_action": "Inject GITHUB_SHA or another immutable build identity at deployment/build time and include it in exported calculation evidence."
+      "title": "Exports and calculation evidence lacked immutable exact source/build identity",
+      "release_blocker": false,
+      "closure": "R6.6 is frozen to calculation-source SHA 31c08ffea3cb94e66692ad4c9505b2b7b8778e61 and build ID R6.6-stage10-31c08ffe; canonical export evidence carries both values."
     },
     {
       "id": "F-07",
@@ -74,7 +80,7 @@
       "area": "Dependency hygiene",
       "title": "Development Playwright dependency reports an advisory and lockfile contains an extraneous absolute-path entry",
       "release_blocker": false,
-      "required_action": "Regenerate the lockfile in a clean environment and upgrade/re-audit the development dependency before security-clean sign-off."
+      "required_action": "Regenerate the lockfile in a clean environment and upgrade/re-audit the development-only Playwright dependency before security-clean sign-off."
     },
     {
       "id": "F-08",
@@ -83,24 +89,103 @@
       "area": "Tax cash-flow timing",
       "title": "Box 3 payment is modeled at calendar-year end rather than actual assessment/payment date",
       "release_blocker": false,
-      "required_action": "Retain explicit deterministic timing disclosure."
+      "required_action": "Retain the deterministic timing disclosure."
     },
     {
       "id": "F-09",
       "severity": "MINOR",
       "status": "ACCEPTABLE_WITH_DISCLOSURE",
       "area": "Next Euro numerical method",
-      "title": "0.1 percentage-point break-even scan is a numerical search and cannot mathematically prove every arbitrarily close double crossing",
+      "title": "The 0.1 percentage-point break-even scan is numerical rather than a mathematical proof against arbitrarily close double roots",
       "release_blocker": false,
-      "required_action": "Describe as a numerical search; adaptive subdivision is optional later hardening."
+      "required_action": "Retain numerical-search wording; adaptive subdivision remains optional hardening."
+    },
+    {
+      "id": "F-10",
+      "severity": "MAJOR",
+      "status": "OPEN",
+      "area": "Box 3 non-main property input definition",
+      "title": "Rental-income field says gross rent even though current-law actual return uses received basic rent (kale huur), excluding service charges",
+      "release_blocker": true,
+      "required_action": "Rename and explain the input as annual basic rent/pacht received, excluding service charges, while retaining the rule that ordinary property operating/maintenance costs are not deducted from current-law actual Box 3 return."
+    },
+    {
+      "id": "F-11",
+      "severity": "MAJOR",
+      "status": "OPEN",
+      "area": "NHG purchase scope",
+      "title": "Exact NHG a-g/a-h rule is an existing-home rule but the public purchase route does not explicitly exclude or separately model new-build purchases",
+      "release_blocker": true,
+      "required_action": "Either mark/block the current NHG purchase route as existing-home-only or implement the separate 2026 new-build NHG C.2.2 item structure and associated purchase-tax/VAT treatment."
     }
   ],
   "closed_checks": [
-    {"id": "C-01", "status": "CLOSED", "title": "2026 Box 1 rates and 11.94-point own-home adjustment verified"},
-    {"id": "C-02", "status": "CLOSED", "title": "Hillen 2026 rate verified; former Article 2.10 source conflict resolved in favor of implemented cap"},
-    {"id": "C-03", "status": "CLOSED", "title": "2026 current Box 3 headline parameters verified"},
-    {"id": "C-04", "status": "CLOSED", "title": "2026 transfer-tax rates and starter ceiling verified"},
-    {"id": "C-05", "status": "CLOSED", "title": "Stage 9.1 deterministic/state/browser parity evidence remains valid"},
-    {"id": "C-06", "status": "CLOSED", "title": "CSV injection, accessible chart table and third-party integrity controls verified"}
-  ]
+    {
+      "id": "C-01",
+      "status": "CLOSED",
+      "title": "2026 Box 1 rates and 11.94-point own-home adjustment verified"
+    },
+    {
+      "id": "C-02",
+      "status": "CLOSED",
+      "title": "Hillen 2026 rate and statutory qualifying-cost ceiling verified"
+    },
+    {
+      "id": "C-03",
+      "status": "CLOSED",
+      "title": "2026 current Box 3 headline parameters verified"
+    },
+    {
+      "id": "C-04",
+      "status": "CLOSED",
+      "title": "2026 transfer-tax rates and starter ceiling verified"
+    },
+    {
+      "id": "C-05",
+      "status": "CLOSED",
+      "title": "Stage 10 deterministic/state/browser parity evidence verified on the frozen build"
+    },
+    {
+      "id": "C-06",
+      "status": "CLOSED",
+      "title": "CSV injection, accessible chart table and third-party browser integrity controls retained"
+    }
+  ],
+  "evidence": {
+    "finance_workflow_run": 34901331827,
+    "finance_tests": {
+      "total": 277,
+      "passed": 277,
+      "failed": 0
+    },
+    "stage10_deterministic": {
+      "scenarios": 50,
+      "reconciled": 50,
+      "tax_effect_changes": 19,
+      "comparable_wealth_changes": 14,
+      "leader_changes": 0,
+      "unexplained_changes": 0
+    },
+    "browser_workflow_run": 34901331748,
+    "browser_merge_commit": "e19e6898ffa572696164d5794f924cf55bad1d64",
+    "browser": {
+      "desktop_exact_pairs": 50,
+      "mobile_exact_pairs": 50,
+      "browser_errors": 0,
+      "save_reload": true,
+      "explicit_refresh": true,
+      "fresh_isolation": true,
+      "property_classification": true,
+      "non_main_current_return": true,
+      "proposed_non_main_blocked": true,
+      "exact_nhg_caps": true,
+      "deductible_cost_path": true,
+      "export_identity": true
+    },
+    "browser_artifact": {
+      "id": 10372065651,
+      "name": "stage91-browser-test-e19e6898ffa572696164d5794f924cf55bad1d64",
+      "sha256": "75bc8dcf118ee15de183c29cd0ce1e6cbeaf55b51591bd5af11a8aeedda60e58"
+    }
+  }
 }
