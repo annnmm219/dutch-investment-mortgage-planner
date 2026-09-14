@@ -5,7 +5,8 @@ const assert=require('node:assert/strict');
 const fs=require('node:fs');
 const path=require('node:path');
 
-const source=fs.readFileSync(path.join(__dirname,'..','stage10-remediation.js'),'utf8');
+const ROOT=path.join(__dirname,'..');
+const source=fs.readFileSync(path.join(ROOT,'stage10-remediation.js'),'utf8');
 
 test('Stage 10 hides private-use WOZ unless non-main current-law private use is positive',()=>{
   assert.match(source,/scenarioPropertyPrivateUseWozField/);
@@ -31,4 +32,11 @@ test('Stage 10 labels its Scenario-owned controls as entered here across save an
   assert.match(source,/function stage10Provenance\(\)/);
   assert.match(source,/tag\.textContent='Entered here'/);
   assert.match(source,/sync\(\);stage10Provenance\(\)/);
+});
+
+test('Stage 10 browser parity reads property direct-return evidence from annual ledger buckets',()=>{
+  const browser=fs.readFileSync(path.join(ROOT,'scripts','stage10-browser-parity.mjs'),'utf8');
+  assert.match(browser,/propertyBuckets=Object\.values\(propertyLedger\?\.yearBuckets\|\|\{\}\)/);
+  assert.match(browser,/propertyRentalIncome/);
+  assert.match(browser,/propertyOwnUseAddition/);
 });
