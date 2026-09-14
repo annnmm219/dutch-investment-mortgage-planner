@@ -1,0 +1,32 @@
+name: Stage 10 provenance hotfix
+on:
+  push:
+    branches: [r6-6-decision-integrity]
+    paths: ['.github/workflows/stage10-provenance-hotfix.yml']
+permissions:
+  contents: write
+jobs:
+  patch:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v5
+        with:
+          ref: r6-6-decision-integrity
+          fetch-depth: 0
+      - name: Patch Stage 10 Scenario-owned provenance
+        run: |
+          node <<'NODE'
+          const fs=require('fs');
+          const p='stage10-remediation.js';
+          let s=fs.readFileSync(p,'utf8');
+          const old="function stage10Event(e){sync();if(STAGE10_IDS.includes(e.target?.id))saveStage10State();}engine.addEventListener('input',stage10Event,true);engine.addEventListener('change',stage10Event,true);const restoredStage10=restoreStage10State();sync();if(restoredStage10){saveStage10State();queueMicrotask(()=>{const trigger=$('scenarioDeductibleFinancingCostsNew')||$('scenarioPropertyUseNew');if(!trigger)return;trigger.dispatchEvent(new Event('input',{bubbles:true}));trigger.dispatchEvent(new Event('change',{bubbles:true}));});}";
+          const next="function stage10Provenance(){STAGE10_IDS.forEach(id=>{const tag=document.querySelector(`.scenario-source-tag[data-source-for=\"${id}\"]`);if(tag)tag.textContent='Entered here';});}function stage10Event(e){sync();stage10Provenance();if(STAGE10_IDS.includes(e.target?.id))saveStage10State();}engine.addEventListener('input',stage10Event,true);engine.addEventListener('change',stage10Event,true);const restoredStage10=restoreStage10State();sync();stage10Provenance();if(restoredStage10){saveStage10State();queueMicrotask(()=>{const trigger=$('scenarioDeductibleFinancingCostsNew')||$('scenarioPropertyUseNew');if(!trigger)return;trigger.dispatchEvent(new Event('input',{bubbles:true}));trigger.dispatchEvent(new Event('change',{bubbles:true}));});}";
+          if(!s.includes(old)) throw new Error('Stage 10 provenance target not found');
+          fs.writeFileSync(p,s.replace(old,next));
+          NODE
+          rm .github/workflows/stage10-provenance-hotfix.yml
+          git config user.name github-actions[bot]
+          git config user.email 41898282+github-actions[bot]@users.noreply.github.com
+          git add stage10-remediation.js .github/workflows/stage10-provenance-hotfix.yml
+          git commit -m "Stage 10: keep Scenario-owned provenance explicit"
+          git push origin HEAD:r6-6-decision-integrity
