@@ -112,6 +112,16 @@ test('F-05 itemized periodic erfpacht and explicit financing costs increase main
   assert.ok(Math.abs(yearly[2026]-3200)<.01,`2026 additional deductible costs should be €3,200, got ${yearly[2026]}`);
 });
 
+test('F-05 automatic NHG fee deduction is limited to the Box 1 qualifying debt share',()=>{
+  const c=purchaseConfig({
+    box3:{mode:'none'},
+    tax:{qualifyingInterestFraction:.5},
+    purchaseRules:{nhgMode:'standard',nhgNonEnergyCostStack:400000,qualifyingInterestFraction:.5,deductibleFinancingCosts:0}
+  });
+  const yearly=S10.additionalDeductibleCostsByYear(c,12,0);
+  assert.ok(Math.abs(yearly[2026]-600)<.01,`50% of the €1,200 NHG fee should be deductible, got ${yearly[2026]}`);
+});
+
 test('F-05 hidden/non-itemized ground-lease value is not silently deducted',()=>{
   const c=purchaseConfig({ownerCostMode:'total',ownerCostTotalMonthly:500,groundLeaseAnnual:1200,box3:{mode:'none'}});
   const yearly=S10.additionalDeductibleCostsByYear(c,12,0);
