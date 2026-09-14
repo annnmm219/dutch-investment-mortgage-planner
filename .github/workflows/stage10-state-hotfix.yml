@@ -1,0 +1,33 @@
+name: Stage 10 state hotfix
+on:
+  push:
+    branches: [r6-6-decision-integrity]
+    paths: ['.github/workflows/stage10-state-hotfix.yml']
+permissions:
+  contents: write
+jobs:
+  patch:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v5
+        with:
+          ref: r6-6-decision-integrity
+          fetch-depth: 0
+      - name: Patch Stage 10 independent state persistence
+        run: |
+          node <<'NODE'
+          const fs=require('fs');
+          const p='stage10-remediation.js';
+          let s=fs.readFileSync(p,'utf8');
+          const old="function restoreStage10Snapshot(){let payload=null;try{payload=JSON.parse(localStorage.getItem(S91.SNAPSHOT_KEY)||'null');}catch(_){}if(!payload?.values)return false;let restored=false;['scenarioPropertyUseNew','scenarioDeductibleFinancingCostsNew','scenarioNhgNonEnergyCostStackNew','scenarioPropertyRentalIncomeNew','scenarioPropertyIncomeGrowthNew','scenarioPropertyPrivateUseDaysNew','scenarioPropertyPrivateUseWozNew'].forEach(id=>{const entry=payload.values[id],el=$(id);if(!entry||!el)return;if(entry.kind==='checked')el.checked=Boolean(entry.value);else el.value=String(entry.value??'');restored=true;});return restored;}engine.addEventListener('input',sync,true);engine.addEventListener('change',sync,true);const restoredStage10=restoreStage10Snapshot();sync();if(restoredStage10)$('scenarioReturnNew')?.dispatchEvent(new Event('change',{bubbles:true}));";
+          const next="const STAGE10_STATE_KEY='dimp.stage10.scenario-state.v1',STAGE10_IDS=['scenarioPropertyUseNew','scenarioDeductibleFinancingCostsNew','scenarioNhgNonEnergyCostStackNew','scenarioPropertyRentalIncomeNew','scenarioPropertyIncomeGrowthNew','scenarioPropertyPrivateUseDaysNew','scenarioPropertyPrivateUseWozNew'];function captureStage10State(){const values={};STAGE10_IDS.forEach(id=>{const el=$(id);if(!el)return;values[id]={kind:(el.type==='checkbox'||el.type==='radio')?'checked':'value',value:(el.type==='checkbox'||el.type==='radio')?Boolean(el.checked):String(el.value??'')};});return{version:1,values,savedAt:new Date().toISOString()};}function saveStage10State(){try{localStorage.setItem(STAGE10_STATE_KEY,JSON.stringify(captureStage10State()));}catch(_){}}function readStage10State(){try{const own=JSON.parse(localStorage.getItem(STAGE10_STATE_KEY)||'null');if(own?.values)return own;const legacy=JSON.parse(localStorage.getItem(S91.SNAPSHOT_KEY)||'null');return legacy?.values?{version:1,values:legacy.values,migratedFrom:S91.SNAPSHOT_KEY}:null;}catch(_){return null;}}function restoreStage10State(){const payload=readStage10State();if(!payload?.values)return false;let restored=false;STAGE10_IDS.forEach(id=>{const entry=payload.values[id],el=$(id);if(!entry||!el)return;if(entry.kind==='checked')el.checked=Boolean(entry.value);else el.value=String(entry.value??'');restored=true;});return restored;}function stage10Event(e){sync();if(STAGE10_IDS.includes(e.target?.id))saveStage10State();}engine.addEventListener('input',stage10Event,true);engine.addEventListener('change',stage10Event,true);const restoredStage10=restoreStage10State();sync();if(restoredStage10){saveStage10State();queueMicrotask(()=>{const trigger=$('scenarioDeductibleFinancingCostsNew')||$('scenarioPropertyUseNew');if(!trigger)return;trigger.dispatchEvent(new Event('input',{bubbles:true}));trigger.dispatchEvent(new Event('change',{bubbles:true}));});}";
+          if(!s.includes(old)) throw new Error('Stage 10 state restore target not found');
+          s=s.replace(old,next);
+          fs.writeFileSync(p,s);
+          NODE
+          rm .github/workflows/stage10-state-hotfix.yml
+          git config user.name github-actions[bot]
+          git config user.email 41898282+github-actions[bot]@users.noreply.github.com
+          git add stage10-remediation.js .github/workflows/stage10-state-hotfix.yml
+          git commit -m "Stage 10: isolate late-control persistence"
+          git push origin HEAD:r6-6-decision-integrity
