@@ -161,6 +161,7 @@ function installPatches(){
     if(typeof document!=='undefined'){
       const $=id=>document.getElementById(id),n=id=>finiteOrNull($(id)?.value);rules.propertyUse=normalizePropertyUse($('scenarioPropertyUseNew')?.value)||inferredPropertyUse(rules);rules.starterMainResidence=rules.propertyUse==='main-residence';rules.deductibleFinancingCosts=nonNegative(n('scenarioDeductibleFinancingCostsNew'));rules.nhgNonEnergyCostStack=n('scenarioNhgNonEnergyCostStackNew');rules.grossRentalIncomeAnnual=n('scenarioPropertyRentalIncomeNew');rules.privateUseDays=n('scenarioPropertyPrivateUseDaysNew');rules.privateUseWozValue=n('scenarioPropertyPrivateUseWozNew');rules.propertyIncomeGrowthPct=finite(n('scenarioPropertyIncomeGrowthNew'),0);
     }else{rules.propertyUse=normalizePropertyUse(rules.propertyUse)||inferredPropertyUse(rules);if(rules.propertyUse)rules.starterMainResidence=rules.propertyUse==='main-residence';}
+    if(!isPurchase(resolved.mode)){rules.propertyUse='main-residence';rules.deductibleFinancingCosts=0;rules.nhgNonEnergyCostStack=null;rules.grossRentalIncomeAnnual=0;rules.privateUseDays=0;rules.privateUseWozValue=0;rules.propertyIncomeGrowthPct=0;}
     resolved.purchaseRules=rules;return resolved;
   };
   FC.box3TaxForYear=function(args={}){
