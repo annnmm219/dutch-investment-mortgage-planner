@@ -40,3 +40,11 @@ test('Stage 10 browser parity reads property direct-return evidence from annual 
   assert.match(browser,/propertyRentalIncome/);
   assert.match(browser,/propertyOwnUseAddition/);
 });
+
+test('Stage 10 normalizes inactive purchase-only rules for non-purchase modes across reload',()=>{
+  assert.match(source,/if\(!isPurchase\(resolved\.mode\)\)/);
+  assert.match(source,/rules\.grossRentalIncomeAnnual=0/);
+  assert.match(source,/rules\.privateUseDays=0/);
+  assert.match(source,/rules\.privateUseWozValue=0/);
+  assert.match(source,/rules\.nhgNonEnergyCostStack=null/);
+});
