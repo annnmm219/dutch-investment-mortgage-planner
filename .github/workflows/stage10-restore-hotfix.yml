@@ -1,0 +1,32 @@
+name: Stage 10 restore hotfix
+on:
+  push:
+    branches: [r6-6-decision-integrity]
+    paths: ['.github/workflows/stage10-restore-hotfix.yml']
+permissions:
+  contents: write
+jobs:
+  patch:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v5
+        with:
+          ref: r6-6-decision-integrity
+          fetch-depth: 0
+      - name: Patch Stage 10 late-control restore
+        run: |
+          node <<'NODE'
+          const fs=require('fs');
+          const p='stage10-remediation.js';
+          let s=fs.readFileSync(p,'utf8');
+          const old="engine.addEventListener('input',sync,true);engine.addEventListener('change',sync,true);sync();";
+          const next="function restoreStage10Snapshot(){let payload=null;try{payload=JSON.parse(localStorage.getItem(S91.SNAPSHOT_KEY)||'null');}catch(_){}if(!payload?.values)return false;let restored=false;['scenarioPropertyUseNew','scenarioDeductibleFinancingCostsNew','scenarioNhgNonEnergyCostStackNew','scenarioPropertyRentalIncomeNew','scenarioPropertyIncomeGrowthNew','scenarioPropertyPrivateUseDaysNew','scenarioPropertyPrivateUseWozNew'].forEach(id=>{const entry=payload.values[id],el=$(id);if(!entry||!el)return;if(entry.kind==='checked')el.checked=Boolean(entry.value);else el.value=String(entry.value??'');restored=true;});return restored;}engine.addEventListener('input',sync,true);engine.addEventListener('change',sync,true);const restoredStage10=restoreStage10Snapshot();sync();if(restoredStage10)$('scenarioReturnNew')?.dispatchEvent(new Event('change',{bubbles:true}));";
+          if(!s.includes(old)) throw new Error('Stage 10 restore target not found');
+          fs.writeFileSync(p,s.replace(old,next));
+          NODE
+          rm .github/workflows/stage10-restore-hotfix.yml
+          git config user.name github-actions[bot]
+          git config user.email 41898282+github-actions[bot]@users.noreply.github.com
+          git add stage10-remediation.js .github/workflows/stage10-restore-hotfix.yml
+          git commit -m "Stage 10: restore late controls before recalculation"
+          git push origin HEAD:r6-6-decision-integrity
