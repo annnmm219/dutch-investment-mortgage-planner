@@ -86,6 +86,9 @@ test('F-01 current Box 3 actual return includes gross rent and 2026 5.06% privat
   const expectedDirectTax=Math.max(0,baseActual+directReturn)*.36;
   assert.ok(Math.abs(ay.actualTax-expectedZeroTax)<.01,`baseline actual tax mismatch: ${ay.actualTax} vs ${expectedZeroTax}`);
   assert.ok(Math.abs(by.actualTax-expectedDirectTax)<.01,`actual tax must include full rent + own-use addition before zero floor: ${by.actualTax} vs ${expectedDirectTax}`);
+  assert.ok(Math.abs(by.propertyRentalIncome-12000)<.01,`audit ledger should expose €12,000 rent, got ${by.propertyRentalIncome}`);
+  assert.ok(Math.abs(by.propertyOwnUseAddition-400000*.0506)<.01,`audit ledger should expose the 5.06% own-use addition, got ${by.propertyOwnUseAddition}`);
+  assert.ok(Math.abs(by.propertyDirectReturn-directReturn)<.01,`audit ledger should expose complete property direct return, got ${by.propertyDirectReturn}`);
   assert.ok(b.A.invest>a.A.invest,'received rent should remain a real cash inflow, not tax-only income');
 });
 
