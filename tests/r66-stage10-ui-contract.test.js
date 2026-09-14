@@ -26,3 +26,9 @@ test('Stage 10 persists late-created Scenario controls independently and migrate
   assert.match(source,/trigger\.dispatchEvent\(new Event\('input'/);
   assert.match(source,/trigger\.dispatchEvent\(new Event\('change'/);
 });
+
+test('Stage 10 labels its Scenario-owned controls as entered here across save and reload',()=>{
+  assert.match(source,/function stage10Provenance\(\)/);
+  assert.match(source,/tag\.textContent='Entered here'/);
+  assert.match(source,/sync\(\);stage10Provenance\(\)/);
+});
