@@ -29,160 +29,45 @@ jobs:
 
           const file='stage10-remediation.js';
           let s=fs.readFileSync(file,'utf8');
-
-          s=mustReplace(s,
-            "const isPurchase=mode=>mode==='buy-rent'||mode==='downpayment';",
-            "const isPurchase=mode=>mode==='buy-rent'||mode==='downpayment';\nconst normalizePurchaseType=value=>value==='new-build'?'new-build':value==='existing-home'?'existing-home':null;",
-            'purchase type helper');
-
-          s=mustReplace(s,
-            "function calculateScenarioPurchase2026(input={}){\n  const price=nonNegative(input.housePrice),cash=nonNegative(input.availableSavings),appraisal=nonNegative(input.appraisedValue)||price,down=nonNegative(input.downPayment),base=nonNegative(input.baseCosts),energySpend=input.nhgMode==='energy'?nonNegative(input.qualifyingEnergyExpenditure):0,errors=[];\n  if(price<=0)",
-            "function calculateScenarioPurchase2026(input={}){\n  const purchaseType=normalizePurchaseType(input.purchaseType)||'existing-home';\n  const price=nonNegative(input.housePrice),cash=nonNegative(input.availableSavings),appraisal=nonNegative(input.appraisedValue)||price,down=nonNegative(input.downPayment),base=nonNegative(input.baseCosts),energySpend=input.nhgMode==='energy'?nonNegative(input.qualifyingEnergyExpenditure):0,errors=[];\n  if(purchaseType==='new-build')errors.push({code:'new-build-unsupported',message:'R6.6 purchase scenarios support existing homes only. New-build purchase, VAT/transfer-tax and NHG cost rules use a separate structure and are not modeled in this release.'});\n  if(price<=0)",
-            'direct new-build block');
-
-          s=mustReplace(s,
-            "return{source:'scenario-local-2026-rules-stage10',valid:errors.length===0,propertyPrice:price",
-            "return{source:'scenario-local-2026-rules-stage10',purchaseType,valid:errors.length===0,propertyPrice:price",
-            'purchase type result');
-
-          s=mustReplace(s,
-            "return calculateScenarioPurchase2026({housePrice:d?.price,downPayment:down,availableSavings:d?.cash??config.box3?.savings,baseCosts:d?.purchaseCosts,transferTaxMode:config.purchaseRules?.transferTaxMode",
-            "return calculateScenarioPurchase2026({purchaseType:config.purchaseRules?.purchaseType,housePrice:d?.price,downPayment:down,availableSavings:d?.cash??config.box3?.savings,baseCosts:d?.purchaseCosts,transferTaxMode:config.purchaseRules?.transferTaxMode",
-            'funding purchase type');
-
-          s=mustReplace(s,
-            "if(!isPurchase(config.mode))return{valid:true};const rules=config.purchaseRules||{},use=inferredPropertyUse(rules),alignment=propertyTransferTaxAlignment(use,rules.transferTaxMode);\n  if(!use)return{valid:false,reason:'Comparison unavailable: choose the property income-tax classification.'};",
-            "if(!isPurchase(config.mode))return{valid:true};const rules=config.purchaseRules||{},purchaseType=normalizePurchaseType(rules.purchaseType)||'existing-home',use=inferredPropertyUse(rules),alignment=propertyTransferTaxAlignment(use,rules.transferTaxMode);\n  if(purchaseType==='new-build')return{valid:false,reason:'Comparison unavailable: R6.6 purchase scenarios support existing homes only. New-build purchase, VAT/transfer-tax and NHG rules use a separate structure and are not modeled.'};\n  if(!use)return{valid:false,reason:'Comparison unavailable: choose the property income-tax classification.'};",
-            'scenario new-build validation');
-
-          s=mustReplace(s,
-            "if(finiteOrNull(rules.grossRentalIncomeAnnual)===null)return{valid:false,reason:'Comparison unavailable: enter gross annual rent/pacht income for the non-main property (0 is allowed).'};",
-            "if(finiteOrNull(rules.grossRentalIncomeAnnual)===null)return{valid:false,reason:'Comparison unavailable: enter annual basic rent (kale huur) / pacht received for the non-main property, excluding service charges (0 is allowed).'};",
-            'rental definition validation');
-
-          s=mustReplace(s,
-            "if(merged.qualifyingEnergyExpenditure==null)merged.qualifyingEnergyExpenditure=rules.qualifyingEnergyExpenditure;",
-            "if(merged.purchaseType==null)merged.purchaseType=rules.purchaseType;\n      if(merged.qualifyingEnergyExpenditure==null)merged.qualifyingEnergyExpenditure=rules.qualifyingEnergyExpenditure;",
-            'active run purchase type');
-
-          s=mustReplace(s,
-            "const $=id=>document.getElementById(id),n=id=>finiteOrNull($(id)?.value);rules.propertyUse=normalizePropertyUse($('scenarioPropertyUseNew')?.value)||inferredPropertyUse(rules);",
-            "const $=id=>document.getElementById(id),n=id=>finiteOrNull($(id)?.value);rules.purchaseType=normalizePurchaseType($('scenarioPurchaseTypeNew')?.value)||'existing-home';rules.propertyUse=normalizePropertyUse($('scenarioPropertyUseNew')?.value)||inferredPropertyUse(rules);",
-            'DOM purchase type');
-
-          s=mustReplace(s,
-            "}else{rules.propertyUse=normalizePropertyUse(rules.propertyUse)||inferredPropertyUse(rules);if(rules.propertyUse)rules.starterMainResidence=rules.propertyUse==='main-residence';}",
-            "}else{rules.purchaseType=normalizePurchaseType(rules.purchaseType)||'existing-home';rules.propertyUse=normalizePropertyUse(rules.propertyUse)||inferredPropertyUse(rules);if(rules.propertyUse)rules.starterMainResidence=rules.propertyUse==='main-residence';}",
-            'non-DOM purchase type');
-
-          s=mustReplace(s,
-            "if(!isPurchase(resolved.mode)){rules.propertyUse='main-residence';",
-            "if(!isPurchase(resolved.mode)){rules.purchaseType='existing-home';rules.propertyUse='main-residence';",
-            'inactive purchase type normalization');
-
-          s=mustReplace(s,
-            "const prepared=clone(config),rules={...(prepared.purchaseRules||{})};if(isPurchase(prepared.mode)){rules.propertyUse=normalizePropertyUse(rules.propertyUse)||inferredPropertyUse(rules);",
-            "const prepared=clone(config),rules={...(prepared.purchaseRules||{})};if(isPurchase(prepared.mode)){rules.purchaseType=normalizePurchaseType(rules.purchaseType)||'existing-home';rules.propertyUse=normalizePropertyUse(rules.propertyUse)||inferredPropertyUse(rules);",
-            'run scenario purchase type normalization');
-
-          s=mustReplace(s,
-            "<p class=\"subsection-title\">Property tax classification and deductible costs</p><div class=\"grid3 advanced-grid\"><div class=\"field\"><label for=\"scenarioPropertyUseNew\">Property income-tax classification</label>",
-            "<p class=\"subsection-title\">Property tax classification and deductible costs</p><div class=\"grid3 advanced-grid\"><div class=\"field\"><label for=\"scenarioPurchaseTypeNew\">Purchase type</label><select id=\"scenarioPurchaseTypeNew\" required><option value=\"existing-home\" selected>Existing home (supported)</option><option value=\"new-build\">New build (not supported in R6.6)</option></select><p class=\"inline\">R6.6 purchase, transfer-tax and NHG rules are scoped to existing homes. New-build uses a separate legal/cost structure and is blocked rather than approximated.</p><p class=\"stage91-source scenario-source-tag\" data-source-for=\"scenarioPurchaseTypeNew\">Entered here</p></div><div class=\"field\"><label for=\"scenarioPropertyUseNew\">Property income-tax classification</label>",
-            'purchase type UI');
-
-          s=mustReplace(s,
-            "2026 NHG requires a–g ≤ €470,000. Qualifying energy measures are item h and can lift a–h only to €498,200.",
-            "For an existing-home purchase, 2026 NHG requires a–g ≤ €470,000. Qualifying energy measures are item h and can lift a–h only to €498,200.",
-            'NHG existing-home scope copy');
-
-          s=mustReplace(s,
-            "</div></div><div id=\"scenarioNonMainReturnFields\" class=\"hidden\"><p class=\"subsection-title\">2026 current-law actual return for non-main property</p><p class=\"subsection-copy\">Actual return includes property value change, gross rent/pacht received, Box 3 debt interest, and from 2026 an own-use addition when the property is available for private use. The fixed 5.06% own-use route is modeled below.</p>",
-            "</div></div><div class=\"callout warn hidden\" id=\"scenarioNewBuildWarning\"><strong>New-build not supported:</strong> R6.6 models existing-home purchase rules only. It does not approximate the separate new-build VAT/transfer-tax or NHG cost structure.</div><div id=\"scenarioNonMainReturnFields\" class=\"hidden\"><p class=\"subsection-title\">2026 current-law actual return for non-main property</p><p class=\"subsection-copy\">Actual return includes property value change, received basic rent (kale huur) / pacht excluding service charges, Box 3 debt interest, and from 2026 an own-use addition when the property is available for private use. The fixed 5.06% own-use route is modeled below.</p>",
-            'new-build warning and rental definition copy');
-
-          s=mustReplace(s,
-            "<label for=\"scenarioPropertyRentalIncomeNew\">Gross annual rent / pacht income</label><input id=\"scenarioPropertyRentalIncomeNew\" type=\"number\" min=\"0\" step=\"100\" value=\"0\"><p class=\"inline\">Before property operating costs; those costs are not deducted from current-law actual Box 3 return.</p>",
-            "<label for=\"scenarioPropertyRentalIncomeNew\">Annual basic rent (kale huur) / pacht received</label><input id=\"scenarioPropertyRentalIncomeNew\" type=\"number\" min=\"0\" step=\"100\" value=\"0\"><p class=\"inline\">Exclude service charges. Do not subtract property operating costs; those costs are not deducted from current-law actual Box 3 return.</p>",
-            'rental label');
-
-          s=mustReplace(s,
-            "Planning assumption. Gross rent is modeled as received monthly and retained/invested.",
-            "Planning assumption. Basic rent / pacht is modeled as received monthly and retained/invested.",
-            'rental growth copy');
-
-          s=mustReplace(s,
-            "const purchase=isPurchase($('comparisonType')?.value),use=normalizePropertyUse($('scenarioPropertyUseNew')?.value)||'main-residence',nonMain=use==='non-main',nhg=",
-            "const purchase=isPurchase($('comparisonType')?.value),purchaseType=normalizePurchaseType($('scenarioPurchaseTypeNew')?.value)||'existing-home',use=normalizePropertyUse($('scenarioPropertyUseNew')?.value)||'main-residence',nonMain=use==='non-main',nhg=",
-            'sync purchase type');
-
-          s=mustReplace(s,
-            "$('scenarioNonMainReturnFields')?.classList.toggle('hidden',!purchase||!nonMain);",
-            "$('scenarioNewBuildWarning')?.classList.toggle('hidden',!purchase||purchaseType!=='new-build');$('scenarioNonMainReturnFields')?.classList.toggle('hidden',!purchase||!nonMain);",
-            'sync new-build warning');
-
-          s=mustReplace(s,
-            "const STAGE10_STATE_KEY='dimp.stage10.scenario-state.v1',STAGE10_IDS=['scenarioPropertyUseNew'",
-            "const STAGE10_STATE_KEY='dimp.stage10.scenario-state.v1',STAGE10_IDS=['scenarioPurchaseTypeNew','scenarioPropertyUseNew'",
-            'persist purchase type');
-
-          s=mustReplace(s,
-            "Exact NHG eligibility needs the official a–g cost stack and energy allocation. Use the Scenario purchase-rule section for the decision-grade NHG check; this Mortgage-tab selector will not return an NHG pass without those inputs.",
-            "R6.6 decision-grade NHG checks are scoped to existing-home purchases and need the official a–g cost stack plus energy allocation. Use the Scenario purchase-rule section; this Mortgage-tab selector will not return an NHG pass without those inputs.",
-            'standalone NHG scope');
-
-          s=mustReplace(s,
-            "return{VERSION,NHG_STANDARD",
-            "return{VERSION,NHG_STANDARD,NHG_ENERGY,NHG_FEE,OWN_USE_RATE_2026,normalizePurchaseType,normalizePropertyUse,inferredPropertyUse,isNonMain,propertyTransferTaxAlignment,nhg2026Exact,calculateScenarioPurchase2026,unsupportedStandaloneNhg,ownerCostMode,annualGroundLeaseByYear,purchaseFundingForCall,additionalDeductibleCostsByYear,propertyIncomeSchedule,isPropertyInvestmentCall,releaseIdentity,releaseIdentityRows,validateStage10Config,installPatches,browserBoot};\n});\n/*PATCH_END*/\n/*",
-            'temporary export anchor');
-          // Undo the temporary trick by replacing the duplicated old tail as one block.
-          s=mustReplace(s,
-            "/*PATCH_END*/\n/*,NHG_STANDARD,NHG_ENERGY,NHG_FEE,OWN_USE_RATE_2026,normalizePropertyUse,inferredPropertyUse,isNonMain,propertyTransferTaxAlignment,nhg2026Exact,calculateScenarioPurchase2026,unsupportedStandaloneNhg,ownerCostMode,annualGroundLeaseByYear,purchaseFundingForCall,additionalDeductibleCostsByYear,propertyIncomeSchedule,isPropertyInvestmentCall,releaseIdentity,releaseIdentityRows,validateStage10Config,installPatches,browserBoot};\n});*/",
-            "",
-            'export tail cleanup');
-
+          s=mustReplace(s,"const isPurchase=mode=>mode==='buy-rent'||mode==='downpayment';","const isPurchase=mode=>mode==='buy-rent'||mode==='downpayment';\nconst normalizePurchaseType=value=>value==='new-build'?'new-build':value==='existing-home'?'existing-home':null;",'purchase type helper');
+          s=mustReplace(s,"function calculateScenarioPurchase2026(input={}){\n  const price=nonNegative(input.housePrice),cash=nonNegative(input.availableSavings),appraisal=nonNegative(input.appraisedValue)||price,down=nonNegative(input.downPayment),base=nonNegative(input.baseCosts),energySpend=input.nhgMode==='energy'?nonNegative(input.qualifyingEnergyExpenditure):0,errors=[];\n  if(price<=0)","function calculateScenarioPurchase2026(input={}){\n  const purchaseType=normalizePurchaseType(input.purchaseType)||'existing-home';\n  const price=nonNegative(input.housePrice),cash=nonNegative(input.availableSavings),appraisal=nonNegative(input.appraisedValue)||price,down=nonNegative(input.downPayment),base=nonNegative(input.baseCosts),energySpend=input.nhgMode==='energy'?nonNegative(input.qualifyingEnergyExpenditure):0,errors=[];\n  if(purchaseType==='new-build')errors.push({code:'new-build-unsupported',message:'R6.6 purchase scenarios support existing homes only. New-build purchase, VAT/transfer-tax and NHG cost rules use a separate structure and are not modeled in this release.'});\n  if(price<=0)",'direct new-build block');
+          s=mustReplace(s,"return{source:'scenario-local-2026-rules-stage10',valid:errors.length===0,propertyPrice:price","return{source:'scenario-local-2026-rules-stage10',purchaseType,valid:errors.length===0,propertyPrice:price",'purchase type result');
+          s=mustReplace(s,"return calculateScenarioPurchase2026({housePrice:d?.price,downPayment:down,availableSavings:d?.cash??config.box3?.savings,baseCosts:d?.purchaseCosts,transferTaxMode:config.purchaseRules?.transferTaxMode","return calculateScenarioPurchase2026({purchaseType:config.purchaseRules?.purchaseType,housePrice:d?.price,downPayment:down,availableSavings:d?.cash??config.box3?.savings,baseCosts:d?.purchaseCosts,transferTaxMode:config.purchaseRules?.transferTaxMode",'funding purchase type');
+          s=mustReplace(s,"if(!isPurchase(config.mode))return{valid:true};const rules=config.purchaseRules||{},use=inferredPropertyUse(rules),alignment=propertyTransferTaxAlignment(use,rules.transferTaxMode);\n  if(!use)return{valid:false,reason:'Comparison unavailable: choose the property income-tax classification.'};","if(!isPurchase(config.mode))return{valid:true};const rules=config.purchaseRules||{},purchaseType=normalizePurchaseType(rules.purchaseType)||'existing-home',use=inferredPropertyUse(rules),alignment=propertyTransferTaxAlignment(use,rules.transferTaxMode);\n  if(purchaseType==='new-build')return{valid:false,reason:'Comparison unavailable: R6.6 purchase scenarios support existing homes only. New-build purchase, VAT/transfer-tax and NHG rules use a separate structure and are not modeled.'};\n  if(!use)return{valid:false,reason:'Comparison unavailable: choose the property income-tax classification.'};",'scenario new-build validation');
+          s=mustReplace(s,"if(finiteOrNull(rules.grossRentalIncomeAnnual)===null)return{valid:false,reason:'Comparison unavailable: enter gross annual rent/pacht income for the non-main property (0 is allowed).'};","if(finiteOrNull(rules.grossRentalIncomeAnnual)===null)return{valid:false,reason:'Comparison unavailable: enter annual basic rent (kale huur) / pacht received for the non-main property, excluding service charges (0 is allowed).'};",'rental definition validation');
+          s=mustReplace(s,"if(merged.qualifyingEnergyExpenditure==null)merged.qualifyingEnergyExpenditure=rules.qualifyingEnergyExpenditure;","if(merged.purchaseType==null)merged.purchaseType=rules.purchaseType;\n      if(merged.qualifyingEnergyExpenditure==null)merged.qualifyingEnergyExpenditure=rules.qualifyingEnergyExpenditure;",'active run purchase type');
+          s=mustReplace(s,"const $=id=>document.getElementById(id),n=id=>finiteOrNull($(id)?.value);rules.propertyUse=normalizePropertyUse($('scenarioPropertyUseNew')?.value)||inferredPropertyUse(rules);","const $=id=>document.getElementById(id),n=id=>finiteOrNull($(id)?.value);rules.purchaseType=normalizePurchaseType($('scenarioPurchaseTypeNew')?.value)||'existing-home';rules.propertyUse=normalizePropertyUse($('scenarioPropertyUseNew')?.value)||inferredPropertyUse(rules);",'DOM purchase type');
+          s=mustReplace(s,"}else{rules.propertyUse=normalizePropertyUse(rules.propertyUse)||inferredPropertyUse(rules);if(rules.propertyUse)rules.starterMainResidence=rules.propertyUse==='main-residence';}","}else{rules.purchaseType=normalizePurchaseType(rules.purchaseType)||'existing-home';rules.propertyUse=normalizePropertyUse(rules.propertyUse)||inferredPropertyUse(rules);if(rules.propertyUse)rules.starterMainResidence=rules.propertyUse==='main-residence';}",'non-DOM purchase type');
+          s=mustReplace(s,"if(!isPurchase(resolved.mode)){rules.propertyUse='main-residence';","if(!isPurchase(resolved.mode)){rules.purchaseType='existing-home';rules.propertyUse='main-residence';",'inactive purchase type normalization');
+          s=mustReplace(s,"const prepared=clone(config),rules={...(prepared.purchaseRules||{})};if(isPurchase(prepared.mode)){rules.propertyUse=normalizePropertyUse(rules.propertyUse)||inferredPropertyUse(rules);","const prepared=clone(config),rules={...(prepared.purchaseRules||{})};if(isPurchase(prepared.mode)){rules.purchaseType=normalizePurchaseType(rules.purchaseType)||'existing-home';rules.propertyUse=normalizePropertyUse(rules.propertyUse)||inferredPropertyUse(rules);",'run scenario purchase type normalization');
+          s=mustReplace(s,"<p class=\"subsection-title\">Property tax classification and deductible costs</p><div class=\"grid3 advanced-grid\"><div class=\"field\"><label for=\"scenarioPropertyUseNew\">Property income-tax classification</label>","<p class=\"subsection-title\">Property tax classification and deductible costs</p><div class=\"grid3 advanced-grid\"><div class=\"field\"><label for=\"scenarioPurchaseTypeNew\">Purchase type</label><select id=\"scenarioPurchaseTypeNew\" required><option value=\"existing-home\" selected>Existing home (supported)</option><option value=\"new-build\">New build (not supported in R6.6)</option></select><p class=\"inline\">R6.6 purchase, transfer-tax and NHG rules are scoped to existing homes. New-build uses a separate legal/cost structure and is blocked rather than approximated.</p><p class=\"stage91-source scenario-source-tag\" data-source-for=\"scenarioPurchaseTypeNew\">Entered here</p></div><div class=\"field\"><label for=\"scenarioPropertyUseNew\">Property income-tax classification</label>",'purchase type UI');
+          s=mustReplace(s,"2026 NHG requires a–g ≤ €470,000. Qualifying energy measures are item h and can lift a–h only to €498,200.","For an existing-home purchase, 2026 NHG requires a–g ≤ €470,000. Qualifying energy measures are item h and can lift a–h only to €498,200.",'NHG existing-home scope copy');
+          s=mustReplace(s,"</div></div><div id=\"scenarioNonMainReturnFields\" class=\"hidden\"><p class=\"subsection-title\">2026 current-law actual return for non-main property</p><p class=\"subsection-copy\">Actual return includes property value change, gross rent/pacht received, Box 3 debt interest, and from 2026 an own-use addition when the property is available for private use. The fixed 5.06% own-use route is modeled below.</p>","</div></div><div class=\"callout warn hidden\" id=\"scenarioNewBuildWarning\"><strong>New-build not supported:</strong> R6.6 models existing-home purchase rules only. It does not approximate the separate new-build VAT/transfer-tax or NHG cost structure.</div><div id=\"scenarioNonMainReturnFields\" class=\"hidden\"><p class=\"subsection-title\">2026 current-law actual return for non-main property</p><p class=\"subsection-copy\">Actual return includes property value change, received basic rent (kale huur) / pacht excluding service charges, Box 3 debt interest, and from 2026 an own-use addition when the property is available for private use. The fixed 5.06% own-use route is modeled below.</p>",'new-build warning and rental definition copy');
+          s=mustReplace(s,"<label for=\"scenarioPropertyRentalIncomeNew\">Gross annual rent / pacht income</label><input id=\"scenarioPropertyRentalIncomeNew\" type=\"number\" min=\"0\" step=\"100\" value=\"0\"><p class=\"inline\">Before property operating costs; those costs are not deducted from current-law actual Box 3 return.</p>","<label for=\"scenarioPropertyRentalIncomeNew\">Annual basic rent (kale huur) / pacht received</label><input id=\"scenarioPropertyRentalIncomeNew\" type=\"number\" min=\"0\" step=\"100\" value=\"0\"><p class=\"inline\">Exclude service charges. Do not subtract property operating costs; those costs are not deducted from current-law actual Box 3 return.</p>",'rental label');
+          s=mustReplace(s,"Planning assumption. Gross rent is modeled as received monthly and retained/invested.","Planning assumption. Basic rent / pacht is modeled as received monthly and retained/invested.",'rental growth copy');
+          s=mustReplace(s,"const purchase=isPurchase($('comparisonType')?.value),use=normalizePropertyUse($('scenarioPropertyUseNew')?.value)||'main-residence',nonMain=use==='non-main',nhg=","const purchase=isPurchase($('comparisonType')?.value),purchaseType=normalizePurchaseType($('scenarioPurchaseTypeNew')?.value)||'existing-home',use=normalizePropertyUse($('scenarioPropertyUseNew')?.value)||'main-residence',nonMain=use==='non-main',nhg=",'sync purchase type');
+          s=mustReplace(s,"$('scenarioNonMainReturnFields')?.classList.toggle('hidden',!purchase||!nonMain);","$('scenarioNewBuildWarning')?.classList.toggle('hidden',!purchase||purchaseType!=='new-build');$('scenarioNonMainReturnFields')?.classList.toggle('hidden',!purchase||!nonMain);",'sync new-build warning');
+          s=mustReplace(s,"const STAGE10_STATE_KEY='dimp.stage10.scenario-state.v1',STAGE10_IDS=['scenarioPropertyUseNew'","const STAGE10_STATE_KEY='dimp.stage10.scenario-state.v1',STAGE10_IDS=['scenarioPurchaseTypeNew','scenarioPropertyUseNew'",'persist purchase type');
+          s=mustReplace(s,"Exact NHG eligibility needs the official a–g cost stack and energy allocation. Use the Scenario purchase-rule section for the decision-grade NHG check; this Mortgage-tab selector will not return an NHG pass without those inputs.","R6.6 decision-grade NHG checks are scoped to existing-home purchases and need the official a–g cost stack plus energy allocation. Use the Scenario purchase-rule section; this Mortgage-tab selector will not return an NHG pass without those inputs.",'standalone NHG scope');
           fs.writeFileSync(file,s);
 
           let t=fs.readFileSync('tests/r66-stage10-remediation.test.js','utf8');
-          t=mustReplace(t,
-            "purchaseRules:{enabled:true,propertyUse:'main-residence'",
-            "purchaseRules:{enabled:true,purchaseType:'existing-home',propertyUse:'main-residence'",
-            'test fixture purchase type');
+          t=mustReplace(t,"purchaseRules:{enabled:true,propertyUse:'main-residence'","purchaseRules:{enabled:true,purchaseType:'existing-home',propertyUse:'main-residence'",'test fixture purchase type');
           t += `\n\ntest('F-10 Box 3 rental input represents basic rent / pacht received excluding service charges',()=>{\n  const c=purchaseConfig({purchaseRules:{propertyUse:'non-main',transferTaxMode:'other-home',starterMainResidence:false,grossRentalIncomeAnnual:15600,privateUseDays:0}});\n  const schedule=S10.propertyIncomeSchedule(c,12);\n  assert.ok(Math.abs(schedule.rentalByYear[2026]-15600)<.01);\n  const check=S10.validateStage10Config({...c,purchaseRules:{...c.purchaseRules,grossRentalIncomeAnnual:null}});\n  assert.equal(check.valid,false);\n  assert.match(check.reason,/basic rent|kale huur/i);\n  assert.match(check.reason,/service charges/i);\n});\n\ntest('F-11 R6.6 blocks new-build purchase scenarios instead of applying existing-home rules',()=>{\n  const c=purchaseConfig({purchaseRules:{purchaseType:'new-build'}});\n  const r=SC.runScenario(c);\n  assert.equal(r.valid,false);\n  assert.match(r.reason,/existing homes only|new-build/i);\n  const direct=S10.calculateScenarioPurchase2026({purchaseType:'new-build',housePrice:400000,appraisedValue:400000,availableSavings:180000,downPayment:100000,baseCosts:8000,transferTaxMode:'main',nhgMode:'none'});\n  assert.equal(direct.valid,false);\n  assert.ok(direct.errors.some(x=>x.code==='new-build-unsupported'));\n});\n`;
           fs.writeFileSync('tests/r66-stage10-remediation.test.js',t);
 
           let u=fs.readFileSync('tests/r66-stage10-ui-contract.test.js','utf8');
-          u=mustReplace(u,
-            "for(const id of ['scenarioPropertyUseNew'",
-            "for(const id of ['scenarioPurchaseTypeNew','scenarioPropertyUseNew'",
-            'UI persistence purchase type');
+          u=mustReplace(u,"for(const id of ['scenarioPropertyUseNew'","for(const id of ['scenarioPurchaseTypeNew','scenarioPropertyUseNew'",'UI persistence purchase type');
           u += `\n\ntest('F-10 UI defines Box 3 rental income as basic rent excluding service charges',()=>{\n  assert.match(source,/Annual basic rent \\(kale huur\\) \\/ pacht received/);\n  assert.match(source,/Exclude service charges/);\n  assert.doesNotMatch(source,/Gross annual rent \\/ pacht income/);\n});\n\ntest('F-11 UI explicitly scopes R6.6 purchase rules to existing homes and blocks new-build',()=>{\n  assert.match(source,/scenarioPurchaseTypeNew/);\n  assert.match(source,/Existing home \\(supported\\)/);\n  assert.match(source,/New build \\(not supported in R6\\.6\\)/);\n  assert.match(source,/scenarioNewBuildWarning/);\n  assert.match(source,/purchaseType==='new-build'/);\n});\n`;
           fs.writeFileSync('tests/r66-stage10-ui-contract.test.js',u);
 
           let b=fs.readFileSync('scripts/stage10-browser-parity.mjs','utf8');
-          b=mustReplace(b,
-            "propertyUse:nonMain?'non-main':'main-residence'",
-            "purchaseType:'existing-home',propertyUse:nonMain?'non-main':'main-residence'",
-            'browser data purchase type');
-          b=mustReplace(b,
-            "if(['buy-rent','downpayment'].includes(d.mode)){\n    await set(page,'scenarioPropertyUseNew',d.propertyUse);",
-            "if(['buy-rent','downpayment'].includes(d.mode)){\n    await set(page,'scenarioPurchaseTypeNew',d.purchaseType);await set(page,'scenarioPropertyUseNew',d.propertyUse);",
-            'browser set purchase type');
-          b=mustReplace(b,
-            "assert.equal(imported.cfg.purchaseRules.propertyUse,d.propertyUse,`${label}: property use missing from config`);",
-            "assert.equal(imported.cfg.purchaseRules.purchaseType,d.purchaseType,`${label}: purchase type missing from config`);\n    assert.equal(imported.cfg.purchaseRules.propertyUse,d.propertyUse,`${label}: property use missing from config`);",
-            'browser assert purchase type');
-          b=mustReplace(b,
-            "const d=data('buy-rent',0);await owned(page,d);\n  await set(page,'scenarioPropertyUseNew','non-main');",
-            "const d=data('buy-rent',0);await owned(page,d);\n  await set(page,'scenarioPurchaseTypeNew','new-build');await settle(page);let s=await snap(page);assert.equal(s.canonical.valid,false,'new-build purchase should be blocked');assert.match(s.canonical.reason,/existing homes only|new-build/i);\n  await set(page,'scenarioPurchaseTypeNew','existing-home');await set(page,'scenarioPropertyUseNew','non-main');",
-            'browser new-build boundary');
-          b=mustReplace(b,
-            "await set(page,'scenarioPropertyRentalIncomeNew',0);await set(page,'scenarioPropertyPrivateUseDaysNew',0);await settle(page);let s=await snap(page);",
-            "await set(page,'scenarioPropertyRentalIncomeNew',0);await set(page,'scenarioPropertyPrivateUseDaysNew',0);await settle(page);s=await snap(page);",
-            'browser s redeclare');
-          b=mustReplace(b,
-            "exactNhgCaps:true,deductibleCostPath:true,exportIdentity:true,browserErrors:0",
-            "exactNhgCaps:true,deductibleCostPath:true,rentalInputDefinition:true,existingHomeScope:true,newBuildBlocked:true,exportIdentity:true,browserErrors:0",
-            'browser evidence flags');
+          b=mustReplace(b,"propertyUse:nonMain?'non-main':'main-residence'","purchaseType:'existing-home',propertyUse:nonMain?'non-main':'main-residence'",'browser data purchase type');
+          b=mustReplace(b,"if(['buy-rent','downpayment'].includes(d.mode)){\n    await set(page,'scenarioPropertyUseNew',d.propertyUse);","if(['buy-rent','downpayment'].includes(d.mode)){\n    await set(page,'scenarioPurchaseTypeNew',d.purchaseType);await set(page,'scenarioPropertyUseNew',d.propertyUse);",'browser set purchase type');
+          b=mustReplace(b,"assert.equal(imported.cfg.purchaseRules.propertyUse,d.propertyUse,`${label}: property use missing from config`);","assert.equal(imported.cfg.purchaseRules.purchaseType,d.purchaseType,`${label}: purchase type missing from config`);\n    assert.equal(imported.cfg.purchaseRules.propertyUse,d.propertyUse,`${label}: property use missing from config`);",'browser assert purchase type');
+          b=mustReplace(b,"const d=data('buy-rent',0);await owned(page,d);\n  await set(page,'scenarioPropertyUseNew','non-main');","const d=data('buy-rent',0);await owned(page,d);\n  await set(page,'scenarioPurchaseTypeNew','new-build');await settle(page);let s=await snap(page);assert.equal(s.canonical.valid,false,'new-build purchase should be blocked');assert.match(s.canonical.reason,/existing homes only|new-build/i);\n  await set(page,'scenarioPurchaseTypeNew','existing-home');await set(page,'scenarioPropertyUseNew','non-main');",'browser new-build boundary');
+          b=mustReplace(b,"await set(page,'scenarioPropertyRentalIncomeNew',0);await set(page,'scenarioPropertyPrivateUseDaysNew',0);await settle(page);let s=await snap(page);","await set(page,'scenarioPropertyRentalIncomeNew',0);await set(page,'scenarioPropertyPrivateUseDaysNew',0);await settle(page);s=await snap(page);",'browser s redeclare');
+          b=mustReplace(b,"exactNhgCaps:true,deductibleCostPath:true,exportIdentity:true,browserErrors:0","exactNhgCaps:true,deductibleCostPath:true,rentalInputDefinition:true,existingHomeScope:true,newBuildBlocked:true,exportIdentity:true,browserErrors:0",'browser evidence flags');
           fs.writeFileSync('scripts/stage10-browser-parity.mjs',b);
 
           let r=fs.readFileSync('release-identity.js','utf8');
