@@ -161,3 +161,14 @@ test('F-11 R6.6 blocks new-build purchase scenarios instead of applying existing
   assert.equal(direct.valid,false);
   assert.ok(direct.errors.some(x=>x.code==='new-build-unsupported'));
 });
+
+
+test('F-03 standalone NHG cannot regain eligibility through hidden exact-stack input',()=>{
+  const prior=input=>({input,nhg:{enabled:false,eligible:false,fee:0},nhgFee:0});
+  const x=S10.unsupportedStandaloneNhg(prior,{nhgMode:'standard',nhgNonEnergyCostStack:400000});
+  assert.equal(x.nhg.enabled,true);
+  assert.equal(x.nhg.eligible,false);
+  assert.equal(x.nhg.fee,0);
+  assert.equal(x.nhgFee,0);
+  assert.match(x.nhg.warning,/intentionally unavailable|Scenario purchase-rule/i);
+});

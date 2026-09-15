@@ -86,9 +86,8 @@ function calculateScenarioPurchase2026(input={}){
 function unsupportedStandaloneNhg(prior,input={}){
   const mode=['standard','energy'].includes(input.nhgMode)?input.nhgMode:'none';
   if(mode==='none')return prior(input);
-  if(finiteOrNull(input.nhgNonEnergyCostStack)!==null)return prior(input);
   const base=prior({...input,nhgMode:'none'}),energy=mode==='energy';
-  return{...base,nhg:{enabled:true,eligible:false,energy,limit:energy?NHG_ENERGY:NHG_STANDARD,fee:0,warning:'Exact NHG eligibility requires the official non-energy cost stack (items a–g) and, for the enhanced route, qualifying energy expenditure. Use the Scenario purchase-rule section for this exact check.'},nhgFee:0};
+  return{...base,nhg:{enabled:true,eligible:false,energy,limit:energy?NHG_ENERGY:NHG_STANDARD,fee:0,warning:'Standalone Mortgage-tab NHG is intentionally unavailable in R6.6, even if hidden cost-stack inputs are supplied. Use the Scenario purchase-rule section for the exact existing-home NHG check.'},nhgFee:0};
 }
 function ownerCostMode(config={}){return config.ownerCostMode?(config.ownerCostMode==='itemized'?'itemized':'total'):(config.ownerCostTotalMonthly==null?'itemized':'total');}
 function annualGroundLeaseByYear(config={},months=0){
