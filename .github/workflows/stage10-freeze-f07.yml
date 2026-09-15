@@ -1,0 +1,72 @@
+name: Stage 10 freeze and F07 cleanup
+
+on:
+  push:
+    branches: [r6-6-decision-integrity]
+    paths:
+      - '.github/workflows/stage10-freeze-f07.yml'
+
+permissions:
+  contents: write
+
+jobs:
+  harden:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v5
+        with:
+          ref: r6-6-decision-integrity
+          fetch-depth: 0
+      - uses: actions/setup-node@v5
+        with:
+          node-version: 24
+      - name: Upgrade and regenerate test dependency lock
+        shell: bash
+        run: |
+          node <<'NODE'
+          const fs=require('fs');
+          const p=JSON.parse(fs.readFileSync('package.json','utf8'));
+          p.devDependencies={...(p.devDependencies||{}),playwright:'1.63.0'};
+          fs.writeFileSync('package.json',JSON.stringify(p,null,2)+'\n');
+          NODE
+          rm -f package-lock.json
+          npm install --package-lock-only --ignore-scripts
+          npm audit --audit-level=high
+          node <<'NODE'
+          const fs=require('fs');
+          const lock=JSON.parse(fs.readFileSync('package-lock.json','utf8'));
+          const keys=Object.keys(lock.packages||{});
+          const bad=keys.filter(k=>k.includes('/opt/codex')||k.startsWith('../../')||lock.packages[k]?.extraneous===true);
+          if(bad.length)throw new Error(`Dirty lockfile entries: ${bad.join(', ')}`);
+          if(lock.packages?.['node_modules/playwright']?.version!=='1.63.0')throw new Error('Playwright lock version is not 1.63.0');
+          if(lock.packages?.['node_modules/playwright-core']?.version!=='1.63.0')throw new Error('Playwright Core lock version is not 1.63.0');
+          NODE
+          npm ci
+      - name: Freeze release identity and enforce audit gate
+        shell: bash
+        run: |
+          node <<'NODE'
+          const fs=require('fs');
+          let w=fs.readFileSync('.github/workflows/browser-responsiveness.yml','utf8');
+          if(!w.includes('npm audit --audit-level=high')){
+            const from='      - name: Install pinned dependencies\n        run: npm ci\n      - name: Install Chromium';
+            const to='      - name: Install pinned dependencies\n        run: npm ci\n      - name: Audit test dependencies\n        run: npm audit --audit-level=high\n      - name: Install Chromium';
+            if(!w.includes(from))throw new Error('Browser workflow install anchor missing');
+            w=w.replace(from,to);
+            fs.writeFileSync('.github/workflows/browser-responsiveness.yml',w);
+          }
+          let r=fs.readFileSync('release-identity.js','utf8');
+          const from="  calculationSourceSha:null,\n  buildId:'UNFROZEN',\n  frozenAt:null";
+          const frozenAt=new Date().toISOString();
+          const to=`  calculationSourceSha:'a4377ce1050277b5ce13b97779c4af27ede94f65',\n  buildId:'R6.6-stage10-a4377ce1',\n  frozenAt:'${frozenAt}'`;
+          if(!r.includes(from))throw new Error('Release identity is not in expected UNFROZEN state');
+          r=r.replace(from,to);
+          fs.writeFileSync('release-identity.js',r);
+          fs.writeFileSync('tests/r66-stage10-dependency-hygiene.test.js',`'use strict';\n\nconst test=require('node:test');\nconst assert=require('node:assert/strict');\nconst fs=require('node:fs');\nconst path=require('node:path');\nconst ROOT=path.join(__dirname,'..');\n\ntest('F-07 Playwright is upgraded and lockfile contains no environment-specific extraneous path',()=>{\n  const pkg=JSON.parse(fs.readFileSync(path.join(ROOT,'package.json'),'utf8'));\n  const lock=JSON.parse(fs.readFileSync(path.join(ROOT,'package-lock.json'),'utf8'));\n  assert.equal(pkg.devDependencies.playwright,'1.63.0');\n  assert.equal(lock.packages['node_modules/playwright'].version,'1.63.0');\n  assert.equal(lock.packages['node_modules/playwright-core'].version,'1.63.0');\n  const bad=Object.keys(lock.packages||{}).filter(k=>k.includes('/opt/codex')||k.startsWith('../../')||lock.packages[k]?.extraneous===true);\n  assert.deepEqual(bad,[]);\n});\n\ntest('F-07 browser CI enforces high-severity npm audit gate',()=>{\n  const workflow=fs.readFileSync(path.join(ROOT,'.github','workflows','browser-responsiveness.yml'),'utf8');\n  assert.match(workflow,/npm audit --audit-level=high/);\n});\n\ntest('Final R6.6 release identity points to the audited hardened calculation source',()=>{\n  const identity=require('../release-identity.js');\n  assert.equal(identity.calculationSourceSha,'a4377ce1050277b5ce13b97779c4af27ede94f65');\n  assert.equal(identity.buildId,'R6.6-stage10-a4377ce1');\n  assert.ok(identity.frozenAt);\n});\n`);
+          NODE
+          rm .github/workflows/stage10-freeze-f07.yml
+          git config user.name "annnmm219"
+          git config user.email "theahnl09@gmail.com"
+          git add package.json package-lock.json release-identity.js .github/workflows/browser-responsiveness.yml tests/r66-stage10-dependency-hygiene.test.js .github/workflows/stage10-freeze-f07.yml
+          git commit -m "Stage 10: freeze hardened R6.6 and clean test dependencies"
+          git push origin HEAD:r6-6-decision-integrity
