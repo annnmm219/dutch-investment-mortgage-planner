@@ -62,4 +62,5 @@ test('F-11 UI explicitly scopes R6.6 purchase rules to existing homes and blocks
   assert.match(source,/New build \(not supported in R6\.6\)/);
   assert.match(source,/scenarioNewBuildWarning/);
   assert.match(source,/purchaseType==='new-build'/);
+  assert.match(source,/decision-grade NHG checks are scoped to existing-home purchases/);
 });
