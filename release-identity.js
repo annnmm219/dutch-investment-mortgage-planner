@@ -7,8 +7,8 @@
 return Object.freeze({
   release:'R6.6',
   stage:'Stage 10 remediation',
-  calculationSourceSha:null,
-  buildId:'UNFROZEN',
-  frozenAt:null
+  calculationSourceSha:'a4377ce1050277b5ce13b97779c4af27ede94f65',
+  buildId:'R6.6-stage10-a4377ce1',
+  frozenAt:'2026-09-15T07:58:07.939Z'
 });
 });
