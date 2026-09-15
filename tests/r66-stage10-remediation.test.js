@@ -12,7 +12,7 @@ function purchaseConfig(overrides={}){
     mode:'buy-rent',horizonYears:1,startYear:2026,startMonth:1,investmentReturnPct:0,startPortfolio:25000,commonMonthlyInvestment:0,
     tax:{enabled:true,calculationMode:'box1-2026',box1IncomeBeforeOwnHome:70000,wozValue:400000,hraRemainingMonths:360,qualifyingInterestFraction:1},
     box3:{mode:'current',taxPartners:1,paySource:'savings',currentTaxRate:.36,currentAllowance:59357,currentNotional:.06,currentSavingsNotional:.0128,currentDebtNotional:.027,currentDebtThreshold:3800,firstJan1Portfolio:25000,firstJan1Savings:180000,firstJan1Debt:0,savings:180000,debt:0,savingsReturnPct:0,debtInterestPct:0,debtMonthlyRepayment:0,debtRepaymentSource:'external',debtFallbackDestination:'invest',futureStart:2028,futureTaxRate:.36,futureExempt:1800,futureLossThreshold:500},
-    purchaseRules:{enabled:true,propertyUse:'main-residence',transferTaxMode:'main',manualTransferTax:0,appraisedValue:400000,nhgMode:'none',buyerAge:35,starterMainResidence:true,starterExemptionUnused:true,qualifyingEnergyExpenditure:0,hraRemainingMonths:360,qualifyingInterestFraction:1,deductibleFinancingCosts:0,nhgNonEnergyCostStack:null,grossRentalIncomeAnnual:0,privateUseDays:0,privateUseWozValue:0,propertyIncomeGrowthPct:0},
+    purchaseRules:{enabled:true,purchaseType:'existing-home',propertyUse:'main-residence',transferTaxMode:'main',manualTransferTax:0,appraisedValue:400000,nhgMode:'none',buyerAge:35,starterMainResidence:true,starterExemptionUnused:true,qualifyingEnergyExpenditure:0,hraRemainingMonths:360,qualifyingInterestFraction:1,deductibleFinancingCosts:0,nhgNonEnergyCostStack:null,grossRentalIncomeAnnual:0,privateUseDays:0,privateUseWozValue:0,propertyIncomeGrowthPct:0},
     upfrontCashTreatment:'invest',homeGrowthPct:0,rentGrowthPct:0,sellingCostPct:2,ownerCostMode:'itemized',ownerCostTotalMonthly:0,vveMonthly:0,maintenanceAnnual:0,ownerTaxesAnnual:0,insuranceAnnual:0,groundLeaseAnnual:0,ownerCostGrowthPct:0,
     buyRent:{price:400000,purchaseCosts:8000,cash:180000,downPayment:100000,monthlyRent:1600,mortgageRatePct:4,mortgageYears:30,mortgageType:'annuity',wozValue:400000}
   };
@@ -139,4 +139,25 @@ test('F-06 unfrozen evidence is explicit rather than impersonating a release can
   const rows=S10.releaseIdentityRows({});
   assert.equal(rows[0][2],'UNFROZEN');
   assert.equal(rows[1][2],'UNFROZEN');
+});
+
+
+test('F-10 Box 3 rental input represents basic rent / pacht received excluding service charges',()=>{
+  const c=purchaseConfig({purchaseRules:{propertyUse:'non-main',transferTaxMode:'other-home',starterMainResidence:false,grossRentalIncomeAnnual:15600,privateUseDays:0}});
+  const schedule=S10.propertyIncomeSchedule(c,12);
+  assert.ok(Math.abs(schedule.rentalByYear[2026]-15600)<.01);
+  const check=S10.validateStage10Config({...c,purchaseRules:{...c.purchaseRules,grossRentalIncomeAnnual:null}});
+  assert.equal(check.valid,false);
+  assert.match(check.reason,/basic rent|kale huur/i);
+  assert.match(check.reason,/service charges/i);
+});
+
+test('F-11 R6.6 blocks new-build purchase scenarios instead of applying existing-home rules',()=>{
+  const c=purchaseConfig({purchaseRules:{purchaseType:'new-build'}});
+  const r=SC.runScenario(c);
+  assert.equal(r.valid,false);
+  assert.match(r.reason,/existing homes only|new-build/i);
+  const direct=S10.calculateScenarioPurchase2026({purchaseType:'new-build',housePrice:400000,appraisedValue:400000,availableSavings:180000,downPayment:100000,baseCosts:8000,transferTaxMode:'main',nhgMode:'none'});
+  assert.equal(direct.valid,false);
+  assert.ok(direct.errors.some(x=>x.code==='new-build-unsupported'));
 });

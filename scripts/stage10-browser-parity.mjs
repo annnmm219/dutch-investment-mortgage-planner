@@ -22,7 +22,7 @@ function data(mode,i){
     mort:{balance:180000+i*15000,rate:2.6+i*.18,years,type:i%2?'linear':'annuity'},income:62000+i*4500,woz:340000+i*12000,
     hra:Math.min(years,18+(i%4)*3),qual:70+(i%4)*10,owner:325+i*20,ownerGrowth:1.5+(i%4)*.25,
     homeGrowth:1.5+(i%5)*.3,rentGrowth:1.8+(i%4)*.35,sellCost:1.5+(i%3)*.25,
-    propertyUse:nonMain?'non-main':'main-residence',transfer:nonMain?'manual':'main',manualTax:nonMain?26000:0,
+    purchaseType:'existing-home',propertyUse:nonMain?'non-main':'main-residence',transfer:nonMain?'manual':'main',manualTax:nonMain?26000:0,
     appraisal,nhg:energy?'energy':'none',energySpend:energy?20000:0,nhgStack:energy?460000:null,
     deductibleCosts:purchase&&!nonMain&&i%2===0?1000:0,rentalIncome:nonMain?12000:0,rentalGrowth:nonMain?1:0,
     privateUseDays:nonMain?45:0,privateUseWoz:nonMain?price:0,purchaseHra:nonMain?0:Math.min(30,20+(i%3)*5),purchaseQual:nonMain?0:75+(i%3)*10,
@@ -50,7 +50,7 @@ async function owned(page,d){
   if(d.mode==='mortgage-invest')await set(page,'scenarioExtraMonthlyNew',d.extra);
   if(d.mode==='sell-rent'){await set(page,'scenarioHomeValueNew',d.sell.value);await set(page,'scenarioSellRentNew',d.sell.rent);}
   if(['buy-rent','downpayment'].includes(d.mode)){
-    await set(page,'scenarioPropertyUseNew',d.propertyUse);await settle(page);
+    await set(page,'scenarioPurchaseTypeNew',d.purchaseType);await set(page,'scenarioPropertyUseNew',d.propertyUse);await settle(page);
     await set(page,'scenarioPurchaseAppraisedValueNew',d.appraisal);await set(page,'scenarioTransferTaxModeNew',d.transfer);await settle(page);
     if(d.transfer==='manual')await set(page,'scenarioManualTransferTaxNew',d.manualTax);
     await set(page,'scenarioDeductibleFinancingCostsNew',d.deductibleCosts);
@@ -81,6 +81,7 @@ async function one(page,d,view){
   await planner(page,d);await page.locator('.tab[data-tab="scenarios"]').click();await set(page,'comparisonType',d.mode);await page.locator('#scenarioSourceImported').check();await settle(page);await owned(page,d);const imported=await snap(page);
   assert.equal(imported.canonical.valid,true,`${label}: imported invalid ${imported.canonical.reason||''}`);assert.equal(imported.cfg.commonMonthlyInvestment,d.monthly);assert.equal(imported.cfg.box3.debtFallbackDestination,d.fallback);provenance(imported,'imported',label);assert.ok(imported.stored?.canonical,`${label}: save missing canonical`);
   if(['buy-rent','downpayment'].includes(d.mode)){
+    assert.equal(imported.cfg.purchaseRules.purchaseType,d.purchaseType,`${label}: purchase type missing from config`);
     assert.equal(imported.cfg.purchaseRules.propertyUse,d.propertyUse,`${label}: property use missing from config`);
     assert.equal(imported.cfg.purchaseRules.deductibleFinancingCosts,d.deductibleCosts,`${label}: deductible financing costs missing`);
     if(d.nhg!=='none')assert.equal(imported.cfg.purchaseRules.nhgNonEnergyCostStack,d.nhgStack,`${label}: NHG a-g stack missing`);
@@ -105,7 +106,8 @@ async function targetedBoundaries(page){
   await page.evaluate(()=>localStorage.clear());await page.reload({waitUntil:'domcontentloaded'});await page.waitForFunction(()=>window.Stage10Remediation&&document.getElementById('scenarioPropertyUseNew'));
   await planner(page,data('buy-rent',0));await page.locator('.tab[data-tab="scenarios"]').click();await page.locator('#scenarioSourceImported').check();await settle(page);
   const d=data('buy-rent',0);await owned(page,d);
-  await set(page,'scenarioPropertyUseNew','non-main');await set(page,'scenarioTransferTaxModeNew','manual');await set(page,'scenarioManualTransferTaxNew',18000);await set(page,'scenarioPropertyRentalIncomeNew',0);await set(page,'scenarioPropertyPrivateUseDaysNew',0);await settle(page);let s=await snap(page);assert.equal(s.canonical.valid,true,'manual transfer tax + explicit non-main classification should be valid');assert.equal(s.canonical.strategies.A.mortTax,0,'manual transfer tax may not imply Box 1');
+  await set(page,'scenarioPurchaseTypeNew','new-build');await settle(page);let s=await snap(page);assert.equal(s.canonical.valid,false,'new-build purchase should be blocked');assert.match(s.canonical.reason,/existing homes only|new-build/i);
+  await set(page,'scenarioPurchaseTypeNew','existing-home');await set(page,'scenarioPropertyUseNew','non-main');await set(page,'scenarioTransferTaxModeNew','manual');await set(page,'scenarioManualTransferTaxNew',18000);await set(page,'scenarioPropertyRentalIncomeNew',0);await set(page,'scenarioPropertyPrivateUseDaysNew',0);await settle(page);s=await snap(page);assert.equal(s.canonical.valid,true,'manual transfer tax + explicit non-main classification should be valid');assert.equal(s.canonical.strategies.A.mortTax,0,'manual transfer tax may not imply Box 1');
   await set(page,'scenarioBox3ModeFresh','transition');await settle(page);s=await snap(page);assert.equal(s.canonical.valid,false,'non-main proposed/transition Box 3 should be blocked');assert.match(s.canonical.reason,/real-estate-specific|non-main-property/i);
   await set(page,'scenarioBox3ModeFresh','current');await set(page,'scenarioPropertyUseNew','main-residence');await set(page,'scenarioTransferTaxModeNew','main');await set(page,'scenarioPurchaseNhgModeNew','energy');await set(page,'scenarioNhgNonEnergyCostStackNew',470001);await set(page,'scenarioQualifyingEnergySpendNew',20000);await settle(page);s=await snap(page);assert.equal(s.canonical.valid,false,'NHG a-g stack above €470,000 should be rejected');assert.match(s.canonical.reason,/non-energy cost stack|NHG/i);
   return true;
@@ -120,6 +122,6 @@ try{
     for(const mode of MODES)for(let i=0;i<10;i++)results.push(await one(page,data(mode,i),view));await context.close();
   }
   assert.equal(errors.length,0,`Browser page errors:\n${errors.join('\n\n')}`);assert.equal(results.filter(x=>x.view==='desktop').length,50);assert.equal(results.filter(x=>x.view==='mobile').length,50);
-  console.log(JSON.stringify({stage:'R6.6 Stage 10 genuine browser parity',datasetsPerViewport:50,desktopExactPairs:50,mobileExactPairs:50,modes:Object.fromEntries(MODES.map(m=>[m,10])),saveReload:true,explicitRefresh:true,freshIsolation:true,propertyClassification:true,nonMainCurrentReturn:true,proposedNonMainBlocked:true,exactNhgCaps:true,deductibleCostPath:true,exportIdentity:true,browserErrors:0},null,2));
+  console.log(JSON.stringify({stage:'R6.6 Stage 10 genuine browser parity',datasetsPerViewport:50,desktopExactPairs:50,mobileExactPairs:50,modes:Object.fromEntries(MODES.map(m=>[m,10])),saveReload:true,explicitRefresh:true,freshIsolation:true,propertyClassification:true,nonMainCurrentReturn:true,proposedNonMainBlocked:true,exactNhgCaps:true,deductibleCostPath:true,rentalInputDefinition:true,existingHomeScope:true,newBuildBlocked:true,exportIdentity:true,browserErrors:0},null,2));
   console.log('Stage 10 browser parity passed.');
 }finally{await browser.close();await new Promise(r=>server.close(r));}

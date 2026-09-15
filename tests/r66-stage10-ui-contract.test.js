@@ -21,7 +21,7 @@ test('Stage 10 persists late-created Scenario controls independently and migrate
   assert.match(source,/function restoreStage10State\(\)/);
   assert.match(source,/localStorage\.getItem\(STAGE10_STATE_KEY\)/);
   assert.match(source,/localStorage\.getItem\(S91\.SNAPSHOT_KEY\)/);
-  for(const id of ['scenarioPropertyUseNew','scenarioDeductibleFinancingCostsNew','scenarioNhgNonEnergyCostStackNew','scenarioPropertyRentalIncomeNew','scenarioPropertyIncomeGrowthNew','scenarioPropertyPrivateUseDaysNew','scenarioPropertyPrivateUseWozNew']){
+  for(const id of ['scenarioPurchaseTypeNew','scenarioPropertyUseNew','scenarioDeductibleFinancingCostsNew','scenarioNhgNonEnergyCostStackNew','scenarioPropertyRentalIncomeNew','scenarioPropertyIncomeGrowthNew','scenarioPropertyPrivateUseDaysNew','scenarioPropertyPrivateUseWozNew']){
     assert.match(source,new RegExp(id));
   }
   assert.match(source,/trigger\.dispatchEvent\(new Event\('input'/);
@@ -47,4 +47,19 @@ test('Stage 10 normalizes inactive purchase-only rules for non-purchase modes ac
   assert.match(source,/rules\.privateUseDays=0/);
   assert.match(source,/rules\.privateUseWozValue=0/);
   assert.match(source,/rules\.nhgNonEnergyCostStack=null/);
+});
+
+
+test('F-10 UI defines Box 3 rental income as basic rent excluding service charges',()=>{
+  assert.match(source,/Annual basic rent \(kale huur\) \/ pacht received/);
+  assert.match(source,/Exclude service charges/);
+  assert.doesNotMatch(source,/Gross annual rent \/ pacht income/);
+});
+
+test('F-11 UI explicitly scopes R6.6 purchase rules to existing homes and blocks new-build',()=>{
+  assert.match(source,/scenarioPurchaseTypeNew/);
+  assert.match(source,/Existing home \(supported\)/);
+  assert.match(source,/New build \(not supported in R6\.6\)/);
+  assert.match(source,/scenarioNewBuildWarning/);
+  assert.match(source,/purchaseType==='new-build'/);
 });
