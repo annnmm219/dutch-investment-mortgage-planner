@@ -77,9 +77,9 @@ test('scenario assumptions hide fields that are irrelevant to the selected decis
   assert.match(js,/Only assumptions used by the selected comparison are shown/);
 });
 
-test('linear vs annuity result explains why a higher remaining mortgage can still win',()=>{
+test('linear vs annuity result explains why a higher remaining mortgage can still show higher modeled wealth',()=>{
   const js=read('app-state.js');
   assert.match(js,/Net position excluding the home/);
-  assert.match(js,/Why can Annuity win even with a larger mortgage balance\?/);
+  assert.match(js,/Why can Annuity show higher modeled wealth with a larger mortgage balance\?/);
   assert.match(js,/larger investment portfolio can outweigh the extra mortgage debt/);
 });

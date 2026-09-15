@@ -48,6 +48,7 @@ function baseConfig(mode,index){
     startMonth,
     startPortfolio:firstJan1.portfolio,
     purchaseCosts:12000+index*250,
+    purchaseRules:{enabled:true,transferTaxMode:'main',manualTransferTax:0,appraisedValue:null,nhgMode:'none',buyerAge:35,starterMainResidence:true,starterExemptionUnused:true},
     mortgageType:index%2===0?'annuity':'linear',
     mortgage:{balance:mortgageBalance,ratePct:rate,years},
     tax:{
@@ -93,6 +94,8 @@ function baseConfig(mode,index){
     groundLeaseAnnual:index%3===0?900:0,
     buyRent:{
       price:280000+index*18000,
+      purchaseCosts:Math.max(0,(12000+index*250)-(280000+index*18000)*.02),
+      mortgageType:index%2===0?'annuity':'linear',
       downPayment:35000+index*2500,
       monthlyRent:1200+index*85,
       mortgageRatePct:rate,
@@ -101,6 +104,8 @@ function baseConfig(mode,index){
     },
     downpayment:{
       price:300000+index*16000,
+      purchaseCosts:Math.max(0,(12000+index*250)-(300000+index*16000)*.02),
+      mortgageType:index%2===0?'annuity':'linear',
       downA:70000+index*2500,
       downB:25000+index*1000,
       mortgageRatePct:rate,
@@ -181,18 +186,13 @@ function verifyDisplay(result,config){
   const gap=result.A.net-result.B.net;
   const formatted=OI.formatMoney(Math.abs(gap));
   assert.equal(parseDisplayedMoney(formatted),Math.round(Math.abs(gap)),'displayed gap must match rounded calculation');
-  const model=OI.outputModel({
-    portfolio:result.A.invest,
-    box3Tax:result.A.box3,
-    totalTax:result.A.box3,
-    householdComparableWealth:result.A.net,
-    taxAdjustedComparableAvailable:true,
-    taxStatus:'settled'
-  },{box3Mode:config.box3.mode});
-  const card=OI.scenarioCardModel({portfolio:result.A.invest,mortgage:result.A.mortgage,box3Tax:result.A.box3,unsettledTaxEstimate:result.A.unsettledBox3},true,config.box3.mode==='none');
-  assert.equal(parseDisplayedMoney(model.headlineValue),Math.round(result.A.invest));
-  assert.equal(parseDisplayedMoney(card.value),Math.round(result.A.invest));
-  assert.doesNotMatch(card.sub,/undefined|null|NaN/);
+  const canonical=OI.canonicalComparisonResult(result,{mode:config.mode,years:config.horizonYears,returnPct:config.investmentReturnPct});
+  const model=OI.comparisonOutputModel(canonical);
+  assert.equal(canonical.strategies.A.net,result.A.net);
+  assert.equal(canonical.strategies.B.net,result.B.net);
+  close(canonical.difference,gap,1e-8,'canonical displayed difference');
+  assert.match(model.title,/^Under the entered assumptions,/);
+  assert.doesNotMatch(`${model.title} ${model.detail}`,/undefined|null|NaN/);
 }
 
 function run(){
@@ -228,8 +228,8 @@ function run(){
   });
   assert.equal(count,50,'exactly 50 scenarios must run');
   const byMode=Object.fromEntries(MODES.map(mode=>[mode,rows.filter(row=>row.mode===mode).length]));
-  console.log(JSON.stringify({release:'R6.5',scenarios:count,reconciled:rows.filter(row=>row.reconciled).length,byMode,failures:0},null,2));
-  console.log('R6.5: 50/50 scenario calculations and displayed rounded values reconciled.');
+  console.log(JSON.stringify({release:'R6.6',scenarios:count,reconciled:rows.filter(row=>row.reconciled).length,byMode,failures:0},null,2));
+  console.log('R6.6: 50/50 scenario calculations and canonical displayed values reconciled.');
   return rows;
 }
 

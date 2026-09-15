@@ -1,0 +1,313 @@
+{
+  "release": "R6.5",
+  "baselineCommit": "ac8f029788ff8d1fc2baf09fbc89b848a28f7803",
+  "purpose": "Pre-R6.6 comparison evidence. These are not R6.6 golden values.",
+  "r65RateConvention": "Expected investment, savings, rent and home-growth percentages are divided by 12 and compounded monthly in R6.5.",
+  "transactionConvention": "Monthly investment contributions are added after that month's portfolio growth in the current engine.",
+  "cases": {
+    "investmentNoBox3": {
+      "inputs": {
+        "startPortfolio": 100000,
+        "monthlyInvestment": 500,
+        "horizonYears": 10,
+        "annualReturnPct": 7,
+        "startingSavings": 20000,
+        "savingsReturnPct": 2,
+        "box3Mode": "none"
+      },
+      "result": {
+        "portfolio": 287508.54138633,
+        "savings": 24423.98867725,
+        "box3Debt": 0,
+        "netFinancialAssets": 311932.53006358,
+        "householdComparableWealth": 311932.53006358,
+        "totalContributedAndStartingCapital": 160000,
+        "settledBox3Tax": 0,
+        "currentBox3Tax": 0,
+        "futureBox3Tax": 0,
+        "unsettledBox3Estimate": 0,
+        "taxPaidFromSavings": 0,
+        "taxPaidFromPortfolio": 0,
+        "taxPaidExternally": 0,
+        "finalYear": 2035
+      }
+    },
+    "investmentCurrentBox3": {
+      "inputs": {
+        "startPortfolio": 100000,
+        "monthlyInvestment": 500,
+        "horizonYears": 10,
+        "annualReturnPct": 7,
+        "startingSavings": 20000,
+        "savingsReturnPct": 2,
+        "box3Mode": "current",
+        "taxPartners": 1,
+        "taxPaymentSource": "savings"
+      },
+      "noTaxCounterfactual": {
+        "portfolio": 287508.54138633,
+        "savings": 24423.98867725,
+        "box3Debt": 0,
+        "netFinancialAssets": 311932.53006358,
+        "householdComparableWealth": 311932.53006358,
+        "totalContributedAndStartingCapital": 160000,
+        "settledBox3Tax": 0,
+        "currentBox3Tax": 0,
+        "futureBox3Tax": 0,
+        "unsettledBox3Estimate": 0,
+        "taxPaidFromSavings": 0,
+        "taxPaidFromPortfolio": 0,
+        "taxPaidExternally": 0,
+        "finalYear": 2035
+      },
+      "result": {
+        "portfolio": 287508.54138633,
+        "savings": 0,
+        "box3Debt": 0,
+        "netFinancialAssets": 287508.54138633,
+        "householdComparableWealth": 283984.13360595,
+        "totalContributedAndStartingCapital": 160000,
+        "settledBox3Tax": 26094.55456139,
+        "currentBox3Tax": 26094.55456139,
+        "futureBox3Tax": 0,
+        "unsettledBox3Estimate": 0,
+        "taxPaidFromSavings": 22570.14678101,
+        "taxPaidFromPortfolio": 0,
+        "taxPaidExternally": 3524.40778038,
+        "finalYear": 2035
+      }
+    },
+    "buyVersusRent": {
+      "inputs": {
+        "horizonYears": 10,
+        "investmentReturnPct": 5,
+        "box3Mode": "current",
+        "box3TaxPaymentSource": "external",
+        "mortgageType": "annuity",
+        "mortgage": {
+          "balance": 214000,
+          "ratePct": 3.4,
+          "years": 30
+        },
+        "purchaseCosts": 12500,
+        "homeGrowthPct": 2,
+        "rentGrowthPct": 2.5,
+        "ownerCostInputs": {
+          "vveMonthly": 180,
+          "maintenanceAnnual": 1350,
+          "ownerTaxesAnnual": 370,
+          "insuranceAnnual": 210,
+          "groundLeaseAnnual": 0
+        },
+        "modeSpecific": {
+          "price": 316000,
+          "downPayment": 40000,
+          "monthlyRent": 1370,
+          "mortgageRatePct": 3.4,
+          "mortgageYears": 30,
+          "wozValue": 305000
+        }
+      },
+      "result": {
+        "valid": true,
+        "strategyA": {
+          "name": "Buy home",
+          "modeledComparableWealth": 382999.66337278,
+          "investmentPortfolio": 241895.46517876,
+          "savings": 0,
+          "box3Debt": 0,
+          "householdFinancialWealth": 217750.97153568,
+          "homeEquityAfterSellingCosts": 165248.69183709,
+          "mortgageRemaining": 212932.34884145,
+          "grossMortgageInterest": 83813.3332397,
+          "modeledMortgageTaxEffect": 27470.75796483,
+          "rentPaid": 0,
+          "ownerCosts": 40900,
+          "purchaseCosts": 12500,
+          "sellingCosts": 7717.98042201,
+          "settledBox3Tax": 24144.49364308,
+          "unsettledBox3Estimate": 0,
+          "externalTax": 24144.49364308,
+          "externalDebtRepayment": 0
+        },
+        "strategyB": {
+          "name": "Rent + invest",
+          "modeledComparableWealth": 260113.94726229,
+          "investmentPortfolio": 296461.70958425,
+          "savings": 0,
+          "box3Debt": 0,
+          "householdFinancialWealth": 260113.94726229,
+          "homeEquityAfterSellingCosts": 0,
+          "mortgageRemaining": 0,
+          "grossMortgageInterest": 0,
+          "modeledMortgageTaxEffect": 0,
+          "rentPaid": 186555.55813633,
+          "ownerCosts": 0,
+          "purchaseCosts": 0,
+          "sellingCosts": 0,
+          "settledBox3Tax": 36347.76232196,
+          "unsettledBox3Estimate": 0,
+          "externalTax": 36347.76232196,
+          "externalDebtRepayment": 0
+        },
+        "differenceAminusB": 122885.71611048,
+        "higherModeledOutcome": "Buy home",
+        "peakMonthlyRequirement": 1755.00116037,
+        "firstMonthlyRequirement": 1370,
+        "note": "Household starting savings fund the purchase cash event before the remaining balance is kept in savings or invested according to the selected upfront-cash treatment."
+      }
+    },
+    "extraRepaymentVersusInvest": {
+      "inputs": {
+        "horizonYears": 10,
+        "investmentReturnPct": 5,
+        "box3Mode": "current",
+        "box3TaxPaymentSource": "external",
+        "mortgageType": "annuity",
+        "mortgage": {
+          "balance": 214000,
+          "ratePct": 3.4,
+          "years": 30
+        },
+        "purchaseCosts": 12500,
+        "homeGrowthPct": 2,
+        "rentGrowthPct": 2.5,
+        "ownerCostInputs": {
+          "vveMonthly": 180,
+          "maintenanceAnnual": 1350,
+          "ownerTaxesAnnual": 370,
+          "insuranceAnnual": 210,
+          "groundLeaseAnnual": 0
+        },
+        "modeSpecific": {
+          "extraMonthly": 350
+        }
+      },
+      "result": {
+        "valid": true,
+        "strategyA": {
+          "name": "Repay mortgage",
+          "modeledComparableWealth": 113828.79424404,
+          "investmentPortfolio": 70821.40840068,
+          "savings": 171532.07092988,
+          "box3Debt": 0,
+          "householdFinancialWealth": 228988.9931027,
+          "homeEquityAfterSellingCosts": null,
+          "mortgageRemaining": 115160.19885866,
+          "grossMortgageInterest": 57046.17951528,
+          "modeledMortgageTaxEffect": 16825.44502594,
+          "rentPaid": 0,
+          "ownerCosts": 40900,
+          "purchaseCosts": 0,
+          "sellingCosts": 0,
+          "settledBox3Tax": 13364.48622786,
+          "unsettledBox3Estimate": 0,
+          "externalTax": 13364.48622786,
+          "externalDebtRepayment": 0
+        },
+        "strategyB": {
+          "name": "Invest instead",
+          "modeledComparableWealth": 117439.00526523,
+          "investmentPortfolio": 128690.30799916,
+          "savings": 171532.07092988,
+          "box3Debt": 0,
+          "householdFinancialWealth": 282538.72501911,
+          "homeEquityAfterSellingCosts": null,
+          "mortgageRemaining": 165099.71975388,
+          "grossMortgageInterest": 64985.70041049,
+          "modeledMortgageTaxEffect": 19807.52907418,
+          "rentPaid": 0,
+          "ownerCosts": 40900,
+          "purchaseCosts": 0,
+          "sellingCosts": 0,
+          "settledBox3Tax": 17683.65390993,
+          "unsettledBox3Estimate": 0,
+          "externalTax": 17683.65390993,
+          "externalDebtRepayment": 0
+        },
+        "differenceAminusB": -3610.2110212,
+        "higherModeledOutcome": "Invest instead",
+        "peakMonthlyRequirement": 1552.97537984,
+        "firstMonthlyRequirement": 1451.18860167,
+        "note": "*The home value is identical in both strategies, so it is excluded. Any planned repayment left after the mortgage is cleared is invested rather than discarded."
+      }
+    },
+    "linearVersusAnnuity": {
+      "inputs": {
+        "horizonYears": 10,
+        "investmentReturnPct": 5,
+        "box3Mode": "current",
+        "box3TaxPaymentSource": "external",
+        "mortgageType": "annuity",
+        "mortgage": {
+          "balance": 214000,
+          "ratePct": 3.4,
+          "years": 30
+        },
+        "purchaseCosts": 12500,
+        "homeGrowthPct": 2,
+        "rentGrowthPct": 2.5,
+        "ownerCostInputs": {
+          "vveMonthly": 180,
+          "maintenanceAnnual": 1350,
+          "ownerTaxesAnnual": 370,
+          "insuranceAnnual": 210,
+          "groundLeaseAnnual": 0
+        },
+        "modeSpecific": {
+          "balance": 214000,
+          "ratePct": 3.4,
+          "years": 30
+        }
+      },
+      "result": {
+        "valid": true,
+        "strategyA": {
+          "name": "Linear mortgage",
+          "modeledComparableWealth": 86322.32643603,
+          "investmentPortfolio": 70821.40840068,
+          "savings": 171532.07092988,
+          "box3Debt": 0,
+          "householdFinancialWealth": 228988.9931027,
+          "homeEquityAfterSellingCosts": null,
+          "mortgageRemaining": 142666.66666667,
+          "grossMortgageInterest": 60734.38888889,
+          "modeledMortgageTaxEffect": 18210.73646667,
+          "rentPaid": 0,
+          "ownerCosts": 40900,
+          "purchaseCosts": 0,
+          "sellingCosts": 0,
+          "settledBox3Tax": 13364.48622786,
+          "unsettledBox3Estimate": 0,
+          "externalTax": 13364.48622786,
+          "externalDebtRepayment": 0
+        },
+        "strategyB": {
+          "name": "Annuity mortgage",
+          "modeledComparableWealth": 88287.97632214,
+          "investmentPortfolio": 97559.50724883,
+          "savings": 171532.07092988,
+          "box3Debt": 0,
+          "householdFinancialWealth": 253387.69607602,
+          "homeEquityAfterSellingCosts": null,
+          "mortgageRemaining": 165099.71975388,
+          "grossMortgageInterest": 64985.70041049,
+          "modeledMortgageTaxEffect": 19807.52907418,
+          "rentPaid": 0,
+          "ownerCosts": 40900,
+          "purchaseCosts": 0,
+          "sellingCosts": 0,
+          "settledBox3Tax": 15703.88210269,
+          "unsettledBox3Estimate": 0,
+          "externalTax": 15703.88210269,
+          "externalDebtRepayment": 0
+        },
+        "differenceAminusB": -1965.64988611,
+        "higherModeledOutcome": "Annuity mortgage",
+        "peakMonthlyRequirement": 1352.8096877,
+        "firstMonthlyRequirement": 1352.8096877,
+        "note": "*The same home is owned under both strategies, so its value is excluded. Monthly payment differences are invested; common household savings and Box 3 debt remain in both strategies."
+      }
+    }
+  }
+}

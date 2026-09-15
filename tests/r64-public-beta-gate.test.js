@@ -39,9 +39,10 @@ function baseScenario(overrides={}){
   };
 }
 
-test('R6.4 uses one public model identity and state schema',()=>{
-  assert.equal(Gate.MODEL_META.version,'R6.5');
+test('R6.6 uses one public model identity and state schema',()=>{
+  assert.equal(Gate.MODEL_META.version,'R6.6');
   assert.equal(Gate.MODEL_META.ruleYear,2026);
+  assert.equal(Gate.MODEL_META.updated,'2026-09-03');
   assert.equal(Gate.MODEL_META.stateSchema,4);
 });
 
@@ -87,7 +88,7 @@ test('a mid-year purchase uses one common historical Jan 1 snapshot for buyer an
   const {SC}=fresh();
   const scenario=SC.runScenario(baseScenario({mode:'buy-rent',startPortfolio:0,mortgage:{balance:0,ratePct:0,years:30},
     box3:currentBox3({savings:150000,firstJan1Portfolio:0,firstJan1Savings:150000,firstJan1Debt:0}),
-    buyRent:{price:100000,downPayment:100000,monthlyRent:0,mortgageRatePct:0,mortgageYears:30,wozValue:100000}}));
+    buyRent:{purchaseCosts:0,mortgageType:'annuity',price:100000,downPayment:100000,monthlyRent:0,mortgageRatePct:0,mortgageYears:30,wozValue:100000}}));
   assert.equal(scenario.valid,true);
   approx(scenario.A.box3,417.68,.02,'buyer first-year Box 3');
   approx(scenario.B.box3,417.68,.02,'renter first-year Box 3');
@@ -111,12 +112,12 @@ test('new purchase mortgage over 30 years cannot receive default HRA',()=>{
   const {SC}=fresh();
   const blocked=SC.runScenario(baseScenario({mode:'buy-rent',startMonth:1,months:12,horizonYears:1,box3:{...currentBox3(),mode:'none'},
     tax:{enabled:true,deductionRate:.3756,wozValue:350000},
-    buyRent:{price:350000,downPayment:350000,monthlyRent:0,mortgageRatePct:4,mortgageYears:40,wozValue:350000}}));
+    buyRent:{purchaseCosts:0,mortgageType:'annuity',price:350000,downPayment:350000,monthlyRent:0,mortgageRatePct:4,mortgageYears:40,wozValue:350000}}));
   assert.equal(blocked.valid,false);
   assert.equal(blocked.status,'purchase-hra-term-blocked');
   const grossOnly=SC.runScenario(baseScenario({mode:'buy-rent',startMonth:1,months:12,horizonYears:1,
     box3:{...currentBox3({savings:350000}),mode:'none'},tax:{enabled:false,deductionRate:0,wozValue:350000},
-    buyRent:{price:350000,downPayment:350000,monthlyRent:0,mortgageRatePct:4,mortgageYears:40,wozValue:350000}}));
+    buyRent:{purchaseCosts:0,mortgageType:'annuity',price:350000,downPayment:350000,monthlyRent:0,mortgageRatePct:4,mortgageYears:40,wozValue:350000}}));
   assert.equal(grossOnly.valid,true);
 });
 

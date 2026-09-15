@@ -1,0 +1,9 @@
+Scenario,Inputs,Independent Expected Result,Application / Model Result,Verdict
+Representative annuity,350000 principal; 4%; 30y,"Monthly €1,670.95; total interest €251,543.27",Matches,Correct
+Representative linear,350000 principal; 4%; 30y,"First €2,138.89; last €975.46; total interest €210,583.33",Matches,Correct
+Zero interest,120000 principal; 0%; 10y,"Monthly €1,000; interest €0",Matches,Correct
+High interest,250000 principal; 10%; 30y,"Monthly €2,193.93; interest €539,814.41",Matches,Correct
+Prepayment,300000; 4%; 30y; €25k after month 12,"New payment ~€1,310.75; interest saving ~€17,279.69",Matches schedule convention,Correct algebra
+One-year edge,12000; 5%; 1y,"Monthly €1,027.29; interest €327.48",Matches,Correct
+Investment return semantics,100000; 7%; 30y,"Effective annual interpretation €761,225.50","Annual/12 path €811,649.75",High-severity defect
+High-income own-home tax,"Interest €2,000; EWF €1,750",Separated bridge: €115.05 estimated tax cost,Single-rate approach: €93.90 estimated benefit,High-severity defect

@@ -165,7 +165,7 @@ test('mid-year current Box 3 honors firstJan1Portfolio override',()=>{
     firstJan1Portfolio:70000
   });
   approx(x.totalTax,229.8888,1e-6,'first-year tax');
-  approx(x.portfolio,105922.1262601,1e-6,'after-tax portfolio');
+  approx(x.portfolio,100000*Math.sqrt(1.12)-229.8888,1e-6,'after-tax portfolio');
   approx(x.yearBuckets[2026].jan1Portfolio,70000,1e-9,'Jan 1 base');
 });
 

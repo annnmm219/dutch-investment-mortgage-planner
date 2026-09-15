@@ -27,8 +27,8 @@ function base(mode){
     sellingCostPct:0,
     vveMonthly:0,
     maintenanceAnnual:0,
-    buyRent:{price:0,cash:0,downPayment:0,monthlyRent:0,mortgageRatePct:0,mortgageYears:10},
-    downpayment:{price:0,cash:0,downA:0,downB:0,mortgageRatePct:0,mortgageYears:10},
+    buyRent:{purchaseCosts:0,mortgageType:'annuity',price:0,cash:0,downPayment:0,monthlyRent:0,mortgageRatePct:0,mortgageYears:10},
+    downpayment:{purchaseCosts:0,mortgageType:'annuity',price:0,cash:0,downA:0,downB:0,mortgageRatePct:0,mortgageYears:10},
     mortgageInvest:{extraMonthly:0},
     sellRent:{homeValue:0,monthlyRent:0}
   };
@@ -37,7 +37,7 @@ function base(mode){
 test('Buy vs Rent reconciles starting cash, principal equity and monthly cost difference',()=>{
   const c=base('buy-rent');
   c.purchaseCosts=5000;
-  c.buyRent={price:120000,cash:25000,downPayment:20000,monthlyRent:1000,mortgageRatePct:0,mortgageYears:10};
+  c.buyRent={purchaseCosts:c.purchaseCosts||0,mortgageType:'annuity',price:120000,cash:25000,downPayment:20000,monthlyRent:1000,mortgageRatePct:0,mortgageYears:10};
   const x=SC.runScenario(c);
   approx(x.A.net,32000,1e-6,'buyer final wealth');
   approx(x.B.net,25000,1e-6,'renter final wealth');
@@ -50,7 +50,7 @@ test('Buy vs Rent reconciles starting cash, principal equity and monthly cost di
 test('Larger vs smaller down payment ties at zero interest and zero investment return',()=>{
   const c=base('downpayment');
   c.purchaseCosts=5000;
-  c.downpayment={price:120000,cash:45000,downA:40000,downB:20000,mortgageRatePct:0,mortgageYears:10};
+  c.downpayment={purchaseCosts:c.purchaseCosts||0,mortgageType:'annuity',price:120000,cash:45000,downA:40000,downB:20000,mortgageRatePct:0,mortgageYears:10};
   const x=SC.runScenario(c);
   approx(x.A.net,50000,1e-6,'larger down payment wealth');
   approx(x.B.net,50000,1e-6,'smaller down payment wealth');
@@ -103,7 +103,7 @@ test('Buy vs Rent charges purchase and selling costs exactly once',()=>{
   const c=base('buy-rent');
   c.purchaseCosts=5000;
   c.sellingCostPct=2;
-  c.buyRent={price:120000,cash:25000,downPayment:20000,monthlyRent:1000,mortgageRatePct:0,mortgageYears:10};
+  c.buyRent={purchaseCosts:c.purchaseCosts||0,mortgageType:'annuity',price:120000,cash:25000,downPayment:20000,monthlyRent:1000,mortgageRatePct:0,mortgageYears:10};
   const x=SC.runScenario(c);
   approx(x.A.purchase,5000,1e-9,'purchase cost record');
   approx(x.A.selling,2400,1e-9,'selling cost record');
