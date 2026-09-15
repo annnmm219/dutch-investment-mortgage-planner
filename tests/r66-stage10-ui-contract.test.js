@@ -64,3 +64,8 @@ test('F-11 UI explicitly scopes R6.6 purchase rules to existing homes and blocks
   assert.match(source,/purchaseType==='new-build'/);
   assert.match(source,/decision-grade NHG checks are scoped to existing-home purchases/);
 });
+
+test('Standalone NHG cannot bypass the Scenario-only exact eligibility engine through hidden inputs',()=>{
+  assert.doesNotMatch(source,/finiteOrNull\(input\.nhgNonEnergyCostStack\)[^\n]*return prior\(input\)/);
+  assert.match(source,/Standalone Mortgage-tab NHG is intentionally unavailable in R6\.6/);
+});
