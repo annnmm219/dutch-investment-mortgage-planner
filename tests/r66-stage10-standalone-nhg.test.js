@@ -5,7 +5,7 @@ const assert=require('node:assert/strict');
 const PR=require('../purchase-rules.js');
 require('../stage10-remediation.js');
 
-test('F-03 standalone Mortgage purchase surface cannot return an NHG pass without exact a-g inputs',()=>{
+test('F-03 standalone Mortgage purchase surface remains fail-safe and points to Scenario exact NHG',()=>{
   const result=PR.calculatePurchase2026({
     housePrice:460000,
     ownSavings:120000,
@@ -17,5 +17,5 @@ test('F-03 standalone Mortgage purchase surface cannot return an NHG pass withou
   assert.equal(result.nhg.enabled,true);
   assert.equal(result.nhg.eligible,false);
   assert.equal(result.nhgFee,0);
-  assert.match(result.nhg.warning,/Exact NHG eligibility requires the official non-energy cost stack/i);
+  assert.match(result.nhg.warning,/intentionally unavailable|Scenario purchase-rule/i);
 });
