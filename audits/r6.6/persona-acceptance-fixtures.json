@@ -1,0 +1,113 @@
+{
+  "source": "nl_financial_personas.xlsx / 30 Profiles",
+  "purpose": "R6.6 acceptance fixtures derived from fictitious Netherlands financial personas. Persona facts are kept separate from test-only assumptions so missing financial inputs are never presented as source facts.",
+  "rules": [
+    "facts reproduce only information present in the persona workbook or its notes",
+    "assumptions exist only to exercise the calculator and are not claims about the persona",
+    "couple and family rows are not silently converted to household Box 1 income",
+    "automatic Box 1 is used only for the supported below-AOW ordinary-employment profile",
+    "unsupported or incomplete personas are acceptance boundaries rather than forced calculations"
+  ],
+  "fixtures": [
+    {
+      "id": "P01-sanne-buy-rent",
+      "sourceRow": 2,
+      "persona": "Sanne Bakker",
+      "journey": "buy-rent",
+      "executable": true,
+      "facts": {"age":24,"household":"Single, shares house","grossMonthlyIncome":2800,"netMonthlyIncome":2350,"housingCostMonthly":650,"housingType":"Room in shared house (hospita)","monthlySavings":150,"monthlyInvestments":50},
+      "assumptions": {"startSavings":35000,"startPortfolio":2000,"existingHomePrice":250000,"appraisedValue":250000,"basePurchaseCosts":4000,"downPayment":30000,"mortgageRatePct":3.6,"mortgageYears":30,"nhgMode":"standard","nhgNonEnergyCostStack":250000,"wozValue":250000,"investmentReturnPct":5,"homeGrowthPct":2,"rentGrowthPct":2.5,"ownerCostMonthly":250,"horizonYears":10},
+      "expected": "valid existing-home starter purchase comparison; starter transfer tax exemption and exact NHG route remain internally consistent"
+    },
+    {
+      "id": "P14-sarah-downpayment",
+      "sourceRow": 15,
+      "persona": "Sarah Mitchell",
+      "journey": "downpayment",
+      "executable": true,
+      "facts": {"age":29,"household":"Single","grossMonthlyIncome":6800,"netMonthlyIncome":5200,"housingCostMonthly":2000,"housingType":"Rents 1-bed apartment (free sector)","monthlySavings":800,"monthlyInvestments":700,"note":"30% ruling stated in workbook"},
+      "assumptions": {"box1IncomeBeforeOwnHome":57120,"startSavings":150000,"startPortfolio":50000,"existingHomePrice":450000,"appraisedValue":450000,"basePurchaseCosts":8000,"downPaymentA":120000,"downPaymentB":70000,"mortgageRatePct":3.7,"mortgageYears":30,"wozValue":450000,"investmentReturnPct":5,"homeGrowthPct":2,"ownerCostMonthly":500,"horizonYears":10,"taxNote":"57,120 is a test-only taxable-income assumption used to exercise the existing 30%-ruling path; it is not asserted as Sarah's tax-return value"},
+      "expected": "valid two-strategy down-payment comparison with equal starting cash and no silent household-income aggregation"
+    },
+    {
+      "id": "P12-mark-mortgage-invest",
+      "sourceRow": 13,
+      "persona": "Mark van Dijk",
+      "journey": "mortgage-invest",
+      "executable": true,
+      "facts": {"age":52,"household":"Married, 2 children","grossMonthlyIncome":19500,"netMonthlyIncome":10200,"housingCostMonthly":3200,"housingType":"Owns villa (mortgage)","monthlySavings":2000,"monthlyInvestments":3500},
+      "assumptions": {"scope":"Mark's individual Box 1 income/mortgage decision share; no fiscal-partner allocation is inferred","mortgageBalance":700000,"mortgageRatePct":3.2,"mortgageYears":20,"wozValue":1200000,"startSavings":100000,"startPortfolio":300000,"extraMonthly":2000,"investmentReturnPct":5.5,"horizonYears":10},
+      "expected": "valid high-income automatic Box 1 mortgage-repayment versus investing comparison with finite tax effects"
+    },
+    {
+      "id": "P02-daan-linear-annuity",
+      "sourceRow": 3,
+      "persona": "Daan Visser",
+      "journey": "linear-annuity",
+      "executable": true,
+      "facts": {"age":31,"household":"Cohabiting couple","grossMonthlyIncome":5200,"netMonthlyIncome":3650,"housingCostMonthly":1450,"housingType":"Owns apartment (joint mortgage)","note":"Workbook states EUR480k apartment, mortgage split 50/50, row shows his share"},
+      "assumptions": {"scope":"individual 50% share only","mortgageBalance":200000,"mortgageRatePct":3.5,"mortgageYears":25,"wozValue":240000,"startSavings":30000,"startPortfolio":20000,"investmentReturnPct":5,"horizonYears":10},
+      "expected": "valid individual-share linear versus annuity comparison; linear amortises faster without treating unknown partner income as known"
+    },
+    {
+      "id": "P02-daan-sell-rent",
+      "sourceRow": 3,
+      "persona": "Daan Visser",
+      "journey": "sell-rent",
+      "executable": true,
+      "facts": {"age":31,"household":"Cohabiting couple","grossMonthlyIncome":5200,"netMonthlyIncome":3650,"housingCostMonthly":1450,"housingType":"Owns apartment (joint mortgage)","note":"Workbook states EUR480k apartment, mortgage split 50/50, row shows his share"},
+      "assumptions": {"scope":"individual 50% share only","homeValue":240000,"mortgageBalance":200000,"mortgageRatePct":3.5,"mortgageYears":25,"alternativeRentMonthly":1450,"wozValue":240000,"startSavings":30000,"startPortfolio":20000,"investmentReturnPct":5,"homeGrowthPct":2,"rentGrowthPct":2.5,"sellingCostPct":2,"ownerCostMonthly":300,"horizonYears":10},
+      "expected": "valid keep versus sell-and-rent individual-share comparison with explicit rent and sale economics"
+    },
+    {
+      "id": "P10-lotte-buy-rent-manual-tax",
+      "sourceRow": 11,
+      "persona": "Lotte van Dam",
+      "journey": "buy-rent",
+      "executable": true,
+      "facts": {"age":33,"household":"Single","grossMonthlyIncome":4200,"netMonthlyIncome":3100,"housingCostMonthly":950,"housingType":"Rents 1-bed apartment (free sector)","monthlySavings":500,"monthlyInvestments":200,"occupation":"Freelance Graphic Designer (ZZP)"},
+      "assumptions": {"startSavings":80000,"startPortfolio":20000,"existingHomePrice":300000,"appraisedValue":300000,"basePurchaseCosts":6000,"downPayment":50000,"mortgageRatePct":3.8,"mortgageYears":30,"wozValue":300000,"manualTaxEffectRate":0.3756,"investmentReturnPct":5,"homeGrowthPct":2,"rentGrowthPct":2.5,"ownerCostMonthly":350,"horizonYears":10,"taxNote":"automatic ordinary-employment Box 1 is deliberately not used for the ZZP persona"},
+      "expected": "valid comparison only under an explicit manual tax-effect assumption; automatic employment profile must not be treated as authoritative for ZZP"
+    },
+    {
+      "id": "P09-hendrik-aow-boundary",
+      "sourceRow": 10,
+      "persona": "Hendrik Postma",
+      "journey": "scope-boundary",
+      "executable": false,
+      "facts": {"age":71,"household":"Widower","netMonthlyIncome":1780,"housingCostMonthly":250,"housingType":"Owns house outright (mortgage-free)","cashSavings":40000,"incomeType":"AOW + occupational pension"},
+      "assumptions": {},
+      "expected": "automatic 2026 non-AOW employment Box 1 profile is out of scope; do not fabricate an automatic retiree tax result"
+    },
+    {
+      "id": "P04-willem-fiscal-partner-boundary",
+      "sourceRow": 5,
+      "persona": "Willem de Boer",
+      "journey": "scope-boundary",
+      "executable": false,
+      "facts": {"age":38,"household":"Married, 1 child","grossMonthlyIncome":4100,"netMonthlyIncome":3150,"housingCostMonthly":1300,"housingType":"Owns house (mortgage)","note":"Spouse works part-time in healthcare at about EUR1,400 net/month; spouse gross/taxable income is not provided"},
+      "assumptions": {},
+      "expected": "complex fiscal-partner allocation is not silently approximated by adding incomes; user must use an appropriate individual/manual setup"
+    },
+    {
+      "id": "P17-priya-missing-spouse-income",
+      "sourceRow": 18,
+      "persona": "Priya Sharma",
+      "journey": "data-boundary",
+      "executable": false,
+      "facts": {"age":33,"household":"Married, spouse also works","grossMonthlyIncome":7200,"netMonthlyIncome":5600,"housingCostMonthly":1600,"housingType":"Rents 2-bed apartment (free sector)","monthlySavings":1200,"monthlyInvestments":900,"remittancesMonthly":400},
+      "assumptions": {},
+      "expected": "household-level fixture remains incomplete because spouse income is absent; acceptance process must not invent it"
+    },
+    {
+      "id": "P18-rebecca-household-normalization",
+      "sourceRow": 19,
+      "persona": "Rebecca Cole",
+      "journey": "data-boundary",
+      "executable": false,
+      "facts": {"age":38,"household":"Married, 2 children","rowGrossMonthlyIncome":0,"rowNetMonthlyIncome":0,"housingCostMonthly":1100,"noteHouseholdGrossMonthly":14000,"noteHouseholdNetMonthly":8800,"note":"income belongs to spouse; international-school costs are partly employer-covered"},
+      "assumptions": {},
+      "expected": "household normalization may use explicit spouse figures from the note, but automatic Box 1 must still respect the complex-fiscal-partner scope boundary"
+    }
+  ]
+}
