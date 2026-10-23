@@ -31,7 +31,7 @@ const DEFAULTS=Object.freeze({
   deductionMode:'auto',
   qualifyingShare:100,
   unusedMortgageDestination:'invest',
-  mortgageReportHorizon:'investment',
+  mortgageReportHorizon:'mortgage',
   transferTaxMode:'main',
   nhgMode:'none',
   upfrontCashTreatment:'invest',
@@ -325,7 +325,7 @@ function bootBrowser(){
     const details=createDetails('r65MortgageAdvanced','Advanced mortgage and tax assumptions');
     const body=bodyOf(details),grid=document.createElement('div');grid.className='r65-advanced-grid';body.appendChild(grid);
     move(grid,field('deductionMode'),field('manualDeduction'));
-    move(body,$('hraEligibilityDetails'),$('mortgageFallbackControls'),$('mortgageHorizonControls'));
+    move(body,$('hraEligibilityDetails'),$('mortgageFallbackControls'));
     card.appendChild(details);
     const how=createDetails('r65MortgageHow','How the mortgage tax estimate works','inner-fold r65-local-fold r65-how-fold');
     const howBody=bodyOf(how);
@@ -531,7 +531,7 @@ function bootBrowser(){
   }
   function renderAssumptionLog(){const log=$('assumptionLog');if(!log)return;const meta=window.MODEL_META||{};const lines=[`Model: ${meta.version||'R6.6'} · rule year ${meta.ruleYear||2026}`,`Generated: ${new Date().toISOString()}`,''];assumptionRows().forEach(row=>lines.push(`[${row.section}] ${row.label}: ${row.value}`));log.textContent=lines.join('\n');}
   function exportAssumptionCsv(){const meta=window.MODEL_META||{};const rows=[{section:'Model',label:'Version',value:meta.version||'R6.6'},{section:'Model',label:'Rule year',value:meta.ruleYear||2026},{section:'Model',label:'Generated',value:new Date().toISOString()},...assumptionRows()];const blob=new Blob(['\uFEFF'+assumptionsToCsv(rows)],{type:'text/csv;charset=utf-8'});const url=URL.createObjectURL(blob),link=document.createElement('a');link.href=url;link.download=`dutch-investment-mortgage-plan-${meta.version||'R6.6'}-${new Date().toISOString().slice(0,10)}.csv`;document.body.appendChild(link);link.click();link.remove();URL.revokeObjectURL(url);}
-  function setModelMarker(){const meta=window.MODEL_META,marker=$('modelVersion');if(meta&&marker)marker.textContent=`Calculation build ${meta.version} · ${meta.ruleYear} rules · updated 3 Sep 2026`;}
+  function setModelMarker(){const meta=window.MODEL_META,marker=$('modelVersion');if(meta&&marker)marker.textContent=window.OutputIntegrity.releaseLabel(meta);}
 
   function refresh(){
     compactSaveBar();syncBox3();syncJan1Gate();syncPurchaseLight();syncHillenControls();syncScenarioReturn();syncOwnerLight();syncScenarioVisibility();compactBudgetStatus();updateBadges();setModelMarker();

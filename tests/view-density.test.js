@@ -16,7 +16,7 @@ function safeDefaults(){
     box3Mode:'current',box3PaySource:'savings',box3Debt:0,box3DebtInterest:2.70,box3DebtMonthlyRepayment:0,box3DebtRepaymentSource:'external',box3DebtFallbackDestination:'invest',
     currentTaxRate:36,currentAllowance:59357,currentNotional:6,currentSavingsNotional:1.28,currentDebtNotional:2.70,currentDebtThreshold:3800,
     futureStart:2028,futureTaxRate:36,futureExempt:1800,futureLossThreshold:500,jan1Assumption:false,jan1SnapshotEntered:false,
-    deductionMode:'auto',hraRemainingMonths:300,defaultHraMonths:300,qualifyingShare:100,hillenOverrideEnabled:false,hillenOverridePct:71.867,unusedMortgageDestination:'invest',mortgageReportHorizon:'investment',
+    deductionMode:'auto',hraRemainingMonths:300,defaultHraMonths:300,qualifyingShare:100,hillenOverrideEnabled:false,hillenOverridePct:71.867,unusedMortgageDestination:'invest',mortgageReportHorizon:'mortgage',
     transferTaxMode:'main',appraisedValue:350000,housePrice:350000,nhgMode:'none',upfrontCashTreatment:'invest',scenarioMortgageMethod:'selected',scenarioMode:'buy-rent',scenarioWoz:null,scenarioReturnOverrideEnabled:false,
     sensitivityLow:2,sensitivityHigh:10,sensitivityStep:2,vveMonthly:250,maintenanceAnnual:1500,ownerTaxesAnnual:0,insuranceAnnual:0,groundLeaseAnnual:0
   };

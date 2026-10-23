@@ -6,11 +6,11 @@
 'use strict';
 
 const RELEASE_META=Object.freeze({
-  version:'R6.6',
+  version:'R6.7 preview',
   ruleYear:2026,
-  updated:'2026-09-03',
+  updated:'2026-10-23',
   stateSchema:4,
-  releaseName:'Decision Integrity'
+  releaseName:'Mortgage periods and result clarity'
 });
 
 const CANONICAL_KINDS=Object.freeze({

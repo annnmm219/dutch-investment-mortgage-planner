@@ -1,3 +1,5 @@
+> Development preview: the `r6-7-rate-periods-preview` branch adds independent mortgage rate periods and visible investment conclusions. See [preview scope and validation](audits/r6.7/rate-periods-preview.md). This branch is unfrozen; the R6.6 audit records below describe the earlier candidate.
+
 # Dutch Investment & Mortgage Planner
 
 A static, browser-based planner for comparing Dutch mortgage, investment, Box 3, purchase-cost, and household strategy choices.

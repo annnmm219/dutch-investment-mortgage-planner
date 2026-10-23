@@ -22,7 +22,7 @@ test('F-07 browser CI enforces high-severity npm audit gate',()=>{
 });
 
 test('Final R6.6 release identity points to the audited hardened calculation source',()=>{
-  const identity=require('../release-identity.js');
+  const identity=require('../audits/r6.6/frozen-release-identity.json');
   assert.equal(identity.calculationSourceSha,'a4377ce1050277b5ce13b97779c4af27ede94f65');
   assert.equal(identity.buildId,'R6.6-stage10-a4377ce1');
   assert.ok(identity.frozenAt);

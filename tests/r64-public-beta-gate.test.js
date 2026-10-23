@@ -39,10 +39,10 @@ function baseScenario(overrides={}){
   };
 }
 
-test('R6.6 uses one public model identity and state schema',()=>{
-  assert.equal(Gate.MODEL_META.version,'R6.6');
+test('Preview uses one public model identity and state schema',()=>{
+  assert.equal(Gate.MODEL_META.version,'R6.7 preview');
   assert.equal(Gate.MODEL_META.ruleYear,2026);
-  assert.equal(Gate.MODEL_META.updated,'2026-09-03');
+  assert.equal(Gate.MODEL_META.updated,'2026-10-23');
   assert.equal(Gate.MODEL_META.stateSchema,4);
 });
 

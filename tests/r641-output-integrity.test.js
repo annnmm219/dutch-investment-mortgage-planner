@@ -40,11 +40,11 @@ function canonical(selected,config={box3Mode:'current',box3PaySource:'savings'},
   },config);
 }
 
-test('R6.6 is the single final output release identity',()=>{
-  assert.equal(OI.RELEASE_META.version,'R6.6');
+test('Preview is the single output build identity',()=>{
+  assert.equal(OI.RELEASE_META.version,'R6.7 preview');
   assert.equal(OI.RELEASE_META.ruleYear,2026);
-  assert.equal(OI.RELEASE_META.updated,'2026-09-03');
-  assert.match(OI.releaseLabel(),/Calculation build R6\.6/);
+  assert.equal(OI.RELEASE_META.updated,'2026-10-23');
+  assert.match(OI.releaseLabel(),/Calculation build R6\.7 preview/);
 });
 
 test('money formatting never converts null or undefined into €0',()=>{

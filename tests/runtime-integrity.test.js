@@ -61,11 +61,11 @@ test('browser modules fail fast when required dependencies are missing',()=>{
   assert.match(stage10,/Stage 10 requires FinanceCore, PurchaseRules, ScenarioCore, OutputIntegrity and Stage91Remediation/);
 });
 
-test('public page exposes R6.6, mixed-asset Box 3, and conservative static defaults',()=>{
+test('public page exposes the R6.7 preview, mixed-asset Box 3, and conservative static defaults',()=>{
   const html=read('index.html'),gate=read('logic-integrity-ui.js');
   assert.match(html,/id="modelVersion"/);
-  assert.match(html,/Calculation build R6\.6/);
-  assert.match(gate,/version:'R6\.6'/);
+  assert.match(html,/Calculation build R6\.7 preview/);
+  assert.match(gate,/version:'R6\.7 preview'/);
   assert.match(html,/2026 current rules, mixed-asset estimate/);
   assert.doesNotMatch(html,/2026 current rules, investment-only estimate/);
   assert.match(html,/id="annualReturn"[^>]*value="5"/);
@@ -117,16 +117,12 @@ test('R6 persistence, Stage 9.1 and Stage 10 layers load in deterministic order'
   assert.match(late,/scenarioBuyWozNew/);
 });
 
-test('R6.6 browser assets use explicit stage cache-busting',()=>{
+test('preview browser assets use explicit matching cache-busting',()=>{
   const html=read('index.html');
   const local=[...html.matchAll(/<script\s+src="((?!https?:\/\/)[^"]+)"/g)].map(m=>m[1]);
   assert.equal(local.length,EXPECTED_LOCAL_SCRIPTS.length);
-  local.forEach(src=>{
-    if(src.startsWith('stage9-1-remediation'))assert.match(src,/\?v=R6\.6-stage9\.1$/);
-    else if(src.startsWith('stage9-1-quality')||src.startsWith('release-identity')||src.startsWith('stage10-remediation'))assert.match(src,/\?v=R6\.6-stage10$/);
-    else assert.match(src,/\?v=R6\.6-stage9$/);
-  });
-  assert.match(html,/styles\.css\?v=R6\.6-stage9\.1/);
+  local.forEach(src=>assert.match(src,/\?v=R6\.7-preview-20261023$/));
+  assert.match(html,/styles\.css\?v=R6\.7-preview-20261023/);
 });
 
 test('third-party browser assets use explicit integrity controls and no remote font dependency',()=>{

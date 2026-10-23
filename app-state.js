@@ -142,8 +142,8 @@ function bootBrowser(){
     if(woz&&!$('mortgageReportHorizon')){
       const wrap=document.createElement('div');wrap.className='grid2 ux-horizon-grid';wrap.id='mortgageHorizonControls';
       const startYear=parseFlexibleNumber($('startYear')?.value)||2026;
-      wrap.innerHTML=`<div class="field"><label for="mortgageReportHorizon">Mortgage totals: report until</label><select id="mortgageReportHorizon"><option value="investment" selected>End of investment plan</option><option value="mortgage">End of mortgage term</option><option value="year">A specific year</option></select><p class="inline">Changes the Mortgage tab totals and payment schedule only. It does not extend the investment plan or Scenario horizon.</p></div><div class="field hidden" id="mortgageReportYearField"><label for="mortgageReportYear">Report through year</label><input id="mortgageReportYear" type="number" min="2026" max="2100" step="1" value="${startYear+10}"><p class="inline">For a specific year, the report runs through December of that year or until the mortgage ends, whichever comes first.</p></div>`;
-      woz.insertAdjacentElement('afterend',wrap);
+      wrap.innerHTML=`<div class="field"><label for="mortgageReportHorizon">Mortgage totals: report until</label><select id="mortgageReportHorizon"><option value="mortgage" selected>End of mortgage term (full remaining term)</option><option value="investment">End of investment plan</option><option value="year">A specific year</option></select><p class="inline">Changes the Mortgage tab totals and payment schedule only. It does not extend the investment plan or Scenario horizon.</p></div><div class="field hidden" id="mortgageReportYearField"><label for="mortgageReportYear">Report through year</label><input id="mortgageReportYear" type="number" min="2026" max="2100" step="1" value="${startYear+10}"><p class="inline">For a specific year, the report runs through December of that year or until the mortgage ends, whichever comes first.</p></div>`;
+      const compare=$('linearCompare')?.closest('.card');if(compare)compare.insertBefore(wrap,compare.querySelector('.compare-grid'));else woz.insertAdjacentElement('afterend',wrap);
     }
   }
 
@@ -240,11 +240,15 @@ function bootBrowser(){
   function scheduleDate(startYear,startMonth,index){const d=new Date(Date.UTC(startYear,startMonth-1+index,1));return{year:d.getUTCFullYear(),month:d.getUTCMonth()+1,label:`${MONTHS[d.getUTCMonth()]} ${d.getUTCFullYear()}`}}
   function mortgageReport(){
     if(!FC)return null;
-    const setup=mortgageSetup(),startYear=Math.round(parseFlexibleNumber($('startYear')?.value)||2026),startMonth=Math.max(1,Math.min(12,Math.round(parseFlexibleNumber($('startMonth')?.value)||1))),investmentMonths=Math.round(investmentPlanMonths()),termMonths=Math.max(1,Math.round(setup.years*12)),mode=$('mortgageReportHorizon')?.value||'investment',specificYear=Math.round(parseFlexibleNumber($('mortgageReportYear')?.value)||startYear);
+    const setup=mortgageSetup(),startYear=Math.round(parseFlexibleNumber($('startYear')?.value)||2026),startMonth=Math.max(1,Math.min(12,Math.round(parseFlexibleNumber($('startMonth')?.value)||1))),investmentMonths=Math.round(investmentPlanMonths()),termMonths=Math.max(1,Math.round(setup.years*12)),mode=$('mortgageReportHorizon')?.value||'mortgage',specificYear=Math.round(parseFlexibleNumber($('mortgageReportYear')?.value)||startYear);
     const months=mortgageReportingMonths({mode,startYear,startMonth,investmentMonths,mortgageTermMonths:termMonths,specificYear});
     const extra=phaseExtraSeries(months,startYear,startMonth),deductionRate=FC.deductionRate2026({mode:$('deductionMode')?.value||'auto',manualRatePct:parseFlexibleNumber($('manualDeduction')?.value)||37.56,grossIncome:parseFlexibleNumber($('grossIncome')?.value)||0}),tax={enabled:$('mortTaxEnabled')?.checked!==false,deductionRate,wozValue:Math.max(0,parseFlexibleNumber($('wozValue')?.value)||0)};
     const type=document.querySelector('.compare-card.active[data-mort-type]')?.dataset.mortType==='linear'?'linear':'annuity';
-    return{setup,startYear,startMonth,months,mode,specificYear,extra,tax,type,selected:FC.mortgageSchedule({balance:setup.balance,annualRatePct:setup.ratePct,termYears:setup.years,type,months,extraMonthly:extra,startYear,startMonth,tax}),linear:FC.mortgageSchedule({balance:setup.balance,annualRatePct:setup.ratePct,termYears:setup.years,type:'linear',months,extraMonthly:extra,startYear,startMonth,tax}),annuity:FC.mortgageSchedule({balance:setup.balance,annualRatePct:setup.ratePct,termYears:setup.years,type:'annuity',months,extraMonthly:extra,startYear,startMonth,tax})};
+    const ratePeriods=FC.twoPeriodMortgageRates({enabled:$('mortRateResetEnabled')?.checked,termYears:setup.years,fixedYears:parseFlexibleNumber($('mortRateFixedYears')?.value)||10,currentRatePct:setup.ratePct,laterRatePct:parseFlexibleNumber($('mortRateLaterPct')?.value)||0});
+    const base={balance:setup.balance,annualRatePct:setup.ratePct,termYears:setup.years,months,extraMonthly:extra,startYear,startMonth,tax,ratePeriods};
+    const linear=FC.mortgageSchedule({...base,type:'linear'}),annuity=FC.mortgageSchedule({...base,type:'annuity'}),selected=type==='linear'?linear:annuity;
+    const full=months===termMonths?selected:FC.mortgageSchedule({...base,type,months:termMonths,extraMonthly:phaseExtraSeries(termMonths,startYear,startMonth)});
+    return{setup,startYear,startMonth,months,mode,specificYear,extra,tax,type,selected,linear,annuity,full,termMonths,investmentMonths,ratePeriods};
   }
   function renderMortgageSchedule(rows){
     const body=$('scheduleBody');if(!body)return;body.innerHTML='';
@@ -253,16 +257,35 @@ function bootBrowser(){
     }else rows.forEach(r=>{const tr=document.createElement('tr');tr.innerHTML=`<td>${MONTHS[r.month-1]} ${r.year}</td><td>${fmt(r.balance)}</td><td>${fmt(r.gross)}</td><td>${fmt(r.principal)}</td><td>${fmt(r.interest)}</td><td>${fmtSigned(r.taxReturn)}</td><td>${fmt(r.net)}</td><td>${fmt(r.extra)}</td>`;body.appendChild(tr)});
   }
   function renderMortgageCompare(result){
-    function card(el,x,label,type){if(!el)return;const active=result.type===type;el.className='compare-card selectable'+(active?' active':'');el.setAttribute('aria-pressed',active?'true':'false');el.innerHTML=`<h3>${label}</h3><p class="tag ${active?'selected-tag':''}">${active?'Used in combined plan & schedule':'Click to use this method'}</p><div class="metric"><span>First scheduled payment</span><strong>${fmt(x.firstScheduled)}</strong></div><div class="metric"><span>Gross scheduled paid</span><strong>${fmt(x.totalScheduledPaid)}</strong></div><div class="metric"><span>Gross interest</span><strong>${fmt(x.totalInterest)}</strong></div><div class="metric"><span>Estimated tax benefit</span><strong>${fmtSigned(x.totalTaxBenefit)}</strong></div><div class="metric"><span>Extra repayments</span><strong>${fmt(x.totalExtra)}</strong></div><div class="metric"><span>End balance</span><strong>${fmt(x.balance)}</strong></div>`;}
+    const end=scheduleDate(result.startYear,result.startMonth,result.months-1).label,years=(result.months/12).toLocaleString('en-GB');
+    function card(el,x,label,type){
+      if(!el)return;const active=result.type===type;el.className='compare-card selectable'+(active?' active':'');el.setAttribute('aria-pressed',active?'true':'false');
+      const metrics=[['First regular monthly payment, before tax',fmt(x.firstScheduled)],[`Regular repayments + interest over ${years} years`,fmt(x.totalScheduledPaid)],[`Interest included in regular payments, ${years} years`,fmt(x.totalInterest)],[`Estimated total tax saving, ${years} years`,fmtSigned(x.totalTaxBenefit)],[`Interest minus estimated tax saving, ${years} years`,fmt(x.totalInterest-x.totalTaxBenefit)],[`Extra principal repaid over ${years} years`,fmt(x.totalExtra)],[`Mortgage debt remaining at end of ${end}`,fmt(x.balance)]];
+      el.innerHTML=`<h3>${label}</h3><p class="tag ${active?'selected-tag':''}">${active?'Used in combined plan & schedule':'Click to use this method'}</p>`+metrics.map(([name,value])=>`<div class="metric"><span>${name}</span><strong>${value}</strong></div>`).join('');
+    }
     card($('linearCompare'),result.linear,'Linear mortgage','linear');card($('annuityCompare'),result.annuity,'Annuity mortgage','annuity');
+  }
+  function renderMortgageRatePeriods(r){
+    const body=$('mortgageRatePeriodRows');if(!body)return;body.innerHTML='';
+    const enabled=$('mortRateResetEnabled')?.checked;
+    $('mortRateResetFields')?.classList.toggle('hidden',!enabled);
+    // Keep the controls saved even while the reset is switched off.
+    const periods=r.ratePeriods.length?r.ratePeriods:[{months:r.termMonths,annualRatePct:r.setup.ratePct}];let offset=0;
+    periods.forEach((period,index)=>{
+      const row=r.full.rows[offset],from=scheduleDate(r.startYear,r.startMonth,offset),to=scheduleDate(r.startYear,r.startMonth,offset+period.months-1);
+      const values=[index===0?'Current rate period':'Later rate assumption',`${from.label} to ${to.label}`,period.annualRatePct.toLocaleString('en-GB')+'%',fmt(row?.openingBalance??0),fmt(row?.gross??0)];
+      const tr=document.createElement('tr');values.forEach(value=>{const td=document.createElement('td');td.textContent=value;tr.appendChild(td);});body.appendChild(tr);offset+=period.months;
+    });
+    $('mortRateResetNote').textContent=enabled?`The later period starts from the debt left after the current period. Payments are recalculated over the remaining repayment term, including the effect of extra repayments.`:'No rate reset selected: the current rate is assumed for the full remaining mortgage term.';
   }
   function updateMortgageReporting(){
     const r=mortgageReport();if(!r)return;
     const yearField=$('mortgageReportYearField');if(yearField)yearField.classList.toggle('hidden',r.mode!=='year');
     const start=scheduleDate(r.startYear,r.startMonth,0),end=scheduleDate(r.startYear,r.startMonth,r.months-1),period=`${start.label} – ${end.label}`;
     let box=$('mortgageSummaryPeriod');if(!box&&$('mortgageHorizonControls')){box=document.createElement('div');box.id='mortgageSummaryPeriod';box.className='callout ux-period';$('mortgageHorizonControls').insertAdjacentElement('afterend',box);}
+    renderMortgageRatePeriods(r);
     const modeLabel=r.mode==='mortgage'?'end of mortgage term':r.mode==='year'?`through ${r.specificYear}`:'end of investment plan';
-    if(box)box.innerHTML=`<strong>Mortgage summary: ${period} (${modeLabel}).</strong><br><span>This selector changes the Mortgage tab totals and payment schedule only. Your Investment phases and Scenario comparison horizons stay independent.</span>`;
+    if(box)box.innerHTML=`<strong>Mortgage summary: ${period} (${modeLabel}).</strong><br><span>Repayment term: ${r.setup.years} years remaining. Investment plan: ${r.investmentMonths/12} years. Investment phases and Scenario comparison horizons stay independent. This selector changes the Mortgage report only. Extra repayments stop at the end of your entered investment phases. Regular payments include principal + interest; extra principal is additional.</span>`;
     $('mGrossInterest').textContent=fmt(r.selected.totalInterest);$('mTaxBenefit').textContent=fmtSigned(r.selected.totalTaxBenefit);$('mNetInterest').textContent=fmt(r.selected.totalInterest-r.selected.totalTaxBenefit);
     const gross=$('mGrossInterest')?.closest('.summary-item'),tax=$('mTaxBenefit')?.closest('.summary-item'),net=$('mNetInterest')?.closest('.summary-item'),pay=$('mPayoff')?.closest('.summary-item');
     if(gross?.querySelector('.s'))gross.querySelector('.s').textContent=period;if(tax?.querySelector('.s'))tax.querySelector('.s').textContent=`${period} · annual HRA/EWF/Hillen`;if(net?.querySelector('.s'))net.querySelector('.s').textContent=period;
@@ -292,7 +315,10 @@ function bootBrowser(){
   document.querySelectorAll('.tab[data-tab],.compare-card[data-mort-type]').forEach(el=>el.addEventListener('click',()=>{if(!restoring)save();refreshUx()}));
   $('plannerReset')?.addEventListener('click',()=>{if(window.confirm('Reset all planner inputs to the illustrative examples?')){safeRemove();window.location.reload();}});
 
-  restore();refreshUx();
+  restore();
+  const oldPayload=normalizePayload(safeGet());
+  if(!oldPayload?.controls['id:mortRateFixedYears']&&$('mortgageReportHorizon')){$('mortgageReportHorizon').value='mortgage';save();}
+  refreshUx();
   const uxTargetIds=['phaseList','strategyAResultNew','strategyBResultNew','scenarioVerdictNew'];
   let uxObserver=null,uxObserverQueued=false;
   function observeUxTargets(){
