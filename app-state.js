@@ -139,7 +139,9 @@ function bootBrowser(){
 
   const status=$('plannerSaveStatus');
   function setStatus(text){if(status)status.textContent=text}
-  function save(){if(restoring)return;const payload=captureControls(controls(),meta());if(safeSet(JSON.stringify(payload))){const t=new Date();setStatus(`Saved locally ${String(t.getHours()).padStart(2,'0')}:${String(t.getMinutes()).padStart(2,'0')}`)}else setStatus('Local save unavailable')}
+  let persistReady=document.readyState==='complete';
+  function save(){if(restoring||!persistReady)return;const payload=captureControls(controls(),meta());if(safeSet(JSON.stringify(payload))){const t=new Date();setStatus(`Saved locally ${String(t.getHours()).padStart(2,'0')}:${String(t.getMinutes()).padStart(2,'0')}`)}else setStatus('Local save unavailable')}
+  if(!persistReady)window.addEventListener('load',()=>{persistReady=true;},{once:true});
   function byKey(key){if(key.startsWith('id:'))return $(key.slice(3));const m=/^phase:(\d+):([A-Za-z0-9_-]+)$/.exec(key);return m?document.querySelector(`#phaseList [data-i="${m[1]}"][data-field="${m[2]}"]`):null}
 
   function prepareRound2Controls(){

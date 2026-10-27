@@ -482,7 +482,6 @@ function bootBrowser(){
     document.documentElement.dataset.modelVersion=RELEASE_META.version;
     document.documentElement.dataset.stateSchema=String(RELEASE_META.stateSchema);
     setText('modelVersion',releaseLabel());
-    try{localStorage.setItem('dimp-model-meta',JSON.stringify(RELEASE_META));}catch(_error){}
   }
 
   function updateHeadline(model){

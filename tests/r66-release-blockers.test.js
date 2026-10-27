@@ -148,6 +148,18 @@ test('LICENSE, copyright footer and borrowing notice are present and outside any
   assert.ok(loanAt>0&&loanAt<purchaseAt&&purchaseAt<scheduleAt);
   assert.ok(purchaseEnd>0&&purchaseEnd<purchaseAt);
   assert.doesNotMatch(withoutDetails(html.slice(purchaseEnd,purchaseAt+1)),/<details/);
+  const scenario=read('scenario-engine.js');
+  const scenarioVisible=withoutDetails(scenario);
+  const notice=BORROWING_NOTICE.replace(/[.*+?^${}()|[\]\\]/g,'\\$&');
+  assert.equal([...scenarioVisible.matchAll(new RegExp(notice,'g'))].length,1);
+  const scenarioNoticeAt=scenario.indexOf('id="scenarioPurchaseBorrowingNotice"');
+  const fundingAt=scenario.indexOf('id="scenarioFundingDetailsNew"');
+  assert.ok(scenarioNoticeAt>0&&scenarioNoticeAt<fundingAt);
+  assert.match(scenarioVisible,/id="scenarioPurchaseBorrowingNotice"/);
+  assert.match(scenario,/\$\('scenarioPurchaseBorrowingNotice'\)\?\.classList\.toggle\('hidden',!purchaseMode\)/);
+  const openAt=scenario.lastIndexOf('<p',scenarioNoticeAt);
+  assert.match(scenario.slice(openAt,scenarioNoticeAt),/class="borrowing-notice"/);
+  assert.doesNotMatch(scenario.slice(openAt,scenarioNoticeAt),/\bhidden\b/);
 });
 
 test('approved not-advice, proposed-regime and source label copy is exact',()=>{
@@ -174,7 +186,8 @@ test('Reset examples clears every planner storage key the source writes',()=>{
   assert.ok(keys.includes('dimp.stage91.scenario-state.v1'));
   assert.ok(keys.includes('dimp.stage91.main-mortgage-type.v1'));
   assert.ok(keys.includes('dimp.stage10.scenario-state.v1'));
-  assert.ok(keys.includes('dimp-model-meta'));
+  assert.ok(!keys.includes('dimp-model-meta'));
+  assert.doesNotMatch(read('logic-integrity-ui.js')+read('output-integrity.js'),/dimp-model-meta/);
   assert.ok(keys.includes('dimp-r64-jan1-confirmed'));
   keys.forEach(key=>assert.match(key,State.PLANNER_STORAGE_KEY_PATTERN,key));
   const storage=memoryStorage([...keys,'unrelated-app']);
