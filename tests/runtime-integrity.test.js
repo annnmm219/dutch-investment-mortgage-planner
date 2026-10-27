@@ -8,7 +8,7 @@ const path=require('node:path');
 const ROOT=path.resolve(__dirname,'..');
 const read=file=>fs.readFileSync(path.join(ROOT,file),'utf8');
 
-const EXPECTED_LOCAL_SCRIPTS=['model-contract.js','policy-2026.js','finance-core.js','box1-2026.js','logic-integrity-ui.js','box3-household.js','policy-ui.js','purchase-rules.js','output-integrity.js','input-integrity.js','app.js','purchase-costs.js','scenario-engine.js','box1-2026-ui.js','next-euro.js','app-state.js','view-density.js','view-density-state.js','stage9-1-remediation.js','stage9-1-quality.js','release-identity.js','stage10-remediation.js'];
+const EXPECTED_LOCAL_SCRIPTS=['model-contract.js','policy-2026.js','finance-core.js','box1-2026.js','logic-integrity-ui.js','box3-household.js','policy-ui.js','purchase-rules.js','output-integrity.js','input-integrity.js','app.js','purchase-costs.js','scenario-engine.js','box1-2026-ui.js','next-euro.js','sale-break-even.js','sale-break-even-ui.js','app-state.js','view-density.js','view-density-state.js','stage9-1-remediation.js','stage9-1-quality.js','release-identity.js','stage10-remediation.js'];
 
 test('index.html declares the complete browser module order explicitly',()=>{
   const html=read('index.html');
@@ -121,8 +121,8 @@ test('preview browser assets use explicit matching cache-busting',()=>{
   const html=read('index.html');
   const local=[...html.matchAll(/<script\s+src="((?!https?:\/\/)[^"]+)"/g)].map(m=>m[1]);
   assert.equal(local.length,EXPECTED_LOCAL_SCRIPTS.length);
-  local.forEach(src=>assert.match(src,/\?v=R6\.7-preview-20261023$/));
-  assert.match(html,/styles\.css\?v=R6\.7-preview-20261023/);
+  local.forEach(src=>assert.match(src,/\?v=R6\.7-preview-20261027$/));
+  assert.match(html,/styles\.css\?v=R6\.7-preview-20261027/);
 });
 
 test('third-party browser assets use explicit integrity controls and no remote font dependency',()=>{

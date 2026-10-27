@@ -8,9 +8,9 @@
 const RELEASE_META=Object.freeze({
   version:'R6.7 preview',
   ruleYear:2026,
-  updated:'2026-10-23',
+  updated:'2026-10-27',
   stateSchema:4,
-  releaseName:'Mortgage periods and result clarity'
+  releaseName:'Home sale break-even and mortgage periods'
 });
 
 const CANONICAL_KINDS=Object.freeze({

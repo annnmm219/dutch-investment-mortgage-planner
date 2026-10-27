@@ -15,9 +15,9 @@ const MAX_HRA_YEARS=POLICY.ownHome.maximumQualifyingMortgageMonths/12;
 const MODEL_META=Object.freeze({
   version:'R6.7 preview',
   ruleYear:POLICY.taxYear,
-  updated:'2026-10-23',
+  updated:'2026-10-27',
   stateSchema:4,
-  releaseName:'Mortgage periods and result clarity'
+  releaseName:'Home sale break-even and mortgage periods'
 });
 
 function readNumber(id,fallback=0){
@@ -73,7 +73,9 @@ function domOptional(id){
 
 function box3Config(config={}){
   const nested=config.box3||{};
-  const browser=typeof document!=='undefined';
+  // Standalone scenarios own their historical snapshots; main-planner DOM
+  // values must not replace explicit data supplied by those callers.
+  const browser=typeof document!=='undefined'&&config.box3InputSource!=='explicit';
   const domPortfolio=browser?domOptional('firstJan1Portfolio'):undefined;
   const domSavings=browser?domOptional('firstJan1Savings'):undefined;
   const domDebt=browser?domOptional('firstJan1Debt'):undefined;
