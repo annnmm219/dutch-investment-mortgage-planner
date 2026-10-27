@@ -126,7 +126,7 @@ function bootBrowser(){
   const header=document.querySelector('header');
   if(header&&!$('plannerStorageBar')){
     const bar=document.createElement('div');bar.id='plannerStorageBar';bar.className='planner-storage-bar';
-    bar.innerHTML=`<span><strong>Saved in this browser only:</strong> your inputs stay on this device (localStorage) and are not sent to us or to any third party. Our web host sees standard request logs (e.g. IP address).</span><span class="planner-storage-actions"><span id="plannerSaveStatus">Not saved yet</span><button type="button" class="planner-reset" id="plannerReset">Reset examples</button></span>`;
+    bar.innerHTML=`<span class="planner-storage-actions"><span id="plannerSaveStatus">Not saved yet</span><span class="header-status-sep" aria-hidden="true">·</span><button type="button" class="planner-reset" id="plannerReset">Reset examples</button></span>`;
     header.insertAdjacentElement('afterend',bar);
   }
   const modelDetails=Array.from(document.querySelectorAll('details.fold')).find(d=>/Model status and sources/i.test(d.querySelector('summary')?.textContent||''));
@@ -140,7 +140,7 @@ function bootBrowser(){
   const status=$('plannerSaveStatus');
   function setStatus(text){if(status)status.textContent=text}
   let persistReady=document.readyState==='complete';
-  function save(){if(restoring||!persistReady)return;const payload=captureControls(controls(),meta());if(safeSet(JSON.stringify(payload))){const t=new Date();setStatus(`Saved locally ${String(t.getHours()).padStart(2,'0')}:${String(t.getMinutes()).padStart(2,'0')}`)}else setStatus('Local save unavailable')}
+  function save(){if(restoring||!persistReady)return;const payload=captureControls(controls(),meta());if(safeSet(JSON.stringify(payload))){const t=new Date();setStatus(`Saved locally ${String(t.getHours()).padStart(2,'0')}:${String(t.getMinutes()).padStart(2,'0')}`);document.dispatchEvent(new Event('dimp-save-status'));}else setStatus('Local save unavailable')}
   if(!persistReady)window.addEventListener('load',()=>{persistReady=true;},{once:true});
   function byKey(key){if(key.startsWith('id:'))return $(key.slice(3));const m=/^phase:(\d+):([A-Za-z0-9_-]+)$/.exec(key);return m?document.querySelector(`#phaseList [data-i="${m[1]}"][data-field="${m[2]}"]`):null}
 

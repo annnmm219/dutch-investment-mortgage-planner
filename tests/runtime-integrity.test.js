@@ -108,7 +108,8 @@ test('R6 persistence, Stage 9.1 and Stage 10 layers load in deterministic order'
   assert.ok(html.indexOf('stage9-1-remediation.js')<html.indexOf('stage9-1-quality.js'));
   assert.ok(html.indexOf('stage9-1-quality.js')<html.indexOf('release-identity.js'));
   assert.ok(html.indexOf('release-identity.js')<html.indexOf('stage10-remediation.js'));
-  assert.match(state,/Saved in this browser only/);
+  assert.match(html,/Your financial inputs are calculated and saved locally in your browser/);
+  assert.doesNotMatch(state,/<strong>Saved in this browser only:<\/strong>/);
   assert.match(state,/stored only in this browser/);
   assert.match(state,/Reset examples/);
   assert.match(state,/Data handling\./);

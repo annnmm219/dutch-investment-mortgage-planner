@@ -8,6 +8,7 @@ const Policy=require('../policy-2026.js');
 const FC=require('../finance-core.js');
 const PR=require('../purchase-rules.js');
 const State=require('../app-state.js');
+const UI=require('../view-density.js');
 
 const ROOT=path.resolve(__dirname,'..');
 const read=file=>fs.readFileSync(path.join(ROOT,file),'utf8');
@@ -23,7 +24,8 @@ NOT FINANCIAL ADVICE. The software produces simplified planning estimates. It is
 
 const FOOTER_LINE='© 2026 An Tu. All rights reserved. Provided as is, without warranty. Planning estimates only, not financial, tax or mortgage advice.';
 const BORROWING_NOTICE='This planner does not check how much a lender would let you borrow. It does not apply Nibud income limits (LTI) or a lender\'s own assessment. For your maximum mortgage, ask a lender or an AFM-licensed mortgage adviser.';
-const HEADER_NOTICE='Planning estimates only, not financial, tax or mortgage advice. Rules simplified, as of 27 Oct 2026.';
+const HEADER_NOTICE='Planning estimates only, not financial, tax or mortgage advice. Your financial inputs are calculated and saved locally in your browser.';
+const HEADER_DETAILS='Rules simplified, as of 27 Oct 2026. Your inputs are stored in this browser\'s localStorage and are not sent to us or to any third party. Our web host sees standard request logs (e.g. IP address). "Start fresh" deletes everything this planner saved in this browser.';
 const RESULT_NOTICE='Estimate based on your assumptions and simplified 2026 rules. Not a recommendation or a tax calculation.';
 const FUTURE_WARNING='Proposed regime, not law. The Wet werkelijk rendement box 3 passed the Tweede Kamer (Feb 2026). The Eerste Kamer has not voted, and a pending amendment (novelle) would lower the tax-free result to €1,000 and tax shares and bonds only when sold. This scenario taxes yearly growth and may not match the final law. Figures as of 27 Oct 2026.';
 
@@ -164,7 +166,19 @@ test('LICENSE, copyright footer and borrowing notice are present and outside any
 
 test('approved not-advice, proposed-regime and source label copy is exact',()=>{
   const html=read('index.html');
+  assert.equal(UI.HEADER_TRUST_LINE,HEADER_NOTICE);
+  assert.equal(UI.HEADER_TRUST_DETAILS,HEADER_DETAILS);
+  assert.match(html,/id="headerTrustLine"/);
   assert.match(html,/id="headerNotAdvice"/);
+  assert.match(html,/<button type="button" class="info-button" id="headerTrustInfo" aria-expanded="false" aria-controls="headerTrustPanel" aria-label="About these estimates and your data">ⓘ<\/button>/);
+  assert.match(html,/id="headerTrustPanel" class="info-panel"/);
+  assert.ok(html.includes(HEADER_DETAILS));
+  assert.doesNotMatch(html,/title="[^"]*Rules simplified/);
+  assert.doesNotMatch(html,/Multi-stage investing|Plan investments, mortgage choices/);
+  assert.match(read('styles.css'),/\.info-button\{[^}]*min-width:24px;min-height:24px/);
+  assert.match(read('view-density.js'),/event\.key!=='Escape'/);
+  assert.match(read('view-density.js'),/button\.focus\(\)/);
+  assert.doesNotMatch(read('view-density.js'),/mouseenter|mouseover/);
   assert.match(html,/<strong>What this tool is\.<\/strong> This planner is a general calculation model\./);
   assert.match(html,/id="futureLawWarning"[\s\S]*Proposed regime, not law\./);
   assert.ok(html.includes(FUTURE_WARNING.replace('Proposed regime, not law. ','Proposed regime, not law.</strong> ')));
@@ -174,7 +188,13 @@ test('approved not-advice, proposed-regime and source label copy is exact',()=>{
   assert.match(read('scenario-engine.js'),/id="scenarioResultDisclaimer">Estimate based on your assumptions and simplified 2026 rules\. Not a recommendation or a tax calculation\./);
   assert.match(read('next-euro.js'),/id="nextEuroResultDisclaimer">Estimate based on your assumptions and simplified 2026 rules\. Not a recommendation or a tax calculation\./);
   const state=read('app-state.js');
-  assert.match(state,/<strong>Saved in this browser only:<\/strong> your inputs stay on this device \(localStorage\) and are not sent to us or to any third party\. Our web host sees standard request logs \(e\.g\. IP address\)\./);
+  assert.doesNotMatch(state,/<strong>Saved in this browser only:<\/strong>/);
+  assert.match(read('view-density.js'),/showSavedStatus/);
+  assert.match(read('view-density.js'),/aria-hidden','true'/);
+  assert.match(read('view-density.js'),/Saved in this browser/);
+  assert.match(read('view-density.js'),/Example values/);
+  assert.match(read('view-density.js'),/Previous plan restored/);
+  assert.doesNotMatch(read('view-density.js'),/aria-label','Saved'/);
   assert.match(state,/<strong>Data handling\.<\/strong> There is no account and no planner server\. Your inputs are stored only in this browser's localStorage so they survive a refresh, and they are never uploaded\. "Start fresh" deletes everything this planner saved in this browser and restores the example values\. You can also clear site data in your browser\. All code, including the chart library, is served from this site\. No third-party requests, analytics or tracking cookies\. Our web host keeps standard request logs \(e\.g\. IP address\)\./);
   assert.match(read('view-density.js'),/reset\.textContent='Start fresh'/);
   assert.match(state,/Start fresh\? This deletes everything this planner saved in this browser and restores the example values\./);

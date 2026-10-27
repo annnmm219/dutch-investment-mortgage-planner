@@ -9,6 +9,8 @@ if(!Policy2026)throw new Error('Policy2026 must load before view-density.js');
 const BOX3=Policy2026.VALUES.box3;
 const FUTURE_BOX3=Policy2026.VALUES.futureBox3Proposal;
 const policyPct=rate=>rate*100;
+const HEADER_TRUST_LINE='Planning estimates only, not financial, tax or mortgage advice. Your financial inputs are calculated and saved locally in your browser.';
+const HEADER_TRUST_DETAILS='Rules simplified, as of 27 Oct 2026. Your inputs are stored in this browser\'s localStorage and are not sent to us or to any third party. Our web host sees standard request logs (e.g. IP address). "Start fresh" deletes everything this planner saved in this browser.';
 
 const DEFAULT_VIEW='single';
 const STANDARD_PHASE_LIMIT=6;
@@ -195,6 +197,62 @@ function bootBrowser(){
     document.head.appendChild(style);
   }
 
+  function showExampleStatus(status){
+    status.dataset.saveState='example';
+    status.textContent='Example values';
+    status.removeAttribute('title');
+    status.removeAttribute('role');
+    status.removeAttribute('aria-label');
+    status.removeAttribute('aria-labelledby');
+  }
+  function showRestoredStatus(status){
+    status.dataset.saveState='restored';
+    status.textContent='Previous plan restored';
+    status.removeAttribute('title');
+    status.removeAttribute('role');
+    status.removeAttribute('aria-label');
+    status.removeAttribute('aria-labelledby');
+  }
+  function showSavedStatus(status,timeLabel){
+    status.dataset.saveState='saved';
+    status.setAttribute('role','status');
+    status.removeAttribute('aria-label');
+    const visible=document.createElement('span');
+    visible.setAttribute('aria-hidden','true');
+    visible.textContent='✓ Saved';
+    const name=document.createElement('span');
+    name.id='plannerSaveStatusName';
+    name.className='visually-hidden';
+    name.textContent='Saved in this browser';
+    if(timeLabel)visible.title=timeLabel;
+    status.replaceChildren(visible,name);
+    status.setAttribute('aria-labelledby','plannerSaveStatusName');
+    status.removeAttribute('title');
+  }
+  function syncSaveStatus(){
+    const status=$('plannerSaveStatus');
+    if(!status)return;
+    const raw=String(status.textContent||'').replace(/\s+/g,' ').trim();
+    const fresh=/^Saved locally (\d{2}:\d{2})$/.exec(raw);
+    if(fresh){showSavedStatus(status,fresh[1]);return;}
+    if(raw==='Saved locally'||/Restored/i.test(raw)){showRestoredStatus(status);return;}
+    if(/Not saved/i.test(raw)){showExampleStatus(status);return;}
+    if(raw==='Example values'||raw==='Previous plan restored')return;
+    if(status.dataset.saveState==='saved'&&raw.includes('Saved in this browser'))return;
+  }
+  function ensureHeaderTrust(){
+    const line=$('headerTrustLine'),panel=$('headerTrustPanel'),button=$('headerTrustInfo');
+    if(line)line.textContent=HEADER_TRUST_LINE;
+    if(panel)panel.textContent=HEADER_TRUST_DETAILS;
+    if(!button||button.dataset.bound==='1')return;
+    button.dataset.bound='1';
+    button.addEventListener('click',()=>{
+      const open=button.getAttribute('aria-expanded')!=='true';
+      button.setAttribute('aria-expanded',open?'true':'false');
+      panel?.classList.toggle('is-open',open);
+    });
+  }
+
   function compactSaveBar(){
     const bar=$('plannerStorageBar'),header=document.querySelector('header');
     if(!bar||!header)return;
@@ -202,16 +260,10 @@ function bootBrowser(){
     header.appendChild(bar);
     const reset=$('plannerReset');
     if(reset){reset.textContent='Start fresh';reset.title='Clear the saved plan in this browser and restore the example values.';}
-    const status=$('plannerSaveStatus');
-    if(!status)return;
-    const raw=String(status.textContent||'');
-    const desired=/Restored/i.test(raw)?'Previous plan restored':/Saved locally/i.test(raw)?'Saved in this browser':/Not saved/i.test(raw)?'Example values':raw;
-    if(desired!==raw)status.textContent=desired;
+    syncSaveStatus();
   }
 
   function simplifyStaticCopy(){
-    const header=document.querySelector('header>p');
-    if(header)header.textContent='Plan investments, mortgage choices and Dutch tax assumptions in one timeline.';
     const investmentDivider=$('tab-investment')?.querySelector(':scope>.section-divider p');
     if(investmentDivider)investmentDivider.textContent='Set your timeline, contributions and investment assumptions.';
     const mortgageDivider=$('tab-mortgage')?.querySelector(':scope>.section-divider p');
@@ -538,20 +590,30 @@ function bootBrowser(){
   function setModelMarker(){const marker=$('modelVersion');if(marker&&window.OutputIntegrity?.releaseLabel)marker.textContent=window.OutputIntegrity.releaseLabel();}
 
   function refresh(){
-    compactSaveBar();syncBox3();syncJan1Gate();syncPurchaseLight();syncHillenControls();syncScenarioReturn();syncOwnerLight();syncScenarioVisibility();compactBudgetStatus();updateBadges();setModelMarker();
+    ensureHeaderTrust();compactSaveBar();syncBox3();syncJan1Gate();syncPurchaseLight();syncHillenControls();syncScenarioReturn();syncOwnerLight();syncScenarioVisibility();compactBudgetStatus();updateBadges();setModelMarker();
     document.querySelectorAll('#phaseCount option,#comparisonType option').forEach(option=>{option.hidden=false;option.classList.remove('density-option-hidden');});
     document.querySelectorAll('#phaseList .density-advanced-phase').forEach(card=>card.classList.remove('density-advanced-phase'));
   }
   function queueRefresh(){if(refreshQueued)return;refreshQueued=true;requestAnimationFrame(()=>{refreshQueued=false;refresh();});}
 
-  injectStyle();compactSaveBar();simplifyStaticCopy();ensurePlanTiming();ensureBox3Simple();ensureBox3Advanced();ensureJan1Gate();ensurePurchaseLight();ensureHillenAdvanced();ensureMortgageAdvanced();ensureScenarioReturn();ensureOwnerLight();ensureScenarioWozFields();ensureScenarioAdvanced();ensureScenarioHow();ensureAuditTools();decorateFinanceForHillen();decorateScenarioForWoz();
+  injectStyle();ensureHeaderTrust();compactSaveBar();simplifyStaticCopy();ensurePlanTiming();ensureBox3Simple();ensureBox3Advanced();ensureJan1Gate();ensurePurchaseLight();ensureHillenAdvanced();ensureMortgageAdvanced();ensureScenarioReturn();ensureOwnerLight();ensureScenarioWozFields();ensureScenarioAdvanced();ensureScenarioHow();ensureAuditTools();decorateFinanceForHillen();decorateScenarioForWoz();
+  document.addEventListener('keydown',event=>{
+    if(event.key!=='Escape')return;
+    const button=$('headerTrustInfo'),panel=$('headerTrustPanel');
+    if(!button||button.getAttribute('aria-expanded')!=='true')return;
+    event.preventDefault();
+    button.setAttribute('aria-expanded','false');
+    panel?.classList.remove('is-open');
+    button.focus();
+  });
+  document.addEventListener('dimp-save-status',syncSaveStatus);
   document.addEventListener('input',queueRefresh);
   document.addEventListener('change',queueRefresh);
   window.addEventListener('load',refresh,{once:true});
   refresh();
 }
 
-return{DEFAULT_VIEW,STANDARD_PHASE_LIMIT,ADVANCED_SCENARIOS,DEFAULTS,normalizeView,number,optionalNumber,monthlyOwnerCost,resolveScenarioReturn,escapeCsv,assumptionsToCsv,applyScenarioWoz,collectAdvancedState,bootBrowser};
+return{DEFAULT_VIEW,STANDARD_PHASE_LIMIT,ADVANCED_SCENARIOS,DEFAULTS,HEADER_TRUST_LINE,HEADER_TRUST_DETAILS,normalizeView,number,optionalNumber,monthlyOwnerCost,resolveScenarioReturn,escapeCsv,assumptionsToCsv,applyScenarioWoz,collectAdvancedState,bootBrowser};
 });
 
 if(typeof window!=='undefined'&&window.document)window.ViewDensity.bootBrowser();
