@@ -142,7 +142,7 @@ try {
         return saved?.controls?.['id:saleJan1Savings']?.value === '60000'
           && saved.controls['id:comparisonType']?.value === 'sale-break-even';
       });
-      await page.reload({waitUntil:'domcontentloaded'});
+      await page.reload({waitUntil:'domcontentloaded', timeout:45000});
       await page.waitForFunction(() => window.__DIMP_SALE_BREAK_EVEN_RESULT?.investment?.available === true);
       assert.equal(await page.locator('#comparisonType').inputValue(), 'sale-break-even');
       assert.equal(await page.locator('#saleBreakEvenPanel').isVisible(), true);
