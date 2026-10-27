@@ -79,10 +79,32 @@ async function responsivePing(label){
   return result;
 }
 
+const PRIVACY_SENTENCE='Saved in this browser only: your inputs stay on this device (localStorage) and are not sent to us or to any third party. Our web host sees standard request logs (e.g. IP address).';
+
+async function assertPrivacySentenceVisible(label){
+  const result=await page.evaluate(expected=>{
+    const bar=document.getElementById('plannerStorageBar');
+    const span=bar?.querySelector(':scope > span:first-child');
+    if(!bar||!span)return{ok:false,reason:'missing'};
+    const style=getComputedStyle(span);
+    const box=span.getBoundingClientRect();
+    let api=true;
+    if(typeof span.checkVisibility==='function')api=span.checkVisibility({checkOpacity:true,checkVisibilityCSS:true});
+    const shown=style.display!=='none'&&style.visibility!=='hidden'&&Number(style.opacity)>0&&box.width>0&&box.height>0&&api;
+    return{ok:shown&&(span.textContent||'').replace(/\s+/g,' ').includes(expected),text:(span.textContent||'').replace(/\s+/g,' ').trim(),display:style.display,visibility:style.visibility,opacity:style.opacity,width:box.width,height:box.height,checkVisibility:api};
+  },PRIVACY_SENTENCE);
+  if(!result.ok)throw new Error(`${label}: privacy sentence is not visible: ${JSON.stringify(result)}`);
+}
+
 try{
   await page.goto(`http://127.0.0.1:${port}/`,{waitUntil:'domcontentloaded',timeout:15000});
-  await page.waitForFunction(()=>document.getElementById('phaseList')?.children.length>=1&&document.getElementById('r65ScenarioAdvanced'));
+  await page.waitForFunction(()=>document.getElementById('phaseList')?.children.length>=1&&document.getElementById('r65ScenarioAdvanced')&&document.getElementById('plannerStorageBar'));
   await delay(750);
+  await page.setViewportSize({width:1280,height:800});
+  await assertPrivacySentenceVisible('desktop');
+  await page.setViewportSize({width:390,height:844});
+  await assertPrivacySentenceVisible('mobile');
+  await page.setViewportSize({width:1280,height:800});
   const initial=await responsivePing('initial load');
 
   await page.locator('#annualReturn').fill('7');

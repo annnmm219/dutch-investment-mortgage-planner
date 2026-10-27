@@ -246,6 +246,28 @@ test('Box 3 provisional rates, Hillen planning series and proposed regime defaul
   assert.doesNotMatch(read('stage9-1-remediation.js'),/59357|\.0128|\.027|3800|1800/);
   assert.doesNotMatch(read('next-euro.js'),/box3SavingsReturn',1\.28|box3DebtInterest',2\.7/);
   assert.equal(Policy.VALUES.thirtyPercentRuling.maxTaxFreeAllowance,78600);
+  assert.equal(Policy.VALUES.thirtyPercentRuling.rate,.30);
+  assert.equal(Policy.VALUES.thirtyPercentRuling.wntNorm,262000);
+  assert.equal(Policy.VALUES.thirtyPercentRuling.taxYearScope,'2026-only');
+  const rulingCap=Policy.getItem('thirtyPercentRuling.maxTaxFreeAllowance');
+  const rulingRate=Policy.getItem('thirtyPercentRuling.rate');
+  assert.equal(rulingCap.value,78600);
+  assert.equal(rulingCap.taxYear,2026);
+  assert.equal(rulingCap.taxYearScope,'2026-only');
+  assert.match(rulingCap.notes,/2026-only/);
+  assert.match(rulingCap.sourceUrl,/belastingdienst\.nl\/.*inhoud_van_de_regeling/);
+  assert.equal(rulingCap.additionalSourceUrl,'https://zoek.officielebekendmakingen.nl/stcrt-2025-27439.html');
+  assert.match(Policy.SOURCES.thirtyPercentRulingWntNorm.sourceUrl,/stcrt-2025-27439\.html/);
+  assert.equal(rulingRate.taxYearScope,'2026-only');
+  assert.match(rulingRate.notes,/2026-only/);
   assert.match(read('app-state.js'),/Policy2026\.VALUES\.thirtyPercentRuling\.maxTaxFreeAllowance/);
   assert.doesNotMatch(read('app-state.js'),/78600/);
+});
+
+test('30% ruling cap stays €78,600 and is labelled 2026-only with official sources',()=>{
+  assert.equal(Policy.VALUES.thirtyPercentRuling.maxTaxFreeAllowance,78600);
+  assert.equal(Policy.getItem('thirtyPercentRuling.maxTaxFreeAllowance').taxYearScope,'2026-only');
+  assert.match(Policy.SOURCES.thirtyPercentRuling.sourceUrl,/belastingdienst\.nl/);
+  assert.equal(Policy.SOURCES.thirtyPercentRulingWntNorm.sourceUrl,'https://zoek.officielebekendmakingen.nl/stcrt-2025-27439.html');
+  assert.doesNotMatch(read('view-density.js'),/planner-storage-bar\.r65-save-compact>span:first-child\{display:none/);
 });

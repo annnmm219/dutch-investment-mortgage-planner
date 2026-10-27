@@ -161,8 +161,7 @@ function bootBrowser(){
     style.id='r65InterfaceStyle';
     style.textContent=`
       #viewDensityBar,#advancedStateSummary{display:none!important}
-      .planner-storage-bar.r65-save-compact{display:inline-flex;align-items:center;gap:10px;width:auto;margin:12px 0 0;padding:0;background:transparent;border:0;border-radius:0;font-size:11px;color:var(--muted)}
-      .planner-storage-bar.r65-save-compact>span:first-child{display:none!important}
+      .planner-storage-bar.r65-save-compact{display:inline-flex;align-items:center;gap:10px;width:auto;max-width:100%;margin:12px 0 0;padding:0;background:transparent;border:0;border-radius:0;font-size:11px;color:var(--muted);flex-wrap:wrap}
       .r65-save-compact .planner-storage-actions{gap:8px}
       .r65-save-compact .planner-reset{padding:5px 8px;background:transparent}
       .r65-local-fold{margin-top:12px}

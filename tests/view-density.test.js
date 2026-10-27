@@ -103,6 +103,7 @@ test('browser save is compact and clearly distinguishes restored data from examp
   assert.match(source,/Saved in this browser/);
   assert.match(source,/Example values/);
   assert.match(source,/r65-save-compact/);
+  assert.doesNotMatch(source,/planner-storage-bar\.r65-save-compact>span:first-child\{display:none/);
 });
 
 test('successful affordability is compact while warnings remain available',()=>{

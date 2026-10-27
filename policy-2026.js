@@ -94,6 +94,18 @@ const SOURCES=deepFreeze({
     sourceUrl:'https://www.rijksoverheid.nl/vraag-en-antwoord/huis-kopen/maximaal-bedrag-lenen-koopwoning',
     authority:'Rijksoverheid',
     lastVerifiedAt:LAST_VERIFIED_AT
+  },
+  thirtyPercentRuling:{
+    sourceTitle:'Inhoud van de expatregeling',
+    sourceUrl:'https://www.belastingdienst.nl/wps/wcm/connect/bldcontentnl/belastingdienst/zakelijk/internationaal/personeel/u_bent_niet_in_nederland_gevestigd_loonheffingen_inhouden/als_u_loonheffingen_gaat_inhouden/extraterritoriale_kosten_en_de_30procentregeling/inhoud_van_de_regeling/',
+    authority:'Belastingdienst',
+    lastVerifiedAt:LAST_VERIFIED_AT
+  },
+  thirtyPercentRulingWntNorm:{
+    sourceTitle:'Stcrt. 2025, 27439',
+    sourceUrl:'https://zoek.officielebekendmakingen.nl/stcrt-2025-27439.html',
+    authority:'Staatscourant',
+    lastVerifiedAt:LAST_VERIFIED_AT
   }
 });
 
@@ -110,7 +122,9 @@ const VALUES=deepFreeze({
   },
   thirtyPercentRuling:{
     rate:.30,
-    maxTaxFreeAllowance:78600
+    maxTaxFreeAllowance:78600,
+    wntNorm:262000,
+    taxYearScope:'2026-only'
   },
   ownHome:{
     maximumQualifyingMortgageMonths:360
@@ -170,7 +184,7 @@ const VALUES=deepFreeze({
   }
 });
 
-function item(key,value,status,sourceKey,notes=''){
+function item(key,value,status,sourceKey,notes='',extra={}){
   return deepFreeze({
     key,
     value,
@@ -182,7 +196,10 @@ function item(key,value,status,sourceKey,notes=''){
     sourceUrl:SOURCES[sourceKey].sourceUrl,
     authority:SOURCES[sourceKey].authority,
     lastVerifiedAt:SOURCES[sourceKey].lastVerifiedAt,
-    notes
+    notes,
+    taxYearScope:extra.taxYearScope||null,
+    additionalSourceTitle:extra.additionalSourceTitle||null,
+    additionalSourceUrl:extra.additionalSourceUrl||null
   });
 }
 
@@ -212,7 +229,9 @@ const ITEMS=deepFreeze([
   item('nhg.standardLimit',VALUES.nhg.standardLimit,'final','nhg'),
   item('nhg.energyLimit',VALUES.nhg.energyLimit,'final','nhg'),
   item('nhg.feeRate',VALUES.nhg.feeRate,'final','nhg'),
-  item('ltv.standardLimit',VALUES.ltv.standardLimit,'final','ltv')
+  item('ltv.standardLimit',VALUES.ltv.standardLimit,'final','ltv'),
+  item('thirtyPercentRuling.rate',VALUES.thirtyPercentRuling.rate,'final','thirtyPercentRuling','2026-only. Do not apply the 30% rate to years after 2026 without a new label.',{taxYearScope:'2026-only'}),
+  item('thirtyPercentRuling.maxTaxFreeAllowance',VALUES.thirtyPercentRuling.maxTaxFreeAllowance,'final','thirtyPercentRuling','2026-only. Full-year maximum tax-free allowance: 30% of the €262,000 WNT norm (Stcrt. 2025, 27439, art. I, in force 1 Jan 2026). Do not apply 30% or €78,600 to years after 2026 without a new label.',{taxYearScope:'2026-only',additionalSourceTitle:SOURCES.thirtyPercentRulingWntNorm.sourceTitle,additionalSourceUrl:SOURCES.thirtyPercentRulingWntNorm.sourceUrl})
 ]);
 
 const ITEM_BY_KEY=deepFreeze(Object.fromEntries(ITEMS.map(entry=>[entry.key,entry])));
