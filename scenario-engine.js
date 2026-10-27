@@ -2,14 +2,17 @@
   const FC=typeof module==='object'&&module.exports?require('./finance-core.js'):root.FinanceCore;
   const PR=typeof module==='object'&&module.exports?require('./purchase-rules.js'):root.PurchaseRules;
   const OI=typeof module==='object'&&module.exports?require('./output-integrity.js'):root.OutputIntegrity;
-  const api=factory(FC,PR,OI);
+  const Policy2026=typeof module==='object'&&module.exports?require('./policy-2026.js'):root.Policy2026;
+  const api=factory(FC,PR,OI,Policy2026);
   if(typeof module==='object'&&module.exports)module.exports=api;
   if(root)root.ScenarioCore=api;
-})(typeof globalThis!=='undefined'?globalThis:this,function(FC,PR,OI){
+})(typeof globalThis!=='undefined'?globalThis:this,function(FC,PR,OI,Policy2026){
 'use strict';
 if(!FC)throw new Error('FinanceCore is required by ScenarioCore');
 if(!PR)throw new Error('PurchaseRules is required by ScenarioCore');
 if(!OI)throw new Error('OutputIntegrity is required by ScenarioCore');
+if(!Policy2026)throw new Error('Policy2026 is required by ScenarioCore');
+const POLICY=Policy2026.VALUES;
 
 const nonNegative=v=>Math.max(0,Number(v)||0);
 const optionalNonNegative=v=>v==null||v===''?null:nonNegative(v);
@@ -120,7 +123,8 @@ function scenarioPurchaseFunding(S,d,buyerCashTowardPrice){
     nhgMode:S.purchaseRules.nhgMode,
     buyerAge:S.purchaseRules.buyerAge,
     starterMainResidence:S.purchaseRules.starterMainResidence,
-    starterExemptionUnused:S.purchaseRules.starterExemptionUnused
+    starterExemptionUnused:S.purchaseRules.starterExemptionUnused,
+    acquisitionYear:S.startYear
   });
 }
 
@@ -179,12 +183,12 @@ function normalize(config={}){
     mode:rawBox3.mode||'none',
     taxPartners:FC.clamp(Number(rawBox3.taxPartners)||1,1,2),
     paySource:['savings','portfolio','external'].includes(rawBox3.paySource)?rawBox3.paySource:'savings',
-    currentTaxRate:Number(rawBox3.currentTaxRate??0.36),
-    currentAllowance:nonNegative(rawBox3.currentAllowance??59357),
-    currentNotional:Number(rawBox3.currentNotional??0.06),
-    currentSavingsNotional:Number(rawBox3.currentSavingsNotional??0.0128),
-    currentDebtNotional:Number(rawBox3.currentDebtNotional??0.027),
-    currentDebtThreshold:nonNegative(rawBox3.currentDebtThreshold??3800),
+    currentTaxRate:Number(rawBox3.currentTaxRate??POLICY.box3.taxRate),
+    currentAllowance:nonNegative(rawBox3.currentAllowance??POLICY.box3.allowancePerPerson),
+    currentNotional:Number(rawBox3.currentNotional??POLICY.box3.investmentDeemedRate),
+    currentSavingsNotional:Number(rawBox3.currentSavingsNotional??POLICY.box3.savingsDeemedRate),
+    currentDebtNotional:Number(rawBox3.currentDebtNotional??POLICY.box3.debtDeemedRate),
+    currentDebtThreshold:nonNegative(rawBox3.currentDebtThreshold??POLICY.box3.debtThresholdPerPerson),
     firstJan1Portfolio:nonNegative(rawBox3.firstJan1Portfolio),
     firstJan1Savings:optionalNonNegative(rawBox3.firstJan1Savings),
     firstJan1Debt:optionalNonNegative(rawBox3.firstJan1Debt),
@@ -195,10 +199,10 @@ function normalize(config={}){
     debtMonthlyRepayment:nonNegative(rawBox3.debtMonthlyRepayment??rawBox3.box3DebtMonthlyRepayment),
     debtRepaymentSource:rawBox3.debtRepaymentSource==='savings'?'savings':'external',
     debtFallbackDestination:['invest','savings','consume'].includes(rawBox3.debtFallbackDestination??rawBox3.box3DebtFallbackDestination)?(rawBox3.debtFallbackDestination??rawBox3.box3DebtFallbackDestination):'invest',
-    futureStart:Number(rawBox3.futureStart)||2028,
-    futureTaxRate:Number(rawBox3.futureTaxRate??0.36),
-    futureExempt:nonNegative(rawBox3.futureExempt??1800),
-    futureLossThreshold:nonNegative(rawBox3.futureLossThreshold??500)
+    futureStart:Number(rawBox3.futureStart)||POLICY.futureBox3Proposal.startYear,
+    futureTaxRate:Number(rawBox3.futureTaxRate??POLICY.futureBox3Proposal.taxRate),
+    futureExempt:nonNegative(rawBox3.futureExempt??POLICY.futureBox3Proposal.exempt),
+    futureLossThreshold:nonNegative(rawBox3.futureLossThreshold??POLICY.futureBox3Proposal.lossThreshold)
   };
   const rawTax=config.tax||{};
   const tax={
@@ -489,8 +493,9 @@ return{runScenario,normalize,upfrontAllocation,purchaseSourcesAndUses,scenarioPu
 
 if(typeof window!=='undefined'&&window.document){(()=>{
 'use strict';
-const FC=window.FinanceCore,SC=window.ScenarioCore,PR=window.PurchaseRules,OI=window.OutputIntegrity,II=window.InputIntegrity;
-if(!FC||!SC||!PR||!OI||!II)throw new Error('FinanceCore, PurchaseRules, OutputIntegrity, InputIntegrity and ScenarioCore must load before scenario UI');
+const FC=window.FinanceCore,SC=window.ScenarioCore,PR=window.PurchaseRules,OI=window.OutputIntegrity,II=window.InputIntegrity,POLICY=window.Policy2026&&window.Policy2026.VALUES;
+if(!FC||!SC||!PR||!OI||!II||!POLICY)throw new Error('FinanceCore, PurchaseRules, OutputIntegrity, InputIntegrity, Policy2026 and ScenarioCore must load before scenario UI');
+const B3=POLICY.box3,F3=POLICY.futureBox3Proposal,DEDUCTION_CAP_PCT=POLICY.box1.ownHomeDeductionMaxRate*100;
 const $=id=>document.getElementById(id);
 const clamp=FC.clamp;
 const num=(id,d=0)=>{const el=$(id);if(!el)return d;const v=Number(el.value);return Number.isFinite(v)?v:d};
@@ -532,7 +537,7 @@ engine.innerHTML=`
       </div>
       <div class="grid2 advanced-grid" style="margin-top:12px">
         <div class="toggle"><input id="scenarioPurchaseHraEnabledNew" type="checkbox" checked><label for="scenarioPurchaseHraEnabledNew">Include modeled mortgage-interest relief for this purchase</label></div>
-        <div class="field"><label for="scenarioPurchaseDeductionRateNew">Modeled deduction rate %</label><input id="scenarioPurchaseDeductionRateNew" type="number" min="0" max="60" step="0.01" value="37.56"><p class="inline">Local purchase-scenario assumption. Stage 4 replaces the compressed Box 1 bridge.</p></div>
+        <div class="field"><label for="scenarioPurchaseDeductionRateNew">Modeled deduction rate %</label><input id="scenarioPurchaseDeductionRateNew" type="number" min="0" max="60" step="0.01" value="${DEDUCTION_CAP_PCT}"><p class="inline">Local purchase-scenario assumption. Stage 4 replaces the compressed Box 1 bridge.</p></div>
       </div>
       <div id="scenarioPurchaseRuleStatusNew" class="callout"></div>
     </div>
@@ -542,7 +547,7 @@ engine.innerHTML=`
 <div class="scenario-specific-new hidden" data-scenario="linear-annuity"><div class="callout"><strong>Uses the reviewed scenario snapshot.</strong> Both structures use the same visible balance, rate and term. The cheaper monthly strategy invests the difference.</div></div>
 <div class="scenario-specific-new hidden" data-scenario="sell-rent"><div class="grid2 scenario-specific-grid-new"><div class="field"><label for="scenarioHomeValueNew">Current home value</label><input id="scenarioHomeValueNew" type="number" min="0" step="1000" value="400000"></div><div class="field"><label for="scenarioSellRentNew">Monthly rent at scenario start</label><input id="scenarioSellRentNew" type="number" min="0" step="25" value="1600"><p class="inline">Expected rent immediately after selling.</p></div></div></div></div>
 <div class="card"><div class="section-head"><div><p class="section-label">2 · Shared assumptions</p><p class="section-note">Both strategies use the same economic assumptions. Owner-only costs are included in affordability and comparison cash flows.</p></div></div><div class="grid3"><div class="field scenario-budget-field"><label for="scenarioMonthlyBudgetNew">Monthly housing + investing budget</label><input id="scenarioMonthlyBudgetNew" type="number" min="0" step="50" value="2500"><p class="inline">Affordability check only. Common surplus is excluded from the comparison.</p></div><div class="field scenario-existing-mortgage-method-field"><label for="scenarioMortgageMethodNew">Existing-mortgage method where relevant</label><select id="scenarioMortgageMethodNew"><option value="selected" selected>Use selected method from Mortgage</option><option value="linear">Linear</option><option value="annuity">Annuity</option></select></div><div class="field scenario-upfront-field"><label for="scenarioUpfrontCashTreatmentNew">Unused upfront cash</label><select id="scenarioUpfrontCashTreatmentNew"><option value="invest" selected>Invest it</option><option value="savings">Keep it in savings</option></select><p class="inline">Applies to Buy/Rent and Down Payment only.</p></div><div class="field"><label for="scenarioHomeGrowthNew">Effective annual home value growth %</label><input id="scenarioHomeGrowthNew" type="number" min="-20" max="20" step="0.25" value="2"></div><div class="field"><label for="scenarioRentGrowthNew">Effective annual rent growth %</label><input id="scenarioRentGrowthNew" type="number" min="-10" max="20" step="0.25" value="2.5"></div><div class="field"><label for="scenarioSellingCostNew">Selling costs % of home value</label><input id="scenarioSellingCostNew" type="number" min="0" max="15" step="0.25" value="2"></div><div class="field"><label for="scenarioOwnerCostGrowthNew">Effective annual owner-cost growth %</label><input id="scenarioOwnerCostGrowthNew" type="number" min="-10" max="20" step="0.25" value="2"><p class="inline">Escalates VVE, maintenance, owner taxes, insurance and ground lease from their starting amounts.</p></div><div class="field"><label for="scenarioVveNew">VVE / service charges per month</label><input id="scenarioVveNew" type="number" min="0" step="25" value="250"></div><div class="field"><label for="scenarioMaintenanceNew">Other owner maintenance per year</label><input id="scenarioMaintenanceNew" type="number" min="0" step="100" value="1500"></div><div class="field"><label for="scenarioOwnerTaxesNew">OZB / owner municipal taxes per year</label><input id="scenarioOwnerTaxesNew" type="number" min="0" step="50" value="0"><p class="inline">Optional owner-only planning input.</p></div><div class="field"><label for="scenarioInsuranceNew">Homeowner building insurance per year</label><input id="scenarioInsuranceNew" type="number" min="0" step="50" value="0"><p class="inline">Optional owner-only planning input.</p></div><div class="field"><label for="scenarioGroundLeaseNew">Ground lease / erfpacht per year</label><input id="scenarioGroundLeaseNew" type="number" min="0" step="50" value="0"><p class="inline">Optional. Use 0 if not applicable.</p></div></div><div class="callout scenario-principle"><strong>Fair-cash-flow rule:</strong> both strategies receive the same starting capital and monthly cash capacity. Mortgage principal becomes home equity. It is not treated as an economic expense. The cheaper strategy invests the dated difference.</div><div class="callout"><strong>Assumption discipline:</strong> the normal sensitivity range defaults to 2–10%. If you enter 12–14%, treat those as optimistic stress cases rather than a base plan.</div><div id="scenarioBudgetStatusNew" class="callout scenario-budget-status"></div><div id="scenarioTaxNoteNew" class="foot"></div></div>
-<div class="card"><div class="section-head"><div><p class="section-label">3 · Result</p><p class="section-note">Final comparable wealth includes the household financial ledger and home equity / mortgage differences relevant to the selected decision.</p></div></div><div id="scenarioVerdictNew" class="scenario-verdict-new"></div><div class="compare-grid scenario-result-grid-new"><div class="strategy-result-new" id="strategyAResultNew"></div><div class="strategy-result-new" id="strategyBResultNew"></div></div><details class="inner-fold"><summary>Why the result looks this way</summary><div class="inner-fold-body"><div class="table-wrap scenario-table-wrap-new"><table class="scenario-table-new"><thead><tr><th>Driver</th><th id="strategyAHeadNew">Strategy A</th><th id="strategyBHeadNew">Strategy B</th></tr></thead><tbody id="scenarioBreakdownBodyNew"></tbody></table></div></div></details><details class="inner-fold hidden" id="scenarioFundingDetailsNew"><summary>Purchase funding identity</summary><div class="inner-fold-body"><p class="subsection-copy">Each funded purchase must satisfy property price + transaction costs = mortgage proceeds + buyer cash.</p><div class="table-wrap scenario-table-wrap-new"><table class="scenario-table-new"><thead><tr><th>Funding line</th><th id="fundingAHeadNew">Strategy A</th><th id="fundingBHeadNew">Strategy B</th></tr></thead><tbody id="scenarioFundingBodyNew"></tbody></table></div><div class="callout" id="scenarioFundingStatusNew"></div></div></details></div>
+<div class="card"><div class="section-head"><div><p class="section-label">3 · Result</p><p class="section-note">Final comparable wealth includes the household financial ledger and home equity / mortgage differences relevant to the selected decision.</p></div></div><div id="scenarioVerdictNew" class="scenario-verdict-new"></div><p class="result-disclaimer" id="scenarioResultDisclaimer">Estimate based on your assumptions and simplified 2026 rules. Not a recommendation or a tax calculation.</p><div class="compare-grid scenario-result-grid-new"><div class="strategy-result-new" id="strategyAResultNew"></div><div class="strategy-result-new" id="strategyBResultNew"></div></div><details class="inner-fold"><summary>Why the result looks this way</summary><div class="inner-fold-body"><div class="table-wrap scenario-table-wrap-new"><table class="scenario-table-new"><thead><tr><th>Driver</th><th id="strategyAHeadNew">Strategy A</th><th id="strategyBHeadNew">Strategy B</th></tr></thead><tbody id="scenarioBreakdownBodyNew"></tbody></table></div></div></details><p class="borrowing-notice" id="scenarioPurchaseBorrowingNotice">This planner does not check how much a lender would let you borrow. It does not apply Nibud income limits (LTI) or a lender's own assessment. For your maximum mortgage, ask a lender or an AFM-licensed mortgage adviser.</p><details class="inner-fold hidden" id="scenarioFundingDetailsNew"><summary>Purchase funding identity</summary><div class="inner-fold-body"><p class="subsection-copy">Each funded purchase must satisfy property price + transaction costs = mortgage proceeds + buyer cash.</p><div class="table-wrap scenario-table-wrap-new"><table class="scenario-table-new"><thead><tr><th>Funding line</th><th id="fundingAHeadNew">Strategy A</th><th id="fundingBHeadNew">Strategy B</th></tr></thead><tbody id="scenarioFundingBodyNew"></tbody></table></div><div class="callout" id="scenarioFundingStatusNew"></div></div></details></div>
 <details class="fold"><summary>Return sensitivity and crossover</summary><div class="fold-body"><p class="subsection-copy">Normal planning range defaults to 2–10%. You can enter higher returns manually as explicit upside stress tests.</p><div class="grid3 advanced-grid"><div class="field"><label for="sensitivityLowNew">Lowest effective annual return %</label><input id="sensitivityLowNew" type="number" min="-30" max="30" step="0.5" value="2"></div><div class="field"><label for="sensitivityHighNew">Highest effective annual return %</label><input id="sensitivityHighNew" type="number" min="-30" max="30" step="0.5" value="10"></div><div class="field"><label for="sensitivityStepNew">Step, percentage points</label><input id="sensitivityStepNew" type="number" min="0.5" max="10" step="0.5" value="2"></div></div><div id="sensitivitySummaryNew" class="callout"></div><div class="table-wrap sensitivity-wrap-new"><table class="scenario-table-new"><thead><tr><th>Effective annual investment return</th><th>Strategy A</th><th>Strategy B</th><th>Leader</th></tr></thead><tbody id="sensitivityBodyNew"></tbody></table></div></div></details>`;
 
 const sourceCard=document.createElement('div');
@@ -576,26 +581,26 @@ startingCard.innerHTML=`<div class="section-head"><div><p class="section-label">
   <div class="field"><label for="scenarioTaxTreatmentFresh">Tax calculation</label><select id="scenarioTaxTreatmentFresh"><option value="auto" selected>Automatic 2026 Box 1 calculation</option><option value="manual">Use my estimated deduction rate</option><option value="none">Exclude mortgage tax</option></select></div>
   <div class="field scenario-tax-auto"><label for="scenarioIncomeFresh">Gross annual Box 1 income <span class="scenario-source-tag" data-source-for="scenarioIncomeFresh"></span></label><input id="scenarioIncomeFresh" type="number" min="0" step="1000" placeholder="Required for automatic tax"></div>
   <div class="field scenario-tax-enabled"><label for="scenarioWozFresh">WOZ value <span class="scenario-source-tag" data-source-for="scenarioWozFresh"></span></label><input id="scenarioWozFresh" type="number" min="0" step="1000" placeholder="Required when mortgage tax is included"></div>
-  <div class="field scenario-tax-manual hidden"><label for="scenarioManualDeductionFresh">Estimated deduction rate % <span class="scenario-source-tag" data-source-for="scenarioManualDeductionFresh"></span></label><input id="scenarioManualDeductionFresh" type="number" min="0" max="60" step="0.01" value="37.56"></div>
+  <div class="field scenario-tax-manual hidden"><label for="scenarioManualDeductionFresh">Estimated deduction rate % <span class="scenario-source-tag" data-source-for="scenarioManualDeductionFresh"></span></label><input id="scenarioManualDeductionFresh" type="number" min="0" max="60" step="0.01" value="${DEDUCTION_CAP_PCT}"></div>
   <div class="field scenario-tax-eligibility"><label for="scenarioHraYearsFresh">Mortgage-interest deduction remaining, years <span class="scenario-source-tag" data-source-for="scenarioHraYearsFresh"></span></label><input id="scenarioHraYearsFresh" type="number" min="0" max="30" step="1" placeholder="Required"></div>
   <div class="field scenario-tax-eligibility"><label for="scenarioQualifyingDebtFresh">Mortgage qualifying as Box 1 debt % <span class="scenario-source-tag" data-source-for="scenarioQualifyingDebtFresh"></span></label><input id="scenarioQualifyingDebtFresh" type="number" min="0" max="100" step="1" placeholder="Required"></div>
 </div>
 <details class="inner-fold"><summary>Advanced Box 3 settings</summary><div class="inner-fold-body"><p class="subsection-copy">Statutory 2026 values are labelled calculator rules. Imported custom values remain editable.</p><div class="grid4 advanced-grid">
-  <div class="field"><label for="scenarioCurrentTaxRateFresh">2026 Box 3 tax rate %</label><input id="scenarioCurrentTaxRateFresh" type="number" min="0" max="100" step="0.1" value="36"></div>
-  <div class="field"><label for="scenarioCurrentAllowanceFresh">2026 allowance per person</label><input id="scenarioCurrentAllowanceFresh" type="number" min="0" step="100" value="59357"></div>
-  <div class="field"><label for="scenarioInvestmentNotionalFresh">2026 deemed return, investments %</label><input id="scenarioInvestmentNotionalFresh" type="number" min="0" max="30" step="0.01" value="6"></div>
-  <div class="field"><label for="scenarioSavingsNotionalFresh">2026 deemed return, savings %</label><input id="scenarioSavingsNotionalFresh" type="number" min="0" max="30" step="0.01" value="1.28"></div>
-  <div class="field"><label for="scenarioDebtNotionalFresh">2026 deemed return, debt %</label><input id="scenarioDebtNotionalFresh" type="number" min="0" max="30" step="0.01" value="2.70"></div>
-  <div class="field"><label for="scenarioDebtThresholdFresh">2026 debt threshold</label><input id="scenarioDebtThresholdFresh" type="number" min="0" step="100" value="3800"></div>
+  <div class="field"><label for="scenarioCurrentTaxRateFresh">2026 Box 3 tax rate %</label><input id="scenarioCurrentTaxRateFresh" type="number" min="0" max="100" step="0.1" value="${B3.taxRate*100}"></div>
+  <div class="field"><label for="scenarioCurrentAllowanceFresh">2026 allowance per person</label><input id="scenarioCurrentAllowanceFresh" type="number" min="0" step="100" value="${B3.allowancePerPerson}"></div>
+  <div class="field"><label for="scenarioInvestmentNotionalFresh">2026 deemed return, investments %</label><input id="scenarioInvestmentNotionalFresh" type="number" min="0" max="30" step="0.01" value="${B3.investmentDeemedRate*100}"></div>
+  <div class="field"><label for="scenarioSavingsNotionalFresh">2026 deemed return, savings %</label><input id="scenarioSavingsNotionalFresh" type="number" min="0" max="30" step="0.01" value="${B3.savingsDeemedRate*100}"></div>
+  <div class="field"><label for="scenarioDebtNotionalFresh">2026 deemed return, debt %</label><input id="scenarioDebtNotionalFresh" type="number" min="0" max="30" step="0.01" value="${B3.debtDeemedRate*100}"></div>
+  <div class="field"><label for="scenarioDebtThresholdFresh">2026 debt threshold</label><input id="scenarioDebtThresholdFresh" type="number" min="0" step="100" value="${B3.debtThresholdPerPerson}"></div>
   <div class="field"><label for="scenarioFirstJan1PortfolioFresh">First-year 1 January portfolio</label><input id="scenarioFirstJan1PortfolioFresh" type="number" min="0" step="100" data-optional="true" placeholder="Needed for a mid-year start"></div>
   <div class="field"><label for="scenarioFirstJan1SavingsFresh">First-year 1 January savings</label><input id="scenarioFirstJan1SavingsFresh" type="number" min="0" step="100" data-optional="true" placeholder="Needed for a mid-year start"></div>
   <div class="field"><label for="scenarioFirstJan1DebtFresh">First-year 1 January Box 3 debt</label><input id="scenarioFirstJan1DebtFresh" type="number" min="0" step="100" data-optional="true" placeholder="Needed for a mid-year start"></div>
   <div class="field"><label for="scenarioDebtRepaymentFresh">Monthly Box 3 debt repayment</label><input id="scenarioDebtRepaymentFresh" type="number" min="0" step="50" value="0"></div>
   <div class="field"><label for="scenarioDebtRepaymentSourceFresh">Debt repayment source</label><select id="scenarioDebtRepaymentSourceFresh"><option value="external" selected>External cash flow</option><option value="savings">Savings</option></select></div>
-  <div class="field"><label for="scenarioFutureStartFresh">Proposed regime start year</label><input id="scenarioFutureStartFresh" type="number" min="2027" max="2100" step="1" value="2028"></div>
-  <div class="field"><label for="scenarioFutureTaxRateFresh">Proposed tax rate %</label><input id="scenarioFutureTaxRateFresh" type="number" min="0" max="100" step="0.1" value="36"></div>
-  <div class="field"><label for="scenarioFutureExemptFresh">Proposed exempt result</label><input id="scenarioFutureExemptFresh" type="number" min="0" step="100" value="1800"></div>
-  <div class="field"><label for="scenarioFutureLossFresh">Proposed loss threshold</label><input id="scenarioFutureLossFresh" type="number" min="0" step="100" value="500"></div>
+  <div class="field"><label for="scenarioFutureStartFresh">Proposed regime start year</label><input id="scenarioFutureStartFresh" type="number" min="2027" max="2100" step="1" value="${F3.startYear}"></div>
+  <div class="field"><label for="scenarioFutureTaxRateFresh">Proposed tax rate %</label><input id="scenarioFutureTaxRateFresh" type="number" min="0" max="100" step="0.1" value="${F3.taxRate*100}"></div>
+  <div class="field"><label for="scenarioFutureExemptFresh">Proposed exempt result</label><input id="scenarioFutureExemptFresh" type="number" min="0" step="100" value="${F3.exempt}"></div>
+  <div class="field"><label for="scenarioFutureLossFresh">Proposed loss threshold</label><input id="scenarioFutureLossFresh" type="number" min="0" step="100" value="${F3.lossThreshold}"></div>
 </div></div></details>`;
 engine.querySelector('.scenario-builder').insertAdjacentElement('afterend',startingCard);
 
@@ -634,30 +639,30 @@ function hraContext(){return window.LogicIntegrityUI?.mortgageTaxContext?.()||{h
 function plannerBox3(){
   return{
     mode:$('box3Mode')?.value||'none',taxPartners:clamp(num('taxPartners',1),1,2),paySource:$('box3PaySource')?.value||'savings',
-    currentTaxRate:clamp(num('currentTaxRate',36),0,100)/100,currentAllowance:Math.max(0,num('currentAllowance',59357)),currentNotional:clamp(num('currentNotional',6),0,30)/100,
-    currentSavingsNotional:clamp(num('currentSavingsNotional',1.28),0,30)/100,currentDebtNotional:clamp(num('currentDebtNotional',2.70),0,30)/100,currentDebtThreshold:Math.max(0,num('currentDebtThreshold',3800)),
+    currentTaxRate:clamp(num('currentTaxRate',B3.taxRate*100),0,100)/100,currentAllowance:Math.max(0,num('currentAllowance',B3.allowancePerPerson)),currentNotional:clamp(num('currentNotional',B3.investmentDeemedRate*100),0,30)/100,
+    currentSavingsNotional:clamp(num('currentSavingsNotional',B3.savingsDeemedRate*100),0,30)/100,currentDebtNotional:clamp(num('currentDebtNotional',B3.debtDeemedRate*100),0,30)/100,currentDebtThreshold:Math.max(0,num('currentDebtThreshold',B3.debtThresholdPerPerson)),
     firstJan1Portfolio:Math.max(0,num('firstJan1Portfolio',0)),firstJan1Savings:optional('firstJan1Savings'),firstJan1Debt:optional('firstJan1Debt'),
     savings:Math.max(0,num('box3Savings',0)),debt:Math.max(0,num('box3Debt',0)),savingsReturnPct:clamp(num('box3SavingsReturn',2),-10,30),debtInterestPct:clamp(num('box3DebtInterest',4),0,30),
     debtMonthlyRepayment:Math.max(0,num('box3DebtMonthlyRepayment',0)),debtRepaymentSource:$('box3DebtRepaymentSource')?.value==='savings'?'savings':'external',
-    futureStart:clamp(num('futureStart',2028),2027,2100),futureTaxRate:clamp(num('futureTaxRate',36),0,100)/100,futureExempt:Math.max(0,num('futureExempt',1800)),futureLossThreshold:Math.max(0,num('futureLossThreshold',500))
+    futureStart:clamp(num('futureStart',F3.startYear),2027,2100),futureTaxRate:clamp(num('futureTaxRate',F3.taxRate*100),0,100)/100,futureExempt:Math.max(0,num('futureExempt',F3.exempt)),futureLossThreshold:Math.max(0,num('futureLossThreshold',F3.lossThreshold))
   };
 }
 
 function scenarioBox3(){
   return{
     mode:$('scenarioBox3ModeFresh')?.value||'none',taxPartners:clamp(num('scenarioTaxPartnersFresh',1),1,2),paySource:$('scenarioBox3PaySourceFresh')?.value||'savings',
-    currentTaxRate:clamp(num('scenarioCurrentTaxRateFresh',36),0,100)/100,currentAllowance:Math.max(0,num('scenarioCurrentAllowanceFresh',59357)),currentNotional:clamp(num('scenarioInvestmentNotionalFresh',6),0,30)/100,
-    currentSavingsNotional:clamp(num('scenarioSavingsNotionalFresh',1.28),0,30)/100,currentDebtNotional:clamp(num('scenarioDebtNotionalFresh',2.70),0,30)/100,currentDebtThreshold:Math.max(0,num('scenarioDebtThresholdFresh',3800)),
+    currentTaxRate:clamp(num('scenarioCurrentTaxRateFresh',B3.taxRate*100),0,100)/100,currentAllowance:Math.max(0,num('scenarioCurrentAllowanceFresh',B3.allowancePerPerson)),currentNotional:clamp(num('scenarioInvestmentNotionalFresh',B3.investmentDeemedRate*100),0,30)/100,
+    currentSavingsNotional:clamp(num('scenarioSavingsNotionalFresh',B3.savingsDeemedRate*100),0,30)/100,currentDebtNotional:clamp(num('scenarioDebtNotionalFresh',B3.debtDeemedRate*100),0,30)/100,currentDebtThreshold:Math.max(0,num('scenarioDebtThresholdFresh',B3.debtThresholdPerPerson)),
     firstJan1Portfolio:Math.max(0,num('scenarioFirstJan1PortfolioFresh',0)),firstJan1Savings:optional('scenarioFirstJan1SavingsFresh'),firstJan1Debt:optional('scenarioFirstJan1DebtFresh'),
     savings:Math.max(0,num('scenarioStartSavingsFresh',0)),debt:Math.max(0,num('scenarioStartDebtFresh',0)),savingsReturnPct:clamp(num('scenarioSavingsReturnFresh',2),-10,30),debtInterestPct:clamp(num('scenarioDebtInterestFresh',4),0,30),
     debtMonthlyRepayment:Math.max(0,num('scenarioDebtRepaymentFresh',0)),debtRepaymentSource:$('scenarioDebtRepaymentSourceFresh')?.value==='savings'?'savings':'external',
-    futureStart:clamp(num('scenarioFutureStartFresh',2028),2027,2100),futureTaxRate:clamp(num('scenarioFutureTaxRateFresh',36),0,100)/100,futureExempt:Math.max(0,num('scenarioFutureExemptFresh',1800)),futureLossThreshold:Math.max(0,num('scenarioFutureLossFresh',500))
+    futureStart:clamp(num('scenarioFutureStartFresh',F3.startYear),2027,2100),futureTaxRate:clamp(num('scenarioFutureTaxRateFresh',F3.taxRate*100),0,100)/100,futureExempt:Math.max(0,num('scenarioFutureExemptFresh',F3.exempt)),futureLossThreshold:Math.max(0,num('scenarioFutureLossFresh',F3.lossThreshold))
   };
 }
 
 function plannerTaxConfig(){
   const hra=hraContext(),mode=$('deductionMode')?.value||'auto',income=Math.max(0,num('grossIncome',0));
-  return{enabled:$('mortTaxEnabled')?.checked!==false,calculationMode:mode==='manual'?'manual-rate':'box1-2026',deductionRate:FC.deductionRate2026({mode,manualRatePct:num('manualDeduction',37.56),grossIncome:income}),box1IncomeBeforeOwnHome:income,wozValue:Math.max(0,num('wozValue',0)),hraRemainingMonths:hra.hraRemainingMonths,qualifyingInterestFraction:hra.qualifyingInterestFraction};
+  return{enabled:$('mortTaxEnabled')?.checked!==false,calculationMode:mode==='manual'?'manual-rate':'box1-2026',deductionRate:FC.appliedOwnHomeDeductionRate({mode,manualRatePct:num('manualDeduction',DEDUCTION_CAP_PCT),grossIncome:income}),box1IncomeBeforeOwnHome:income,wozValue:Math.max(0,num('wozValue',0)),hraRemainingMonths:hra.hraRemainingMonths,qualifyingInterestFraction:hra.qualifyingInterestFraction};
 }
 
 function plannerSnapshot(){return{startYear:clamp(num('startYear',2026),2020,2100),startMonth:clamp(num('startMonth',1),1,12),investmentReturnPct:clamp(num('annualReturn',5),-30,30),startPortfolio:Math.max(0,num('startPortfolio',0)),mortgageType:document.querySelector('.compare-card.active[data-mort-type]')?.dataset.mortType||'annuity',mortgage:mainMortgage(),tax:plannerTaxConfig(),box3:plannerBox3()}}
@@ -668,7 +673,7 @@ function scenarioTaxConfig(mode){
   const hraMonths=purchaseMode?Math.min(360,Math.round(purchaseTerm*12)):Math.min(360,Math.round(Math.max(0,num('scenarioHraYearsFresh',0))*12));
   const qualifying=purchaseMode?1:clamp(num('scenarioQualifyingDebtFresh',0),0,100)/100;
   const manual=treatment==='manual',enabled=treatment!=='none';
-  return{enabled,calculationMode:manual||!enabled?'manual-rate':'box1-2026',deductionRate:enabled?FC.deductionRate2026({mode:manual?'manual':'auto',manualRatePct:num('scenarioManualDeductionFresh',37.56),grossIncome:income}):0,box1IncomeBeforeOwnHome:income,wozValue:Math.max(0,num('scenarioWozFresh',0)),hraRemainingMonths:hraMonths,qualifyingInterestFraction:qualifying};
+  return{enabled,calculationMode:manual||!enabled?'manual-rate':'box1-2026',deductionRate:enabled?FC.appliedOwnHomeDeductionRate({mode:manual?'manual':'auto',manualRatePct:num('scenarioManualDeductionFresh',DEDUCTION_CAP_PCT),grossIncome:income}):0,box1IncomeBeforeOwnHome:income,wozValue:Math.max(0,num('scenarioWozFresh',0)),hraRemainingMonths:hraMonths,qualifyingInterestFraction:qualifying};
 }
 
 function scenarioStartingData(mode){return{startYear:clamp(num('scenarioStartYearFresh',2026),2020,2100),startMonth:clamp(num('scenarioStartMonthFresh',1),1,12),investmentReturnPct:clamp(num('scenarioReturnNew',5),-30,30),startPortfolio:Math.max(0,num('scenarioStartPortfolioFresh',0)),mortgageType:$('scenarioMortgageMethodFresh')?.value==='linear'?'linear':'annuity',mortgage:{balance:Math.max(0,num('scenarioMortgageBalanceFresh',0)),ratePct:clamp(num('scenarioMortgageRateFresh',0),0,20),years:clamp(num('scenarioMortgageYearsFresh',30),1,40)},tax:scenarioTaxConfig(mode),box3:scenarioBox3()}}
@@ -691,7 +696,7 @@ function clearPersonalScenarioFields(){
 
 function startFreshScenario(){
   clearPersonalScenarioFields();['scenarioFirstJan1PortfolioFresh','scenarioFirstJan1SavingsFresh','scenarioFirstJan1DebtFresh'].forEach(id=>{const el=$(id);if(el)el.value='';});
-  const defaults={scenarioStartMonthFresh:1,scenarioStartYearFresh:2026,scenarioHorizonNew:10,scenarioReturnNew:5,scenarioBox3ModeFresh:'current',scenarioTaxPartnersFresh:1,scenarioBox3PaySourceFresh:'savings',scenarioSavingsReturnFresh:2,scenarioDebtInterestFresh:4,scenarioMortgageMethodFresh:'annuity',scenarioTaxTreatmentFresh:'auto',scenarioManualDeductionFresh:37.56,scenarioCurrentTaxRateFresh:36,scenarioCurrentAllowanceFresh:59357,scenarioInvestmentNotionalFresh:6,scenarioSavingsNotionalFresh:1.28,scenarioDebtNotionalFresh:2.70,scenarioDebtThresholdFresh:3800,scenarioDebtRepaymentFresh:0,scenarioDebtRepaymentSourceFresh:'external',scenarioFutureStartFresh:2028,scenarioFutureTaxRateFresh:36,scenarioFutureExemptFresh:1800,scenarioFutureLossFresh:500,scenarioHomeGrowthNew:2,scenarioRentGrowthNew:2.5,scenarioSellingCostNew:2,scenarioOwnerCostGrowthNew:2};
+  const defaults={scenarioStartMonthFresh:1,scenarioStartYearFresh:2026,scenarioHorizonNew:10,scenarioReturnNew:5,scenarioBox3ModeFresh:'current',scenarioTaxPartnersFresh:1,scenarioBox3PaySourceFresh:'savings',scenarioSavingsReturnFresh:2,scenarioDebtInterestFresh:4,scenarioMortgageMethodFresh:'annuity',scenarioTaxTreatmentFresh:'auto',scenarioManualDeductionFresh:DEDUCTION_CAP_PCT,scenarioCurrentTaxRateFresh:B3.taxRate*100,scenarioCurrentAllowanceFresh:B3.allowancePerPerson,scenarioInvestmentNotionalFresh:B3.investmentDeemedRate*100,scenarioSavingsNotionalFresh:B3.savingsDeemedRate*100,scenarioDebtNotionalFresh:B3.debtDeemedRate*100,scenarioDebtThresholdFresh:B3.debtThresholdPerPerson,scenarioDebtRepaymentFresh:0,scenarioDebtRepaymentSourceFresh:'external',scenarioFutureStartFresh:F3.startYear,scenarioFutureTaxRateFresh:F3.taxRate*100,scenarioFutureExemptFresh:F3.exempt,scenarioFutureLossFresh:F3.lossThreshold,scenarioHomeGrowthNew:2,scenarioRentGrowthNew:2.5,scenarioSellingCostNew:2,scenarioOwnerCostGrowthNew:2};
   Object.entries(defaults).forEach(([id,value])=>setScenarioValue(id,value));if($('scenarioOwnerItemizedNew'))$('scenarioOwnerItemizedNew').checked=false;setSourceTags('Entered here');
   ['scenarioStartMonthFresh','scenarioStartYearFresh','scenarioSavingsReturnFresh','scenarioDebtInterestFresh'].forEach(id=>{const tag=document.querySelector(`[data-source-for="${id}"]`);if(tag)tag.textContent='Calculator assumption';});
 }
@@ -733,6 +738,7 @@ function visibility(){
   document.querySelectorAll('.scenario-upfront-field').forEach(el=>el.classList.toggle('hidden',!purchaseMode));
   document.querySelectorAll('.scenario-existing-mortgage-method-field').forEach(el=>el.classList.add('hidden'));
   document.querySelectorAll('.scenario-purchase-rules').forEach(el=>el.classList.toggle('hidden',!purchaseMode));
+  $('scenarioPurchaseBorrowingNotice')?.classList.toggle('hidden',!purchaseMode);
   $('scenarioManualTransferTaxFieldNew')?.classList.toggle('hidden',transferMode!=='manual');
   $('scenarioBuyerAgeFieldNew')?.classList.toggle('hidden',transferMode!=='starter');
   $('scenarioStarterConditionsNew')?.classList.toggle('hidden',transferMode!=='starter');

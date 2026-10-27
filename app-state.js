@@ -1,11 +1,26 @@
 (function(root,factory){
-  const api=factory();
+  const Policy2026=typeof module==='object'&&module.exports?require('./policy-2026.js'):root.Policy2026;
+  const api=factory(Policy2026);
   if(typeof module==='object'&&module.exports)module.exports=api;
   if(root)root.PlannerState=api;
-})(typeof globalThis!=='undefined'?globalThis:this,function(){
+})(typeof globalThis!=='undefined'?globalThis:this,function(Policy2026){
 'use strict';
+if(!Policy2026)throw new Error('Policy2026 must load before app-state.js');
+const RULING_CAP=Policy2026.VALUES.thirtyPercentRuling.maxTaxFreeAllowance;
 
 const STORAGE_KEY='dutch-investment-mortgage-planner:r6';
+const PLANNER_STORAGE_KEY_PATTERN=/^(?:dimp|dutch-investment-mortgage-planner)/;
+function clearPlannerStorage(storage){
+  if(!storage||typeof storage.key!=='function'||typeof storage.removeItem!=='function')return [];
+  const keys=[];
+  const length=Number(storage.length)||0;
+  for(let i=0;i<length;i++){
+    const key=storage.key(i);
+    if(key&&PLANNER_STORAGE_KEY_PATTERN.test(key))keys.push(key);
+  }
+  keys.forEach(key=>{try{storage.removeItem(key);}catch{}});
+  return keys;
+}
 const STATE_KIND='dimp.planner-state.v2';
 const SCHEMA_VERSION=2;
 
@@ -66,7 +81,7 @@ function applyEntry(el,entry){
 function normalizeDecimalString(value){return String(value??'').trim().replace(/\s+/g,'').replace(/,/g,'.')}
 function parseFlexibleNumber(value){const s=normalizeDecimalString(value);if(!s||s==='-'||s==='.'||s==='-.')return NaN;const n=Number(s);return Number.isFinite(n)?n:NaN}
 function clampFlexibleValue(value,min,max){let n=parseFlexibleNumber(value);if(!Number.isFinite(n))return null;if(Number.isFinite(min))n=Math.max(min,n);if(Number.isFinite(max))n=Math.min(max,n);return n}
-function estimateTaxableIncome2026({grossIncome=0,use30Ruling=false,rulingRate=.30,maxTaxFree=78600}={}){
+function estimateTaxableIncome2026({grossIncome=0,use30Ruling=false,rulingRate=.30,maxTaxFree=RULING_CAP}={}){
   const gross=Math.max(0,Number(grossIncome)||0);
   if(!use30Ruling)return gross;
   const taxFree=Math.min(gross*Math.max(0,Number(rulingRate)||0),Math.max(0,Number(maxTaxFree)||0));
@@ -99,7 +114,7 @@ function bootBrowser(){
 
   function safeGet(){if(!storageWorks)return null;try{return storage.getItem(STORAGE_KEY)}catch{storageWorks=false;return null}}
   function safeSet(value){if(!storageWorks)return false;try{storage.setItem(STORAGE_KEY,value);return true}catch{storageWorks=false;return false}}
-  function safeRemove(){if(!storageWorks)return;try{storage.removeItem(STORAGE_KEY)}catch{storageWorks=false;}}
+  function safeRemove(){if(!storageWorks)return;try{clearPlannerStorage(storage);}catch{storageWorks=false;}}
   function controls(){return Array.from(document.querySelectorAll('input,select')).filter(isPersistable)}
   function meta(){return{activeTab:document.querySelector('.tab.active[data-tab]')?.dataset.tab||null,mortgageType:document.querySelector('.compare-card.active[data-mort-type]')?.dataset.mortType||null}}
   function dispatch(el){el?.dispatchEvent(new Event('input',{bubbles:true}));el?.dispatchEvent(new Event('change',{bubbles:true}))}
@@ -111,21 +126,22 @@ function bootBrowser(){
   const header=document.querySelector('header');
   if(header&&!$('plannerStorageBar')){
     const bar=document.createElement('div');bar.id='plannerStorageBar';bar.className='planner-storage-bar';
-    bar.innerHTML=`<span><strong>Private browser save:</strong> inputs are stored only in this browser, not in an account or planner server.</span><span class="planner-storage-actions"><span id="plannerSaveStatus">Not saved yet</span><button type="button" class="planner-reset" id="plannerReset">Reset examples</button></span>`;
+    bar.innerHTML=`<span class="planner-storage-actions"><span id="plannerSaveStatus">Not saved yet</span><span class="header-status-sep" aria-hidden="true">·</span><button type="button" class="planner-reset" id="plannerReset">Reset examples</button></span>`;
     header.insertAdjacentElement('afterend',bar);
   }
   const modelDetails=Array.from(document.querySelectorAll('details.fold')).find(d=>/Model status and sources/i.test(d.querySelector('summary')?.textContent||''));
   const modelBody=modelDetails?.querySelector('.fold-body');
   if(modelBody&&!$('r6Methodology')){
-    const methodology=document.createElement('div');methodology.id='r6Methodology';methodology.className='callout r6-methodology';
-    methodology.innerHTML='<strong>How to read the model:</strong> results are scenario comparisons, not underwriting or a tax return. Cash-flow differences are equalised between strategies; annual HRA/EWF/Hillen is authoritative; the 2026 Box 3 path is the current-rules baseline; the proposed future regime is a legislative scenario; official Nibud/LTI borrowing capacity is not calculated.';
-    const privacy=document.createElement('div');privacy.className='callout r6-methodology';privacy.innerHTML='<strong>Data handling:</strong> the planner has no backend account. R6 can save your entered assumptions in localStorage on this browser so they survive a refresh. Reset removes that local snapshot and reloads the illustrative defaults.';
-    modelBody.prepend(privacy);modelBody.prepend(methodology);
+    const privacy=document.createElement('div');privacy.id='r6DataHandling';privacy.className='callout r6-methodology';
+    privacy.innerHTML=`<strong>Data handling.</strong> There is no account and no planner server. Your inputs are stored only in this browser's localStorage so they survive a refresh, and they are never uploaded. "Start fresh" deletes everything this planner saved in this browser and restores the example values. You can also clear site data in your browser. All code, including the chart library, is served from this site. No third-party requests, analytics or tracking cookies. Our web host keeps standard request logs (e.g. IP address).`;
+    modelBody.appendChild(privacy);
   }
 
   const status=$('plannerSaveStatus');
   function setStatus(text){if(status)status.textContent=text}
-  function save(){if(restoring)return;const payload=captureControls(controls(),meta());if(safeSet(JSON.stringify(payload))){const t=new Date();setStatus(`Saved locally ${String(t.getHours()).padStart(2,'0')}:${String(t.getMinutes()).padStart(2,'0')}`)}else setStatus('Local save unavailable')}
+  let persistReady=document.readyState==='complete';
+  function save(){if(restoring||!persistReady)return;const payload=captureControls(controls(),meta());if(safeSet(JSON.stringify(payload))){const t=new Date();setStatus(`Saved locally ${String(t.getHours()).padStart(2,'0')}:${String(t.getMinutes()).padStart(2,'0')}`);document.dispatchEvent(new Event('dimp-save-status'));}else setStatus('Local save unavailable')}
+  if(!persistReady)window.addEventListener('load',()=>{persistReady=true;},{once:true});
   function byKey(key){if(key.startsWith('id:'))return $(key.slice(3));const m=/^phase:(\d+):([A-Za-z0-9_-]+)$/.exec(key);return m?document.querySelector(`#phaseList [data-i="${m[1]}"][data-field="${m[2]}"]`):null}
 
   function prepareRound2Controls(){
@@ -136,7 +152,7 @@ function bootBrowser(){
       calcIncome.classList.add('hidden');field.insertBefore(visible,calcIncome);
       const toggle=document.createElement('div');toggle.className='toggle ux-income-toggle';toggle.innerHTML='<input id="use30Ruling" type="checkbox"><label for="use30Ruling">I use the 30% ruling / expat scheme</label>';field.appendChild(toggle);
       const used=document.createElement('p');used.id='taxableIncomeUsed';used.className='inline ux-income-used';field.appendChild(used);
-      const help=document.createElement('p');help.id='grossIncomeHelp';help.className='inline';help.textContent='With the ruling selected, the planner estimates taxable Box 1 employment income by applying the full 30% tax-free allowance for a full year, capped at €78,600 in 2026. Your jaaropgaaf remains authoritative. This checkbox affects the HRA income estimate only, not Box 3 residency treatment.';field.appendChild(help);
+      const help=document.createElement('p');help.id='grossIncomeHelp';help.className='inline';help.textContent=`With the ruling selected, the planner estimates taxable Box 1 employment income by applying the full 30% tax-free allowance for a full year, capped at €${RULING_CAP.toLocaleString('en-US')} in ${Policy2026.TAX_YEAR}. Your jaaropgaaf remains authoritative. This checkbox affects the HRA income estimate only, not Box 3 residency treatment.`;field.appendChild(help);
     }
     const woz=$('wozImpact');
     if(woz&&!$('mortgageReportHorizon')){
@@ -210,7 +226,7 @@ function bootBrowser(){
     syncIncome();
     const mode=$('deductionMode'),manual=$('manualDeduction');if(!mode||!manual)return;
     const auto=mode.value==='auto';
-    if(auto){const shown=parseFlexibleNumber(String($('deductionDisplay')?.textContent||'').replace('%',''));if(Number.isFinite(shown))manual.value=String(shown);}
+    if(auto&&FC){const income=parseFlexibleNumber($('grossIncome')?.value)||0;manual.value=String(FC.appliedOwnHomeDeductionRate({mode:'auto',grossIncome:income})*100);}
     manual.disabled=auto;manual.closest('.field')?.classList.toggle('field-disabled',auto);
     const label=document.querySelector('label[for="manualDeduction"]');if(label)label.textContent=auto?'Calculated deduction rate %':'Manual deduction rate %';
     let help=$('manualDeductionHelp');if(!help&&manual.closest('.field')){help=document.createElement('p');help.id='manualDeductionHelp';help.className='inline';manual.closest('.field').appendChild(help);}if(help)help.textContent=auto?'Calculated from the estimated taxable income above. Switch Deduction rate to Manual to edit it.':'Enter the planning deduction rate you want to use.';
@@ -242,7 +258,7 @@ function bootBrowser(){
     if(!FC)return null;
     const setup=mortgageSetup(),startYear=Math.round(parseFlexibleNumber($('startYear')?.value)||2026),startMonth=Math.max(1,Math.min(12,Math.round(parseFlexibleNumber($('startMonth')?.value)||1))),investmentMonths=Math.round(investmentPlanMonths()),termMonths=Math.max(1,Math.round(setup.years*12)),mode=$('mortgageReportHorizon')?.value||'investment',specificYear=Math.round(parseFlexibleNumber($('mortgageReportYear')?.value)||startYear);
     const months=mortgageReportingMonths({mode,startYear,startMonth,investmentMonths,mortgageTermMonths:termMonths,specificYear});
-    const extra=phaseExtraSeries(months,startYear,startMonth),deductionRate=FC.deductionRate2026({mode:$('deductionMode')?.value||'auto',manualRatePct:parseFlexibleNumber($('manualDeduction')?.value)||37.56,grossIncome:parseFlexibleNumber($('grossIncome')?.value)||0}),tax={enabled:$('mortTaxEnabled')?.checked!==false,deductionRate,wozValue:Math.max(0,parseFlexibleNumber($('wozValue')?.value)||0)};
+    const extra=phaseExtraSeries(months,startYear,startMonth),manualRate=parseFlexibleNumber($('manualDeduction')?.value),deductionRate=FC.appliedOwnHomeDeductionRate({mode:$('deductionMode')?.value||'auto',manualRatePct:manualRate||window.Policy2026.VALUES.box1.ownHomeDeductionMaxRate*100,grossIncome:parseFlexibleNumber($('grossIncome')?.value)||0}),tax={enabled:$('mortTaxEnabled')?.checked!==false,deductionRate,wozValue:Math.max(0,parseFlexibleNumber($('wozValue')?.value)||0)};
     const type=document.querySelector('.compare-card.active[data-mort-type]')?.dataset.mortType==='linear'?'linear':'annuity';
     return{setup,startYear,startMonth,months,mode,specificYear,extra,tax,type,selected:FC.mortgageSchedule({balance:setup.balance,annualRatePct:setup.ratePct,termYears:setup.years,type,months,extraMonthly:extra,startYear,startMonth,tax}),linear:FC.mortgageSchedule({balance:setup.balance,annualRatePct:setup.ratePct,termYears:setup.years,type:'linear',months,extraMonthly:extra,startYear,startMonth,tax}),annuity:FC.mortgageSchedule({balance:setup.balance,annualRatePct:setup.ratePct,termYears:setup.years,type:'annuity',months,extraMonthly:extra,startYear,startMonth,tax})};
   }
@@ -290,7 +306,7 @@ function bootBrowser(){
   document.addEventListener('change',e=>{if(isPersistable(e.target))save();refreshUx();});
   document.addEventListener('blur',e=>{const el=e.target;if(el?.dataset?.flexNumber!=='1')return;const min=parseFlexibleNumber(el.dataset.flexMin),max=parseFlexibleNumber(el.dataset.flexMax),n=clampFlexibleValue(el.value,min,max);if(n!==null)el.value=String(n);refreshUx();},true);
   document.querySelectorAll('.tab[data-tab],.compare-card[data-mort-type]').forEach(el=>el.addEventListener('click',()=>{if(!restoring)save();refreshUx()}));
-  $('plannerReset')?.addEventListener('click',()=>{if(window.confirm('Reset all planner inputs to the illustrative examples?')){safeRemove();window.location.reload();}});
+  $('plannerReset')?.addEventListener('click',()=>{if(window.confirm('Start fresh? This deletes everything this planner saved in this browser and restores the example values.')){safeRemove();window.location.reload();}});
 
   restore();refreshUx();
   const uxTargetIds=['phaseList','strategyAResultNew','strategyBResultNew','scenarioVerdictNew'];
@@ -314,7 +330,7 @@ function bootBrowser(){
   observeUxTargets();
 }
 
-return{STORAGE_KEY,STATE_KIND,SCHEMA_VERSION,controlKey,isPersistable,captureControls,validControlKey,normalizeControls,migrateV1,normalizePayload,applyEntry,normalizeDecimalString,parseFlexibleNumber,clampFlexibleValue,estimateTaxableIncome2026,monthlyEquivalentExtra,mortgageReportingMonths,bootBrowser};
+return{STORAGE_KEY,PLANNER_STORAGE_KEY_PATTERN,clearPlannerStorage,STATE_KIND,SCHEMA_VERSION,controlKey,isPersistable,captureControls,validControlKey,normalizeControls,migrateV1,normalizePayload,applyEntry,normalizeDecimalString,parseFlexibleNumber,clampFlexibleValue,estimateTaxableIncome2026,monthlyEquivalentExtra,mortgageReportingMonths,bootBrowser};
 });
 
 if(typeof window!=='undefined'&&window.document)window.PlannerState.bootBrowser();

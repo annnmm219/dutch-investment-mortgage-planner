@@ -43,8 +43,8 @@ function canonical(selected,config={box3Mode:'current',box3PaySource:'savings'},
 test('R6.6 is the single final output release identity',()=>{
   assert.equal(OI.RELEASE_META.version,'R6.6');
   assert.equal(OI.RELEASE_META.ruleYear,2026);
-  assert.equal(OI.RELEASE_META.updated,'2026-09-03');
-  assert.match(OI.releaseLabel(),/Calculation build R6\.6/);
+  assert.equal(OI.RELEASE_META.updated,'2026-10-27');
+  assert.equal(OI.releaseLabel(),'Calculation build R6.6 · released 27 Oct 2026 · 2026 rules, verified 27 Oct 2026');
 });
 
 test('money formatting never converts null or undefined into €0',()=>{

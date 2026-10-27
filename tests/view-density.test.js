@@ -98,11 +98,16 @@ test('local advanced and methodology folds replace the global density banner',()
 
 test('browser save is compact and clearly distinguishes restored data from examples',()=>{
   const source=read('view-density.js');
+  assert.equal(UI.HEADER_TRUST_LINE,'Planning estimates only, not financial, tax or mortgage advice. Your financial inputs are calculated and saved locally in your browser.');
+  assert.equal(UI.HEADER_TRUST_DETAILS,'Rules simplified, as of 27 Oct 2026. Your inputs are stored in this browser\'s localStorage and are not sent to us or to any third party. Our web host sees standard request logs (e.g. IP address). "Start fresh" deletes everything this planner saved in this browser.');
   assert.match(source,/Start fresh/);
   assert.match(source,/Previous plan restored/);
   assert.match(source,/Saved in this browser/);
   assert.match(source,/Example values/);
+  assert.match(source,/event\.key!=='Escape'/);
+  assert.doesNotMatch(source,/header\.textContent=/);
   assert.match(source,/r65-save-compact/);
+  assert.doesNotMatch(source,/planner-storage-bar\.r65-save-compact>span:first-child\{display:none/);
 });
 
 test('successful affordability is compact while warnings remain available',()=>{

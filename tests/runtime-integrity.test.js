@@ -8,7 +8,7 @@ const path=require('node:path');
 const ROOT=path.resolve(__dirname,'..');
 const read=file=>fs.readFileSync(path.join(ROOT,file),'utf8');
 
-const EXPECTED_LOCAL_SCRIPTS=['model-contract.js','policy-2026.js','finance-core.js','box1-2026.js','logic-integrity-ui.js','box3-household.js','policy-ui.js','purchase-rules.js','output-integrity.js','input-integrity.js','app.js','purchase-costs.js','scenario-engine.js','box1-2026-ui.js','next-euro.js','app-state.js','view-density.js','view-density-state.js','stage9-1-remediation.js','stage9-1-quality.js','release-identity.js','stage10-remediation.js'];
+const EXPECTED_LOCAL_SCRIPTS=['vendor/chart.umd.js','model-contract.js','policy-2026.js','finance-core.js','box1-2026.js','logic-integrity-ui.js','box3-household.js','policy-ui.js','purchase-rules.js','output-integrity.js','input-integrity.js','app.js','purchase-costs.js','scenario-engine.js','box1-2026-ui.js','next-euro.js','app-state.js','view-density.js','view-density-state.js','stage9-1-remediation.js','stage9-1-quality.js','release-identity.js','stage10-remediation.js'];
 
 test('index.html declares the complete browser module order explicitly',()=>{
   const html=read('index.html');
@@ -57,7 +57,7 @@ test('browser modules fail fast when required dependencies are missing',()=>{
   assert.match(box1,/Policy2026 is required by Box1OwnHome2026/);
   assert.match(box1,/FinanceCore is required by Box1OwnHome2026/);
   assert.match(box1Ui,/ScenarioCore must load before box1-2026-ui\.js/);
-  assert.match(stage91,/Stage 9\.1 requires FinanceCore, PurchaseRules and ScenarioCore/);
+  assert.match(stage91,/Stage 9\.1 requires FinanceCore, PurchaseRules, ScenarioCore and Policy2026/);
   assert.match(stage10,/Stage 10 requires FinanceCore, PurchaseRules, ScenarioCore, OutputIntegrity and Stage91Remediation/);
 });
 
@@ -108,10 +108,12 @@ test('R6 persistence, Stage 9.1 and Stage 10 layers load in deterministic order'
   assert.ok(html.indexOf('stage9-1-remediation.js')<html.indexOf('stage9-1-quality.js'));
   assert.ok(html.indexOf('stage9-1-quality.js')<html.indexOf('release-identity.js'));
   assert.ok(html.indexOf('release-identity.js')<html.indexOf('stage10-remediation.js'));
-  assert.match(state,/Private browser save/);
+  assert.match(html,/Your financial inputs are calculated and saved locally in your browser/);
+  assert.doesNotMatch(state,/<strong>Saved in this browser only:<\/strong>/);
   assert.match(state,/stored only in this browser/);
   assert.match(state,/Reset examples/);
-  assert.match(state,/How to read the model/);
+  assert.match(state,/Data handling\./);
+  assert.match(html,/What this tool is/);
   assert.match(late,/LATE_CONTROL_IDS/);
   assert.match(late,/hillenOverrideEnabled/);
   assert.match(late,/scenarioBuyWozNew/);
@@ -129,10 +131,11 @@ test('R6.6 browser assets use explicit stage cache-busting',()=>{
   assert.match(html,/styles\.css\?v=R6\.6-stage9\.1/);
 });
 
-test('third-party browser assets use explicit integrity controls and no remote font dependency',()=>{
+test('chart library is served from this site and remote font hosts are absent',()=>{
   const html=read('index.html');
-  assert.doesNotMatch(html,/fonts\.googleapis\.com|fonts\.gstatic\.com/i);
-  assert.match(html,/Chart\.js\/4\.4\.1\/chart\.umd\.js"\s+integrity="sha512-[^"]+"\s+crossorigin="anonymous"\s+referrerpolicy="no-referrer"/i);
+  assert.doesNotMatch(html,/fonts\.googleapis\.com|fonts\.gstatic\.com|cdnjs\.cloudflare\.com/i);
+  assert.match(html,/src="vendor\/chart\.umd\.js\?v=R6\.6-stage9"/);
+  assert.equal(fs.existsSync(path.join(ROOT,'vendor/chart.umd.js')),true);
 });
 
 test('Stage 9.1 quality layer provides accessible chart table and spreadsheet-safe export hooks',()=>{

@@ -9,6 +9,15 @@ if(!Policy2026)throw new Error('Policy2026 must load before policy-ui.js');
 
 const VALUES=Policy2026.VALUES;
 
+function euro(amount){return '€'+Number(amount).toLocaleString('en-US');}
+
+function setText(documentRef,id,text){
+  const element=documentRef.getElementById(id);
+  if(!element)return false;
+  element.textContent=text;
+  return true;
+}
+
 function setDefault(documentRef,id,value){
   const element=documentRef.getElementById(id);
   if(!element)return false;
@@ -27,12 +36,21 @@ function applyPolicyDefaults(documentRef){
     ['currentSavingsNotional',VALUES.box3.savingsDeemedRate*100],
     ['currentDebtNotional',VALUES.box3.debtDeemedRate*100],
     ['currentDebtThreshold',VALUES.box3.debtThresholdPerPerson],
-    ['manualDeduction',VALUES.box1.ownHomeDeductionMaxRate*100]
+    ['manualDeduction',VALUES.box1.ownHomeDeductionMaxRate*100],
+    ['futureStart',VALUES.futureBox3Proposal.startYear],
+    ['futureTaxRate',VALUES.futureBox3Proposal.taxRate*100],
+    ['futureExempt',VALUES.futureBox3Proposal.exempt],
+    ['futureLossThreshold',VALUES.futureBox3Proposal.lossThreshold]
   ];
   const applied=[],missing=[];
   definitions.forEach(([id,value])=>{
     if(setDefault(documentRef,id,value))applied.push(id);else missing.push(id);
   });
+  const allowance=VALUES.box3.allowancePerPerson;
+  setText(documentRef,'currentAllowanceHelp',`${euro(allowance)} per person; ${euro(allowance*2)} for two fiscal partners.`);
+  setText(documentRef,'currentNotionalHelp',`2026 investments and other assets: ${(VALUES.box3.investmentDeemedRate*100).toFixed(2)}%.`);
+  setText(documentRef,'futureExemptDefaultLabel',euro(VALUES.futureBox3Proposal.exempt));
+  setText(documentRef,'futureExemptAltPreset',`Use ${euro(VALUES.futureBox3Proposal.alternativeExempt)} alternative`);
   documentRef.documentElement?.setAttribute('data-policy-year',String(Policy2026.TAX_YEAR));
   documentRef.documentElement?.setAttribute('data-policy-verified-at',Policy2026.LAST_VERIFIED_AT);
   return{applied,missing};
@@ -41,6 +59,16 @@ function applyPolicyDefaults(documentRef){
 function bootBrowser(){
   if(typeof document==='undefined')return;
   applyPolicyDefaults(document);
+  const alt=document.getElementById('futureExemptAltPreset');
+  const field=document.getElementById('futureExempt');
+  if(alt&&field&&alt.dataset.bound!=='1'){
+    alt.dataset.bound='1';
+    alt.addEventListener('click',()=>{
+      field.value=String(VALUES.futureBox3Proposal.alternativeExempt);
+      field.dispatchEvent(new Event('input',{bubbles:true}));
+      field.dispatchEvent(new Event('change',{bubbles:true}));
+    });
+  }
 }
 
 return{applyPolicyDefaults,bootBrowser};

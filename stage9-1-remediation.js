@@ -3,12 +3,15 @@
   const PR=typeof module==='object'&&module.exports?require('./purchase-rules.js'):root.PurchaseRules;
   const SC=typeof module==='object'&&module.exports?require('./scenario-engine.js'):root.ScenarioCore;
   const NE=typeof module==='object'&&module.exports?require('./next-euro.js'):root.NextEuroCore;
-  const api=factory(FC,PR,SC,NE,root);
+  const Policy2026=typeof module==='object'&&module.exports?require('./policy-2026.js'):root.Policy2026;
+  const api=factory(FC,PR,SC,NE,Policy2026,root);
   if(typeof module==='object'&&module.exports)module.exports=api;
   if(root)root.Stage91Remediation=api;
-})(typeof globalThis!=='undefined'?globalThis:this,function(FC,PR,SC,NE,root){
+})(typeof globalThis!=='undefined'?globalThis:this,function(FC,PR,SC,NE,Policy2026,root){
 'use strict';
-if(!FC||!PR||!SC)throw new Error('Stage 9.1 requires FinanceCore, PurchaseRules and ScenarioCore');
+if(!FC||!PR||!SC||!Policy2026)throw new Error('Stage 9.1 requires FinanceCore, PurchaseRules, ScenarioCore and Policy2026');
+const BOX3=Policy2026.VALUES.box3;
+const FUTURE_BOX3=Policy2026.VALUES.futureBox3Proposal;
 
 const VERSION='R6.6-stage9.1';
 const SNAPSHOT_KEY='dimp.stage91.scenario-state.v1';
@@ -64,10 +67,10 @@ function calculateScenarioPurchase2026(input={}){
   const requested=['main','starter','other-home','other-real-estate','manual'].includes(input.transferTaxMode)?input.transferTaxMode:'main';
   let effective=requested,starterEligibility=null;
   if(requested==='starter'){
-    starterEligibility=PR.starterEligibility2026({buyerAge:input.buyerAge,mainResidence:input.starterMainResidence!==false,exemptionUnused:input.starterExemptionUnused!==false,propertyValue:transferTaxBase});
+    starterEligibility=PR.starterEligibility2026({buyerAge:input.buyerAge,mainResidence:input.starterMainResidence!==false,exemptionUnused:input.starterExemptionUnused!==false,propertyValue:transferTaxBase,acquisitionYear:input.acquisitionYear});
     if(!starterEligibility.eligible)effective=starterEligibility.residenceEligible?'main':'other-home';
   }
-  const transferTax=PR.transferTax2026({propertyValue:transferTaxBase,mode:effective,manualAmount:input.manualTransferTax});
+  const transferTax=PR.transferTax2026({propertyValue:transferTaxBase,mode:effective,manualAmount:input.manualTransferTax,acquisitionYear:input.acquisitionYear});
   transferTax.requestedMode=requested;transferTax.effectiveMode=effective;transferTax.starterEligibility=starterEligibility;
   if(requested==='starter'&&!starterEligibility?.eligible)transferTax.warning=`Starter exemption not applied: ${starterEligibility.reasons.join('; ')}. ${effective==='other-home'?'The 8% residential non-main-residence rate is used.':'The 2% main-residence rate is used.'}`;
 
@@ -121,7 +124,7 @@ function simulateInvestmentFlowsStage91(args={},property={}){
       const regime=FC.regimeForYear({mode:args.box3Mode||'none',year,futureStart:finite(args.futureStart,2028)}),firstYear=year===finite(args.startYear,2026),firstPartial=firstYear&&finite(args.startMonth,1)>1;
       const jan1Portfolio=firstPartial?nonNegative(args.firstJan1Portfolio):nonNegative(yearStartPortfolio),jan1Savings=firstPartial&&args.firstJan1Savings!=null?nonNegative(args.firstJan1Savings):nonNegative(yearStartSavings),jan1Debt=firstPartial&&args.firstJan1Debt!=null?nonNegative(args.firstJan1Debt):nonNegative(yearStartDebt);
       const jan1Property=firstPartial?0:nonNegative(propertyYearStartValue),jan1PropertyDebt=firstPartial?0:nonNegative(propertyYearStartDebt);
-      const common={regime,jan1Portfolio:jan1Portfolio+jan1Property,jan1Savings,jan1Debt:jan1Debt+jan1PropertyDebt,marketGain:marketGain+propertyGain,savingsIncome,debtInterest:debtInterest+propertyDebtInterest,lossCarry,taxPartners:finite(args.taxPartners,1),currentTaxRate:finite(args.currentTaxRate,.36),currentAllowance:nonNegative(args.currentAllowance??59357),currentNotional:finite(args.currentNotional,.06),currentSavingsNotional:finite(args.currentSavingsNotional,.0128),currentDebtNotional:finite(args.currentDebtNotional,.027),currentDebtThreshold:nonNegative(args.currentDebtThreshold??3800),futureTaxRate:finite(args.futureTaxRate,.36),futureExempt:nonNegative(args.futureExempt??1800),futureLossThreshold:nonNegative(args.futureLossThreshold??500)};
+      const common={regime,jan1Portfolio:jan1Portfolio+jan1Property,jan1Savings,jan1Debt:jan1Debt+jan1PropertyDebt,marketGain:marketGain+propertyGain,savingsIncome,debtInterest:debtInterest+propertyDebtInterest,lossCarry,taxPartners:finite(args.taxPartners,1),currentTaxRate:finite(args.currentTaxRate,BOX3.taxRate),currentAllowance:nonNegative(args.currentAllowance??BOX3.allowancePerPerson),currentNotional:finite(args.currentNotional,BOX3.investmentDeemedRate),currentSavingsNotional:finite(args.currentSavingsNotional,BOX3.savingsDeemedRate),currentDebtNotional:finite(args.currentDebtNotional,BOX3.debtDeemedRate),currentDebtThreshold:nonNegative(args.currentDebtThreshold??BOX3.debtThresholdPerPerson),futureTaxRate:finite(args.futureTaxRate,FUTURE_BOX3.taxRate),futureExempt:nonNegative(args.futureExempt??FUTURE_BOX3.exempt),futureLossThreshold:nonNegative(args.futureLossThreshold??FUTURE_BOX3.lossThreshold)};
       const canSettle=endYear&&!(firstPartial&&regime==='future');
       const taxResult=FC.box3TaxForYear({...common,allowActualRebuttal:canSettle&&!(firstPartial&&regime==='current')});
       const beforePortfolio=portfolio,beforeSavings=savings,beforeDebt=debt;
@@ -200,7 +203,7 @@ function installCorePatches(){
     if(!isPurchase(config.mode)||!isNonMain(config.purchaseRules))return null;
     if(config.mode==='buy-rent'&&callIndex!==0)return null;
     const d=config.mode==='buy-rent'?config.buyRent:config.downpayment,down=config.mode==='buy-rent'?d?.downPayment:(callIndex===0?d?.downA:d?.downB);
-    const funding=calculateScenarioPurchase2026({housePrice:d?.price,downPayment:down,availableSavings:config.box3?.savings,baseCosts:d?.purchaseCosts,transferTaxMode:config.purchaseRules?.transferTaxMode,manualTransferTax:config.purchaseRules?.manualTransferTax,appraisedValue:config.purchaseRules?.appraisedValue,nhgMode:config.purchaseRules?.nhgMode,buyerAge:config.purchaseRules?.buyerAge,starterMainResidence:config.purchaseRules?.starterMainResidence,starterExemptionUnused:config.purchaseRules?.starterExemptionUnused,qualifyingEnergyExpenditure:config.purchaseRules?.qualifyingEnergyExpenditure});
+    const funding=calculateScenarioPurchase2026({housePrice:d?.price,downPayment:down,availableSavings:config.box3?.savings,baseCosts:d?.purchaseCosts,transferTaxMode:config.purchaseRules?.transferTaxMode,manualTransferTax:config.purchaseRules?.manualTransferTax,appraisedValue:config.purchaseRules?.appraisedValue,nhgMode:config.purchaseRules?.nhgMode,buyerAge:config.purchaseRules?.buyerAge,starterMainResidence:config.purchaseRules?.starterMainResidence,starterExemptionUnused:config.purchaseRules?.starterExemptionUnused,qualifyingEnergyExpenditure:config.purchaseRules?.qualifyingEnergyExpenditure,acquisitionYear:config.startYear});
     if(!funding.valid)return null;
     const debt=originalMortgage({balance:funding.mortgageProceeds,annualRatePct:d?.mortgageRatePct,termYears:d?.mortgageYears,type:d?.mortgageType,months:flowsLength,startYear:config.startYear,startMonth:config.startMonth,tax:{enabled:false,hraRemainingMonths:0,qualifyingInterestFraction:0,wozValue:0}});
     return{startValue:nonNegative(d?.wozValue||d?.price),growthPct:finite(config.homeGrowthPct,0),startDebt:funding.mortgageProceeds,debtRows:debt.rows};
@@ -264,7 +267,7 @@ function browserBoot(){
   function syncRequirements(){const mode=$('comparisonType')?.value,purchase=isPurchase(mode),transfer=$('scenarioTransferTaxModeNew')?.value,nonMain=['other-home','other-real-estate'].includes(transfer)||(transfer==='starter'&&$('scenarioStarterMainResidenceNew')?.checked===false),q=$('scenarioPurchaseQualifyingDebtPctNew'),y=$('scenarioPurchaseHraYearsNew'),e=$('scenarioQualifyingEnergySpendNew'),energy=$('scenarioPurchaseNhgModeNew')?.value==='energy';[q,y].forEach(el=>{if(!el)return;el.required=purchase&&!nonMain;el.disabled=!purchase||nonMain;if(el.disabled)el.value='0';});if(e){e.required=purchase&&energy;e.disabled=!purchase||!energy;if(e.disabled)e.value='0';}}
 
   function captureControls(){const values={};document.querySelectorAll('#tab-scenarios input,#tab-scenarios select').forEach(el=>{if(!el.id&&el.name!=='scenarioDataSource')return;const key=el.id||`name:${el.name}:${el.value}`;values[key]=(el.type==='checkbox'||el.type==='radio')?{kind:'checked',value:Boolean(el.checked)}:{kind:'value',value:String(el.value??'')};});const provenance={};document.querySelectorAll('.scenario-source-tag[data-source-for]').forEach(t=>provenance[t.dataset.sourceFor]=t.textContent||'');return{version:1,sourceMode:document.querySelector('input[name="scenarioDataSource"]:checked')?.value||null,values,provenance,activeConfig:root.__DIMP_ACTIVE_SCENARIO_CONFIG?clone(root.__DIMP_ACTIVE_SCENARIO_CONFIG):null,canonical:root.__DIMP_CANONICAL_COMPARISON?clone(root.__DIMP_CANONICAL_COMPARISON):null,savedAt:new Date().toISOString()};}
-  function saveSnapshot(){if(restoring)return;try{localStorage.setItem(SNAPSHOT_KEY,JSON.stringify(captureControls()));}catch(_){}}
+  function saveSnapshot(){if(restoring||!document.querySelector('input[name="scenarioDataSource"]:checked'))return;try{localStorage.setItem(SNAPSHOT_KEY,JSON.stringify(captureControls()));}catch(_){}}
   function applyValues(payload){Object.entries(payload?.values||{}).forEach(([key,entry])=>{let el=null;if(key.startsWith('name:')){const [,name,value]=key.split(':');el=document.querySelector(`input[name="${name}"][value="${value}"]`);}else el=$(key);if(!el||!entry)return;if(entry.kind==='checked')el.checked=Boolean(entry.value);else el.value=String(entry.value??'');});Object.entries(payload?.provenance||{}).forEach(([id,text])=>setTag(id,text));}
   function fireUpdate(){const el=$('scenarioReturnNew')||$('scenarioHorizonNew');el?.dispatchEvent(new Event('change',{bubbles:true}));}
   function restoreSnapshot(){let payload=null;try{payload=JSON.parse(localStorage.getItem(SNAPSHOT_KEY)||'null');}catch(_){}if(!payload||!payload.sourceMode)return false;const radio=document.querySelector(`input[name="scenarioDataSource"][value="${payload.sourceMode}"]`);if(!radio)return false;restoring=true;try{radio.checked=true;radio.dispatchEvent(new Event('change',{bubbles:true}));applyValues(payload);syncRequirements();fireUpdate();const live=$('stage91Live');if(live)live.textContent=`Restored ${payload.sourceMode} Scenario snapshot without refreshing planner data.`;}finally{restoring=false;}return true;}
