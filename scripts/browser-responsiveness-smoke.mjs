@@ -1,11 +1,17 @@
 import http from 'node:http';
 import path from 'node:path';
+import assert from 'node:assert/strict';
 import { readFile, stat } from 'node:fs/promises';
 import { fileURLToPath } from 'node:url';
 import { chromium } from 'playwright';
+import OutputIntegrity from '../output-integrity.js';
+import releaseIdentity from '../release-identity.js';
 
 const ROOT=path.resolve(path.dirname(fileURLToPath(import.meta.url)),'..');
 const TYPES={'.html':'text/html; charset=utf-8','.js':'text/javascript; charset=utf-8','.css':'text/css; charset=utf-8','.json':'application/json; charset=utf-8'};
+const expectedModelMeta=OutputIntegrity.RELEASE_META;
+const expectedReleaseLabel=OutputIntegrity.releaseLabel(expectedModelMeta);
+assert.equal(expectedModelMeta.version,releaseIdentity.release,'Checked-in release metadata disagrees with the release identity');
 
 function delay(ms){return new Promise(resolve=>setTimeout(resolve,ms));}
 
@@ -74,6 +80,10 @@ async function responsivePing(label){
   const result=await Promise.race([
     page.evaluate(()=>new Promise(resolve=>setTimeout(()=>resolve({
       version:document.getElementById('modelVersion')?.textContent||'',
+      documentVersion:document.documentElement.dataset.modelVersion||'',
+      modelMeta:window.MODEL_META||null,
+      outputMeta:window.OutputIntegrity?.RELEASE_META||null,
+      releaseIdentity:window.__DIMP_RELEASE_IDENTITY||null,
       callbacks:window.__r65MutationCallbacks||0,
       phases:document.getElementById('phaseList')?.children.length||0,
       scenario:document.getElementById('comparisonType')?.value||'',
@@ -90,7 +100,11 @@ async function responsivePing(label){
     }),100))),
     delay(5000).then(()=>{throw new Error(`${label}: browser main thread did not answer within 5 seconds`);})
   ]);
-  if(!result.version.includes('R6.6'))throw new Error(`${label}: wrong model version: ${result.version}`);
+  assert.equal(result.version,expectedReleaseLabel,`${label}: visible release label differs from checked-in metadata`);
+  assert.equal(result.documentVersion,expectedModelMeta.version,`${label}: document model version differs from checked-in metadata`);
+  assert.deepEqual(result.modelMeta,expectedModelMeta,`${label}: runtime model metadata differs from checked-in metadata`);
+  assert.deepEqual(result.outputMeta,expectedModelMeta,`${label}: runtime output metadata differs from checked-in metadata`);
+  assert.deepEqual(result.releaseIdentity,releaseIdentity,`${label}: runtime release identity differs from the checked-in identity`);
   if(result.phases<1)throw new Error(`${label}: phase UI did not initialize`);
   if(result.callbacks>1000)throw new Error(`${label}: excessive MutationObserver callbacks (${result.callbacks})`);
   if(result.globalSwitchVisible||result.globalBannerVisible)throw new Error(`${label}: obsolete global density UI is visible`);
@@ -131,8 +145,8 @@ try{
   const mortgage=await responsivePing('mortgage assumptions fold');
 
   if(pageErrors.length)throw new Error(`Browser page errors:\n${pageErrors.join('\n\n')}`);
-  console.log(JSON.stringify({release:'R6.6',responsive:true,initial,beforeImport,imported,scenario,localFolds,mortgage,pageErrors:0},null,2));
-  console.log('R6.6 Chromium interface and responsiveness smoke test passed.');
+  console.log(JSON.stringify({release:expectedModelMeta.version,responsive:true,initial,beforeImport,imported,scenario,localFolds,mortgage,pageErrors:0},null,2));
+  console.log(`${expectedModelMeta.version} Chromium interface and responsiveness smoke test passed.`);
 }finally{
   await browser.close();
   await new Promise(resolve=>server.close(resolve));

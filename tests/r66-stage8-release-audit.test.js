@@ -17,11 +17,11 @@ const close=(actual,expected,tolerance=.005)=>assert.ok(Math.abs(actual-expected
 test('Preview publishes synchronized version metadata while preserving the policy verification date',()=>{
   assert.equal(OI.RELEASE_META.version,'R6.7 preview');
   assert.equal(Gate.MODEL_META.version,'R6.7 preview');
-  assert.equal(OI.RELEASE_META.releaseName,'Mortgage periods and result clarity');
-  assert.equal(Gate.MODEL_META.releaseName,'Mortgage periods and result clarity');
-  assert.equal(OI.RELEASE_META.updated,'2026-10-23');
-  assert.equal(Gate.MODEL_META.updated,'2026-10-23');
-  assert.match(read('index.html'),/Calculation build R6\.7 preview · 2026 rules · updated 23 Oct 2026/);
+  assert.equal(OI.RELEASE_META.releaseName,'Home sale break-even and mortgage periods');
+  assert.equal(Gate.MODEL_META.releaseName,'Home sale break-even and mortgage periods');
+  assert.equal(OI.RELEASE_META.updated,'2026-10-27');
+  assert.equal(Gate.MODEL_META.updated,'2026-10-27');
+  assert.match(read('index.html'),/Calculation build R6\.7 preview · 2026 rules · updated 27 Oct 2026/);
 });
 
 test('Stage 8 retains the verified final and provisional 2026 policy classifications',()=>{

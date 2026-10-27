@@ -1,4 +1,4 @@
-> Development preview: the `r6-7-rate-periods-preview` branch adds independent mortgage rate periods and visible investment conclusions. See [preview scope and validation](audits/r6.7/rate-periods-preview.md). This branch is unfrozen; the R6.6 audit records below describe the earlier candidate.
+> Development preview: `r6-7-sale-break-even` builds on the mortgage-rate-period preview and adds a separate **Home sale: break-even vs renting** scenario. See [sale scenario scope and validation](audits/r6.7/sale-break-even-preview.md) and the [earlier rate-period preview](audits/r6.7/rate-periods-preview.md). This branch is unfrozen; the R6.6 audit records below describe the earlier candidate.
 
 # Dutch Investment & Mortgage Planner
 
@@ -55,7 +55,7 @@ Detailed HRA eligibility, qualifying debt share, manual deduction rate, Hillen o
 
 ### Scenarios
 
-Begin by choosing one data route:
+For the first five comparisons, begin by choosing one data route:
 
 - **Use my existing planner data** copies the relevant Investment and Mortgage values into a visible scenario snapshot. Later changes in those tabs do not change the comparison unless **Refresh imported data** is selected.
 - **Start a fresh comparison** clears personal scenario fields and reads no values from Investment or Mortgage.
@@ -67,6 +67,9 @@ Choose one comparison:
 3. Extra Mortgage Repayment versus Invest
 4. Linear versus Annuity
 5. Keep Home versus Sell and Rent
+6. Home Sale: Break-even versus Renting
+
+The sixth scenario evaluates ownership from the original purchase to a selected sale month. It reports the selling price needed to match renting, cash released after paying the lender, the price needed to recover ownership spending, and any cash required to settle a sale shortfall. An optional investment comparison uses the shared investment engine and equal monthly budgets. Its own visible purchase and sale assumptions are saved in the browser and exported with the result. Existing-mortgage imports do not treat current debt or the remaining repayment term as original purchase facts.
 
 All personal inputs used by the calculation are visible inside Scenarios. Purchase price, purchase mortgage and purchase-tax facts remain scenario-owned because they cannot be safely inferred from an existing mortgage.
 
