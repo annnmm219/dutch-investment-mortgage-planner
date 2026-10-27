@@ -852,6 +852,15 @@ function renderInvalidInputs(mode,report){
   renderFunding(canonical);
 }
 function updateEngine(){
+  const selectedMode=$('comparisonType').value;
+  if(selectedMode==='sale-break-even'){
+    window.__DIMP_ACTIVE_SCENARIO_CONFIG=null;
+    window.__DIMP_CANONICAL_COMPARISON=null;
+    window.__DIMP_CANONICAL_NEXT_EURO=null;
+    window.SaleBreakEvenUI?.update();
+    return;
+  }
+  window.SaleBreakEvenUI?.setActive(false);
   visibility();const mode=$('comparisonType').value;renderReview(mode);if(!scenarioSourceMode){renderInvalidInputs(mode,{valid:false,errors:[{message:'Choose whether to use existing planner data or start fresh.'}]});return;}const report=scenarioInputReport(mode);if(!report.valid){renderInvalidInputs(mode,report);return;}const activeConfig=config();window.__DIMP_ACTIVE_SCENARIO_CONFIG=activeConfig;const x=SC.runScenario(activeConfig),gap=budgetStatus(x),verdict=$('scenarioVerdictNew'),years=clamp(num('scenarioHorizonNew',10),1,40),returnPct=clamp(num('scenarioReturnNew',5),-30,30),canonical=OI.canonicalComparisonResult(x,{mode,years,returnPct,budgetGap:gap}),model=OI.comparisonOutputModel(canonical),A=canonical.strategies.A,B=canonical.strategies.B;renderFunding(canonical);
   window.__DIMP_CANONICAL_COMPARISON=canonical;
   if(!canonical.valid){card($('strategyAResultNew'),A,false,false);card($('strategyBResultNew'),B,false,false);verdict.classList.add('invalid');verdict.innerHTML=`<strong>${model.title}</strong><span> ${model.detail}</span>`;$('scenarioBreakdownBodyNew').innerHTML='';$('sensitivityBodyNew').innerHTML='';$('sensitivitySummaryNew').innerHTML='<strong>Sensitivity unavailable.</strong> Resolve the comparison inputs first.';return;}

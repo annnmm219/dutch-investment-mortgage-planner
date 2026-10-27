@@ -73,7 +73,9 @@ function domOptional(id){
 
 function box3Config(config={}){
   const nested=config.box3||{};
-  const browser=typeof document!=='undefined';
+  // Standalone scenarios own their historical snapshots; main-planner DOM
+  // values must not replace explicit data supplied by those callers.
+  const browser=typeof document!=='undefined'&&config.box3InputSource!=='explicit';
   const domPortfolio=browser?domOptional('firstJan1Portfolio'):undefined;
   const domSavings=browser?domOptional('firstJan1Savings'):undefined;
   const domDebt=browser?domOptional('firstJan1Debt'):undefined;
