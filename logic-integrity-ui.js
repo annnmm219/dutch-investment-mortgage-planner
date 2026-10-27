@@ -15,7 +15,7 @@ const MAX_HRA_YEARS=POLICY.ownHome.maximumQualifyingMortgageMonths/12;
 const MODEL_META=Object.freeze({
   version:'R6.6',
   ruleYear:POLICY.taxYear,
-  updated:'2026-09-03',
+  updated:'<actual merge/deploy date>',
   stateSchema:4,
   releaseName:'Decision Integrity'
 });
@@ -310,7 +310,7 @@ function setModelMeta(){
   if(marker){
     const months=['','Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
     const short=iso=>{const date=String(iso||'').split('-');return date.length===3?`${Number(date[2])} ${months[Number(date[1])]||date[1]} ${date[0]}`:String(iso||'');};
-    marker.textContent=window.OutputIntegrity?.releaseLabel?.()||`Calculation build ${MODEL_META.version} · ${MODEL_META.ruleYear} rules · released ${short(MODEL_META.updated)} · Rules verified ${short(Policy2026.LAST_VERIFIED_AT)}`;
+    marker.textContent=window.OutputIntegrity?.releaseLabel?.()||`Calculation build ${MODEL_META.version} · released ${short(MODEL_META.updated)} · ${MODEL_META.ruleYear} rules, verified ${short(Policy2026.LAST_VERIFIED_AT)}`;
   }
   try{localStorage.setItem('dimp-model-meta',JSON.stringify(MODEL_META));}catch(_error){}
 }

@@ -57,7 +57,7 @@ test('browser modules fail fast when required dependencies are missing',()=>{
   assert.match(box1,/Policy2026 is required by Box1OwnHome2026/);
   assert.match(box1,/FinanceCore is required by Box1OwnHome2026/);
   assert.match(box1Ui,/ScenarioCore must load before box1-2026-ui\.js/);
-  assert.match(stage91,/Stage 9\.1 requires FinanceCore, PurchaseRules and ScenarioCore/);
+  assert.match(stage91,/Stage 9\.1 requires FinanceCore, PurchaseRules, ScenarioCore and Policy2026/);
   assert.match(stage10,/Stage 10 requires FinanceCore, PurchaseRules, ScenarioCore, OutputIntegrity and Stage91Remediation/);
 });
 

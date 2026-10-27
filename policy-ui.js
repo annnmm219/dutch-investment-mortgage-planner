@@ -9,6 +9,15 @@ if(!Policy2026)throw new Error('Policy2026 must load before policy-ui.js');
 
 const VALUES=Policy2026.VALUES;
 
+function euro(amount){return '€'+Number(amount).toLocaleString('en-US');}
+
+function setText(documentRef,id,text){
+  const element=documentRef.getElementById(id);
+  if(!element)return false;
+  element.textContent=text;
+  return true;
+}
+
 function setDefault(documentRef,id,value){
   const element=documentRef.getElementById(id);
   if(!element)return false;
@@ -37,6 +46,11 @@ function applyPolicyDefaults(documentRef){
   definitions.forEach(([id,value])=>{
     if(setDefault(documentRef,id,value))applied.push(id);else missing.push(id);
   });
+  const allowance=VALUES.box3.allowancePerPerson;
+  setText(documentRef,'currentAllowanceHelp',`${euro(allowance)} per person; ${euro(allowance*2)} for two fiscal partners.`);
+  setText(documentRef,'currentNotionalHelp',`2026 investments and other assets: ${(VALUES.box3.investmentDeemedRate*100).toFixed(2)}%.`);
+  setText(documentRef,'futureExemptDefaultLabel',euro(VALUES.futureBox3Proposal.exempt));
+  setText(documentRef,'futureExemptAltPreset',`Use ${euro(VALUES.futureBox3Proposal.alternativeExempt)} alternative`);
   documentRef.documentElement?.setAttribute('data-policy-year',String(Policy2026.TAX_YEAR));
   documentRef.documentElement?.setAttribute('data-policy-verified-at',Policy2026.LAST_VERIFIED_AT);
   return{applied,missing};

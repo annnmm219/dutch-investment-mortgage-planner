@@ -43,25 +43,6 @@ await context.addInitScript(()=>{
     }
   };
 
-  const charts=new Map();
-  class ChartStub{
-    constructor(context,config={}){
-      this.context=context;
-      this.data=config.data||{datasets:[]};
-      this.options=config.options||{};
-      const canvas=context?.canvas||context;
-      if(canvas)charts.set(canvas,this);
-      if(canvas?.id)charts.set(canvas.id,this);
-    }
-    update(){}
-    destroy(){}
-    resize(){}
-    static getChart(target){return charts.get(target)||charts.get(target?.id)||null;}
-  }
-  window.Chart=ChartStub;
-  if(window.HTMLCanvasElement){
-    window.HTMLCanvasElement.prototype.getContext=function(){return{canvas:this};};
-  }
 });
 
 const page=await context.newPage();

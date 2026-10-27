@@ -3,12 +3,15 @@
   const PR=typeof module==='object'&&module.exports?require('./purchase-rules.js'):root.PurchaseRules;
   const SC=typeof module==='object'&&module.exports?require('./scenario-engine.js'):root.ScenarioCore;
   const NE=typeof module==='object'&&module.exports?require('./next-euro.js'):root.NextEuroCore;
-  const api=factory(FC,PR,SC,NE,root);
+  const Policy2026=typeof module==='object'&&module.exports?require('./policy-2026.js'):root.Policy2026;
+  const api=factory(FC,PR,SC,NE,Policy2026,root);
   if(typeof module==='object'&&module.exports)module.exports=api;
   if(root)root.Stage91Remediation=api;
-})(typeof globalThis!=='undefined'?globalThis:this,function(FC,PR,SC,NE,root){
+})(typeof globalThis!=='undefined'?globalThis:this,function(FC,PR,SC,NE,Policy2026,root){
 'use strict';
-if(!FC||!PR||!SC)throw new Error('Stage 9.1 requires FinanceCore, PurchaseRules and ScenarioCore');
+if(!FC||!PR||!SC||!Policy2026)throw new Error('Stage 9.1 requires FinanceCore, PurchaseRules, ScenarioCore and Policy2026');
+const BOX3=Policy2026.VALUES.box3;
+const FUTURE_BOX3=Policy2026.VALUES.futureBox3Proposal;
 
 const VERSION='R6.6-stage9.1';
 const SNAPSHOT_KEY='dimp.stage91.scenario-state.v1';
@@ -121,7 +124,7 @@ function simulateInvestmentFlowsStage91(args={},property={}){
       const regime=FC.regimeForYear({mode:args.box3Mode||'none',year,futureStart:finite(args.futureStart,2028)}),firstYear=year===finite(args.startYear,2026),firstPartial=firstYear&&finite(args.startMonth,1)>1;
       const jan1Portfolio=firstPartial?nonNegative(args.firstJan1Portfolio):nonNegative(yearStartPortfolio),jan1Savings=firstPartial&&args.firstJan1Savings!=null?nonNegative(args.firstJan1Savings):nonNegative(yearStartSavings),jan1Debt=firstPartial&&args.firstJan1Debt!=null?nonNegative(args.firstJan1Debt):nonNegative(yearStartDebt);
       const jan1Property=firstPartial?0:nonNegative(propertyYearStartValue),jan1PropertyDebt=firstPartial?0:nonNegative(propertyYearStartDebt);
-      const common={regime,jan1Portfolio:jan1Portfolio+jan1Property,jan1Savings,jan1Debt:jan1Debt+jan1PropertyDebt,marketGain:marketGain+propertyGain,savingsIncome,debtInterest:debtInterest+propertyDebtInterest,lossCarry,taxPartners:finite(args.taxPartners,1),currentTaxRate:finite(args.currentTaxRate,.36),currentAllowance:nonNegative(args.currentAllowance??59357),currentNotional:finite(args.currentNotional,.06),currentSavingsNotional:finite(args.currentSavingsNotional,.0128),currentDebtNotional:finite(args.currentDebtNotional,.027),currentDebtThreshold:nonNegative(args.currentDebtThreshold??3800),futureTaxRate:finite(args.futureTaxRate,.36),futureExempt:nonNegative(args.futureExempt??1800),futureLossThreshold:nonNegative(args.futureLossThreshold??500)};
+      const common={regime,jan1Portfolio:jan1Portfolio+jan1Property,jan1Savings,jan1Debt:jan1Debt+jan1PropertyDebt,marketGain:marketGain+propertyGain,savingsIncome,debtInterest:debtInterest+propertyDebtInterest,lossCarry,taxPartners:finite(args.taxPartners,1),currentTaxRate:finite(args.currentTaxRate,BOX3.taxRate),currentAllowance:nonNegative(args.currentAllowance??BOX3.allowancePerPerson),currentNotional:finite(args.currentNotional,BOX3.investmentDeemedRate),currentSavingsNotional:finite(args.currentSavingsNotional,BOX3.savingsDeemedRate),currentDebtNotional:finite(args.currentDebtNotional,BOX3.debtDeemedRate),currentDebtThreshold:nonNegative(args.currentDebtThreshold??BOX3.debtThresholdPerPerson),futureTaxRate:finite(args.futureTaxRate,FUTURE_BOX3.taxRate),futureExempt:nonNegative(args.futureExempt??FUTURE_BOX3.exempt),futureLossThreshold:nonNegative(args.futureLossThreshold??FUTURE_BOX3.lossThreshold)};
       const canSettle=endYear&&!(firstPartial&&regime==='future');
       const taxResult=FC.box3TaxForYear({...common,allowActualRebuttal:canSettle&&!(firstPartial&&regime==='current')});
       const beforePortfolio=portfolio,beforeSavings=savings,beforeDebt=debt;

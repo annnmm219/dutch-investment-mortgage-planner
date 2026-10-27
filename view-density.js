@@ -1,9 +1,14 @@
 (function(root,factory){
-  const api=factory();
+  const Policy2026=typeof module==='object'&&module.exports?require('./policy-2026.js'):root.Policy2026;
+  const api=factory(Policy2026);
   if(typeof module==='object'&&module.exports)module.exports=api;
   if(root)root.ViewDensity=api;
-})(typeof globalThis!=='undefined'?globalThis:this,function(){
+})(typeof globalThis!=='undefined'?globalThis:this,function(Policy2026){
 'use strict';
+if(!Policy2026)throw new Error('Policy2026 must load before view-density.js');
+const BOX3=Policy2026.VALUES.box3;
+const FUTURE_BOX3=Policy2026.VALUES.futureBox3Proposal;
+const policyPct=rate=>rate*100;
 
 const DEFAULT_VIEW='single';
 const STANDARD_PHASE_LIMIT=6;
@@ -18,16 +23,16 @@ const DEFAULTS=Object.freeze({
   box3DebtMonthlyRepayment:0,
   box3DebtRepaymentSource:'external',
   box3DebtFallbackDestination:'invest',
-  currentTaxRate:36,
-  currentAllowance:59357,
-  currentNotional:6,
-  currentSavingsNotional:1.28,
-  currentDebtNotional:2.70,
-  currentDebtThreshold:3800,
-  futureStart:2028,
-  futureTaxRate:36,
-  futureExempt:1800,
-  futureLossThreshold:500,
+  currentTaxRate:policyPct(BOX3.taxRate),
+  currentAllowance:BOX3.allowancePerPerson,
+  currentNotional:policyPct(BOX3.investmentDeemedRate),
+  currentSavingsNotional:policyPct(BOX3.savingsDeemedRate),
+  currentDebtNotional:policyPct(BOX3.debtDeemedRate),
+  currentDebtThreshold:BOX3.debtThresholdPerPerson,
+  futureStart:FUTURE_BOX3.startYear,
+  futureTaxRate:policyPct(FUTURE_BOX3.taxRate),
+  futureExempt:FUTURE_BOX3.exempt,
+  futureLossThreshold:FUTURE_BOX3.lossThreshold,
   deductionMode:'auto',
   qualifyingShare:100,
   unusedMortgageDestination:'invest',
@@ -501,7 +506,7 @@ function bootBrowser(){
     const firstValues=[$('firstJan1Portfolio')?.value,$('firstJan1Savings')?.value,$('firstJan1Debt')?.value];
     return{
       bonusMonth:number($('bonusMonth')?.value,12),box3Mode:$('box3Mode')?.value||'current',box3PaySource:$('box3PaySource')?.value||'savings',box3Debt:number($('box3Debt')?.value),box3DebtInterest:number($('box3DebtInterest')?.value,4),box3DebtMonthlyRepayment:number($('box3DebtMonthlyRepayment')?.value),box3DebtRepaymentSource:$('box3DebtRepaymentSource')?.value||'external',box3DebtFallbackDestination:$('box3DebtFallbackDestination')?.value||'invest',
-      currentTaxRate:number($('currentTaxRate')?.value,36),currentAllowance:number($('currentAllowance')?.value,59357),currentNotional:number($('currentNotional')?.value,6),currentSavingsNotional:number($('currentSavingsNotional')?.value,1.28),currentDebtNotional:number($('currentDebtNotional')?.value,2.70),currentDebtThreshold:number($('currentDebtThreshold')?.value,3800),futureStart:number($('futureStart')?.value,2028),futureTaxRate:number($('futureTaxRate')?.value,36),futureExempt:number($('futureExempt')?.value,1800),futureLossThreshold:number($('futureLossThreshold')?.value,500),jan1Assumption:Boolean($('assumePlanStartAsJan1')?.checked),jan1SnapshotEntered:firstValues.some(value=>value!==undefined&&value!==''),
+      currentTaxRate:number($('currentTaxRate')?.value,DEFAULTS.currentTaxRate),currentAllowance:number($('currentAllowance')?.value,DEFAULTS.currentAllowance),currentNotional:number($('currentNotional')?.value,DEFAULTS.currentNotional),currentSavingsNotional:number($('currentSavingsNotional')?.value,DEFAULTS.currentSavingsNotional),currentDebtNotional:number($('currentDebtNotional')?.value,DEFAULTS.currentDebtNotional),currentDebtThreshold:number($('currentDebtThreshold')?.value,DEFAULTS.currentDebtThreshold),futureStart:number($('futureStart')?.value,DEFAULTS.futureStart),futureTaxRate:number($('futureTaxRate')?.value,DEFAULTS.futureTaxRate),futureExempt:number($('futureExempt')?.value,DEFAULTS.futureExempt),futureLossThreshold:number($('futureLossThreshold')?.value,DEFAULTS.futureLossThreshold),jan1Assumption:Boolean($('assumePlanStartAsJan1')?.checked),jan1SnapshotEntered:firstValues.some(value=>value!==undefined&&value!==''),
       deductionMode:$('deductionMode')?.value||'auto',hraRemainingMonths:Math.max(0,Math.round(number($('hraRemainingYears')?.value,30)*12+number($('hraRemainingMonths')?.value))),defaultHraMonths:mortgageTermMonths(),qualifyingShare:number($('qualifyingBox1DebtPct')?.value,100),hillenOverrideEnabled:Boolean($('hillenOverrideEnabled')?.checked),hillenOverridePct:number($('hillenOverridePct')?.value,71.867),unusedMortgageDestination:$('unusedMortgageDestination')?.value||'invest',mortgageReportHorizon:$('mortgageReportHorizon')?.value||'investment',transferTaxMode:$('purchaseTransferTaxMode')?.value||'main',appraisedValue:number($('purchaseAppraisedValue')?.value),housePrice:number($('housePrice')?.value),nhgMode:$('purchaseNhgMode')?.value||'none',
       upfrontCashTreatment:$('scenarioUpfrontCashTreatmentNew')?.value||'invest',scenarioMortgageMethod:$('scenarioMortgageMethodNew')?.value||'selected',scenarioWoz:activeScenarioWoz(),scenarioReturnOverrideEnabled:Boolean($('scenarioReturnOverrideEnabled')?.checked),sensitivityLow:number($('sensitivityLowNew')?.value,2),sensitivityHigh:number($('sensitivityHighNew')?.value,10),sensitivityStep:number($('sensitivityStepNew')?.value,2),vveMonthly:number($('scenarioVveNew')?.value,250),maintenanceAnnual:number($('scenarioMaintenanceNew')?.value,1500),ownerTaxesAnnual:number($('scenarioOwnerTaxesNew')?.value),insuranceAnnual:number($('scenarioInsuranceNew')?.value),groundLeaseAnnual:number($('scenarioGroundLeaseNew')?.value),ownerCostGrowthPct:number($('scenarioOwnerCostGrowthNew')?.value,2)
     };

@@ -1,9 +1,12 @@
 (function(root,factory){
-  const api=factory();
+  const Policy2026=typeof module==='object'&&module.exports?require('./policy-2026.js'):root.Policy2026;
+  const api=factory(Policy2026);
   if(typeof module==='object'&&module.exports)module.exports=api;
   if(root)root.PlannerState=api;
-})(typeof globalThis!=='undefined'?globalThis:this,function(){
+})(typeof globalThis!=='undefined'?globalThis:this,function(Policy2026){
 'use strict';
+if(!Policy2026)throw new Error('Policy2026 must load before app-state.js');
+const RULING_CAP=Policy2026.VALUES.thirtyPercentRuling.maxTaxFreeAllowance;
 
 const STORAGE_KEY='dutch-investment-mortgage-planner:r6';
 const PLANNER_STORAGE_KEY_PATTERN=/^(?:dimp|dutch-investment-mortgage-planner)/;
@@ -78,7 +81,7 @@ function applyEntry(el,entry){
 function normalizeDecimalString(value){return String(value??'').trim().replace(/\s+/g,'').replace(/,/g,'.')}
 function parseFlexibleNumber(value){const s=normalizeDecimalString(value);if(!s||s==='-'||s==='.'||s==='-.')return NaN;const n=Number(s);return Number.isFinite(n)?n:NaN}
 function clampFlexibleValue(value,min,max){let n=parseFlexibleNumber(value);if(!Number.isFinite(n))return null;if(Number.isFinite(min))n=Math.max(min,n);if(Number.isFinite(max))n=Math.min(max,n);return n}
-function estimateTaxableIncome2026({grossIncome=0,use30Ruling=false,rulingRate=.30,maxTaxFree=78600}={}){
+function estimateTaxableIncome2026({grossIncome=0,use30Ruling=false,rulingRate=.30,maxTaxFree=RULING_CAP}={}){
   const gross=Math.max(0,Number(grossIncome)||0);
   if(!use30Ruling)return gross;
   const taxFree=Math.min(gross*Math.max(0,Number(rulingRate)||0),Math.max(0,Number(maxTaxFree)||0));
@@ -130,7 +133,7 @@ function bootBrowser(){
   const modelBody=modelDetails?.querySelector('.fold-body');
   if(modelBody&&!$('r6Methodology')){
     const privacy=document.createElement('div');privacy.id='r6DataHandling';privacy.className='callout r6-methodology';
-    privacy.innerHTML=`<strong>Data handling.</strong> There is no account and no planner server. Your inputs are stored only in this browser's localStorage so they survive a refresh, and they are never uploaded. "Reset examples" deletes them. You can also clear site data in your browser. All code, including the chart library, is served from this site. No third-party requests, analytics or tracking cookies. Our web host keeps standard request logs (e.g. IP address).`;
+    privacy.innerHTML=`<strong>Data handling.</strong> There is no account and no planner server. Your inputs are stored only in this browser's localStorage so they survive a refresh, and they are never uploaded. "Start fresh" deletes everything this planner saved in this browser and restores the example values. You can also clear site data in your browser. All code, including the chart library, is served from this site. No third-party requests, analytics or tracking cookies. Our web host keeps standard request logs (e.g. IP address).`;
     modelBody.appendChild(privacy);
   }
 
@@ -147,7 +150,7 @@ function bootBrowser(){
       calcIncome.classList.add('hidden');field.insertBefore(visible,calcIncome);
       const toggle=document.createElement('div');toggle.className='toggle ux-income-toggle';toggle.innerHTML='<input id="use30Ruling" type="checkbox"><label for="use30Ruling">I use the 30% ruling / expat scheme</label>';field.appendChild(toggle);
       const used=document.createElement('p');used.id='taxableIncomeUsed';used.className='inline ux-income-used';field.appendChild(used);
-      const help=document.createElement('p');help.id='grossIncomeHelp';help.className='inline';help.textContent='With the ruling selected, the planner estimates taxable Box 1 employment income by applying the full 30% tax-free allowance for a full year, capped at €78,600 in 2026. Your jaaropgaaf remains authoritative. This checkbox affects the HRA income estimate only, not Box 3 residency treatment.';field.appendChild(help);
+      const help=document.createElement('p');help.id='grossIncomeHelp';help.className='inline';help.textContent=`With the ruling selected, the planner estimates taxable Box 1 employment income by applying the full 30% tax-free allowance for a full year, capped at €${RULING_CAP.toLocaleString('en-US')} in ${Policy2026.TAX_YEAR}. Your jaaropgaaf remains authoritative. This checkbox affects the HRA income estimate only, not Box 3 residency treatment.`;field.appendChild(help);
     }
     const woz=$('wozImpact');
     if(woz&&!$('mortgageReportHorizon')){
@@ -301,7 +304,7 @@ function bootBrowser(){
   document.addEventListener('change',e=>{if(isPersistable(e.target))save();refreshUx();});
   document.addEventListener('blur',e=>{const el=e.target;if(el?.dataset?.flexNumber!=='1')return;const min=parseFlexibleNumber(el.dataset.flexMin),max=parseFlexibleNumber(el.dataset.flexMax),n=clampFlexibleValue(el.value,min,max);if(n!==null)el.value=String(n);refreshUx();},true);
   document.querySelectorAll('.tab[data-tab],.compare-card[data-mort-type]').forEach(el=>el.addEventListener('click',()=>{if(!restoring)save();refreshUx()}));
-  $('plannerReset')?.addEventListener('click',()=>{if(window.confirm('Reset all planner inputs to the illustrative examples?')){safeRemove();window.location.reload();}});
+  $('plannerReset')?.addEventListener('click',()=>{if(window.confirm('Start fresh? This deletes everything this planner saved in this browser and restores the example values.')){safeRemove();window.location.reload();}});
 
   restore();refreshUx();
   const uxTargetIds=['phaseList','strategyAResultNew','strategyBResultNew','scenarioVerdictNew'];

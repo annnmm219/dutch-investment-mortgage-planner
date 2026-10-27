@@ -108,6 +108,10 @@ const VALUES=deepFreeze({
     ownHomeDeductionMaxRate:.3756,
     ownHomeHighIncomeAdjustmentRate:.1194
   },
+  thirtyPercentRuling:{
+    rate:.30,
+    maxTaxFreeAllowance:78600
+  },
   ownHome:{
     maximumQualifyingMortgageMonths:360
   },

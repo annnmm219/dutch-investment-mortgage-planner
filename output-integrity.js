@@ -7,10 +7,11 @@
 'use strict';
 if(!Policy2026)throw new Error('Policy2026 is required by OutputIntegrity');
 
+const DEPLOY_DATE_PLACEHOLDER='<actual merge/deploy date>';
 const RELEASE_META=Object.freeze({
   version:'R6.6',
   ruleYear:2026,
-  updated:'2026-09-03',
+  updated:DEPLOY_DATE_PLACEHOLDER,
   stateSchema:4,
   releaseName:'Decision Integrity'
 });
@@ -64,7 +65,7 @@ function shortDate(iso){
 }
 
 function releaseLabel(meta=RELEASE_META){
-  return `Calculation build ${meta.version} · ${meta.ruleYear} rules · released ${shortDate(meta.updated)} · Rules verified ${shortDate(Policy2026.LAST_VERIFIED_AT)}`;
+  return `Calculation build ${meta.version} · released ${shortDate(meta.updated)} · ${meta.ruleYear} rules, verified ${shortDate(Policy2026.LAST_VERIFIED_AT)}`;
 }
 
 function cloneSeries(source={}){

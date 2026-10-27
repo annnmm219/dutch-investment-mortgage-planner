@@ -22,11 +22,6 @@ const server=http.createServer(async(req,res)=>{
 
 await new Promise(resolve=>server.listen(0,'127.0.0.1',resolve));
 const {port}=server.address(),browser=await chromium.launch({headless:true}),context=await browser.newContext();
-await context.addInitScript(()=>{
-  class ChartStub{constructor(context,config={}){this.data=config.data||{datasets:[]};this.options=config.options||{};ChartStub.instance=this;}update(){}static getChart(){return ChartStub.instance;}}
-  window.Chart=ChartStub;
-  if(window.HTMLCanvasElement)window.HTMLCanvasElement.prototype.getContext=function(){return{canvas:this};};
-});
 const page=await context.newPage(),pageErrors=[];
 page.on('pageerror',error=>pageErrors.push(String(error?.stack||error)));
 await page.route(/^https:\/\//,route=>route.abort());

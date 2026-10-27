@@ -132,16 +132,22 @@ test('LICENSE, copyright footer and borrowing notice are present and outside any
   const html=read('index.html');
   const visible=withoutDetails(html);
   assert.match(visible,new RegExp(FOOTER_LINE.replace(/[.*+?^${}()|[\]\\]/g,'\\$&')));
-  assert.match(visible,/released 3 Sep 2026/);
-  assert.match(visible,/Rules verified 27 Oct 2026/);
-  assert.match(visible,new RegExp(BORROWING_NOTICE.replace(/[.*+?^${}()|[\]\\]/g,'\\$&')));
+  assert.match(visible,/Calculation build R6\.6 · released &lt;actual merge\/deploy date&gt; · 2026 rules, verified 27 Oct 2026/);
+  assert.doesNotMatch(html,/3 Sep 2026|2026-09-03/);
+  assert.equal([...visible.matchAll(new RegExp(BORROWING_NOTICE.replace(/[.*+?^${}()|[\]\\]/g,'\\$&'),'g'))].length,2);
   assert.match(visible,new RegExp(HEADER_NOTICE.replace(/[.*+?^${}()|[\]\\]/g,'\\$&')));
   assert.equal([...visible.matchAll(new RegExp(RESULT_NOTICE.replace(/[.*+?^${}()|[\]\\]/g,'\\$&'),'g'))].length,2);
   assert.doesNotMatch(html,/ANTU Group/);
   assert.doesNotMatch(read('LICENSE'),/ANTU Group/);
   const borrowingAt=html.indexOf('id="borrowingCapacityNotice"');
+  const purchaseAt=html.indexOf('id="purchaseBorrowingNotice"');
+  const loanAt=html.indexOf('id="purchaseLtv"');
+  const purchaseEnd=html.indexOf('id="purchaseMortgageFields"');
   const scheduleAt=html.indexOf('<summary>Mortgage payment schedule</summary>');
   assert.ok(borrowingAt>0&&borrowingAt<scheduleAt);
+  assert.ok(loanAt>0&&loanAt<purchaseAt&&purchaseAt<scheduleAt);
+  assert.ok(purchaseEnd>0&&purchaseEnd<purchaseAt);
+  assert.doesNotMatch(withoutDetails(html.slice(purchaseEnd,purchaseAt+1)),/<details/);
 });
 
 test('approved not-advice, proposed-regime and source label copy is exact',()=>{
@@ -157,7 +163,9 @@ test('approved not-advice, proposed-regime and source label copy is exact',()=>{
   assert.match(read('next-euro.js'),/id="nextEuroResultDisclaimer">Estimate based on your assumptions and simplified 2026 rules\. Not a recommendation or a tax calculation\./);
   const state=read('app-state.js');
   assert.match(state,/<strong>Saved in this browser only:<\/strong> your inputs stay on this device \(localStorage\) and are not sent to us or to any third party\. Our web host sees standard request logs \(e\.g\. IP address\)\./);
-  assert.match(state,/<strong>Data handling\.<\/strong> There is no account and no planner server\. Your inputs are stored only in this browser's localStorage so they survive a refresh, and they are never uploaded\. "Reset examples" deletes them\. You can also clear site data in your browser\. All code, including the chart library, is served from this site\. No third-party requests, analytics or tracking cookies\. Our web host keeps standard request logs \(e\.g\. IP address\)\./);
+  assert.match(state,/<strong>Data handling\.<\/strong> There is no account and no planner server\. Your inputs are stored only in this browser's localStorage so they survive a refresh, and they are never uploaded\. "Start fresh" deletes everything this planner saved in this browser and restores the example values\. You can also clear site data in your browser\. All code, including the chart library, is served from this site\. No third-party requests, analytics or tracking cookies\. Our web host keeps standard request logs \(e\.g\. IP address\)\./);
+  assert.match(read('view-density.js'),/reset\.textContent='Start fresh'/);
+  assert.match(state,/Start fresh\? This deletes everything this planner saved in this browser and restores the example values\./);
 });
 
 test('Reset examples clears every planner storage key the source writes',()=>{
@@ -219,5 +227,12 @@ test('Box 3 provisional rates, Hillen planning series and proposed regime defaul
   assert.match(state,/if\(auto&&FC\)\{const income=parseFlexibleNumber\(\$\('grossIncome'\)\?\.value\)\|\|0;manual\.value=String\(FC\.appliedOwnHomeDeductionRate\(\{mode:'auto',grossIncome:income\}\)\*100\);\}/);
   assert.match(state,/manualRate\|\|window\.Policy2026\.VALUES\.box1\.ownHomeDeductionMaxRate\*100/);
   assert.match(read('index.html'),/id="futureExemptAltPreset"/);
-  assert.match(read('index.html'),/value="1800"/);
+  assert.match(read('policy-ui.js'),/futureExemptAltPreset',`Use \$\{euro\(VALUES\.futureBox3Proposal\.alternativeExempt\)\} alternative`/);
+  assert.doesNotMatch(read('index.html'),/value="59357"|value="1800"|€59,357|€118,714|6\.00%/);
+  assert.doesNotMatch(read('view-density.js'),/59357|1\.28|2\.70|3800|1800/);
+  assert.doesNotMatch(read('stage9-1-remediation.js'),/59357|\.0128|\.027|3800|1800/);
+  assert.doesNotMatch(read('next-euro.js'),/box3SavingsReturn',1\.28|box3DebtInterest',2\.7/);
+  assert.equal(Policy.VALUES.thirtyPercentRuling.maxTaxFreeAllowance,78600);
+  assert.match(read('app-state.js'),/Policy2026\.VALUES\.thirtyPercentRuling\.maxTaxFreeAllowance/);
+  assert.doesNotMatch(read('app-state.js'),/78600/);
 });
