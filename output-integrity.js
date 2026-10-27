@@ -7,11 +7,10 @@
 'use strict';
 if(!Policy2026)throw new Error('Policy2026 is required by OutputIntegrity');
 
-const DEPLOY_DATE_PLACEHOLDER='<actual merge/deploy date>';
 const RELEASE_META=Object.freeze({
   version:'R6.6',
   ruleYear:2026,
-  updated:DEPLOY_DATE_PLACEHOLDER,
+  updated:'2026-10-27',
   stateSchema:4,
   releaseName:'Decision Integrity'
 });
