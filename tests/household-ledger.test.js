@@ -11,7 +11,7 @@ function approx(actual,expected,tolerance=1e-6,message=''){
 
 test('savings is a real compounding balance rather than a frozen tax input',()=>{
   const x=FC.simulateInvestmentFlows({initialPortfolio:0,flows:Array(12).fill(0),annualReturnPct:0,startYear:2026,startMonth:1,box3Mode:'none',box3Savings:12000,savingsReturnPct:12});
-  approx(x.savings,12000*Math.pow(1.01,12),1e-8,'ending savings');
+  approx(x.savings,12000*1.12,1e-8,'ending savings');
   approx(x.netFinancialAssets,x.savings,1e-9,'net financial assets');
 });
 

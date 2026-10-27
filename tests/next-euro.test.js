@@ -38,11 +38,12 @@ test('0% mortgage produces a 0% invest-vs-repay break-even',()=>{
   approx(x.breakEvenReturnPct,0,.01,'zero-rate break-even');
 });
 
-test('4% nominal mortgage without HRA or Box 3 breaks even at 4% nominal investment return',()=>{
+test('4% nominal mortgage without HRA or Box 3 breaks even at its effective annual equivalent',()=>{
   const c=base();
   const x=NE.findBreakEven(c,{extraMonthly:500,minReturnPct:0,maxReturnPct:10,scanStepPct:.1,wealthTolerance:.05});
   assert.equal(x.status,'found');
-  approx(x.breakEvenReturnPct,4,.02,'nominal mortgage/investment equivalence');
+  const effectiveMortgageRate=(Math.pow(1+.04/12,12)-1)*100;
+  approx(x.breakEvenReturnPct,effectiveMortgageRate,.02,'nominal mortgage versus effective annual investment equivalence');
 });
 
 test('mortgage-interest tax relief lowers the investment return required to beat repayment',()=>{
@@ -54,7 +55,7 @@ test('mortgage-interest tax relief lowers the investment return required to beat
   assert.ok(b.breakEvenReturnPct<a.breakEvenReturnPct,`HRA break-even ${b.breakEvenReturnPct} should be below no-HRA ${a.breakEvenReturnPct}`);
 });
 
-test('Box 3 on investments raises the nominal investment break-even versus the untaxed case',()=>{
+test('Box 3 on investments raises the effective annual investment break-even versus the untaxed case',()=>{
   const untaxed=base();untaxed.startPortfolio=200000;
   const taxed=base();taxed.startPortfolio=200000;taxed.box3={...taxed.box3,mode:'current',currentAllowance:0,firstJan1Portfolio:200000};
   const a=NE.findBreakEven(untaxed,{extraMonthly:500,minReturnPct:0,maxReturnPct:15,scanStepPct:.1});

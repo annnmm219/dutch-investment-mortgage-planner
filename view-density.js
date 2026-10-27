@@ -1,9 +1,16 @@
 (function(root,factory){
-  const api=factory();
+  const Policy2026=typeof module==='object'&&module.exports?require('./policy-2026.js'):root.Policy2026;
+  const api=factory(Policy2026);
   if(typeof module==='object'&&module.exports)module.exports=api;
   if(root)root.ViewDensity=api;
-})(typeof globalThis!=='undefined'?globalThis:this,function(){
+})(typeof globalThis!=='undefined'?globalThis:this,function(Policy2026){
 'use strict';
+if(!Policy2026)throw new Error('Policy2026 must load before view-density.js');
+const BOX3=Policy2026.VALUES.box3;
+const FUTURE_BOX3=Policy2026.VALUES.futureBox3Proposal;
+const policyPct=rate=>rate*100;
+const HEADER_TRUST_LINE='Planning estimates only, not financial, tax or mortgage advice. Your financial inputs are calculated and saved locally in your browser.';
+const HEADER_TRUST_DETAILS='Rules simplified, as of 27 Oct 2026. Your inputs are stored in this browser\'s localStorage and are not sent to us or to any third party. Our web host sees standard request logs (e.g. IP address). "Start fresh" deletes everything this planner saved in this browser.';
 
 const DEFAULT_VIEW='single';
 const STANDARD_PHASE_LIMIT=6;
@@ -14,20 +21,20 @@ const DEFAULTS=Object.freeze({
   box3Mode:'current',
   box3PaySource:'savings',
   box3Debt:0,
-  box3DebtInterest:2.70,
+  box3DebtInterest:4,
   box3DebtMonthlyRepayment:0,
   box3DebtRepaymentSource:'external',
   box3DebtFallbackDestination:'invest',
-  currentTaxRate:36,
-  currentAllowance:59357,
-  currentNotional:6,
-  currentSavingsNotional:1.28,
-  currentDebtNotional:2.70,
-  currentDebtThreshold:3800,
-  futureStart:2028,
-  futureTaxRate:36,
-  futureExempt:1800,
-  futureLossThreshold:500,
+  currentTaxRate:policyPct(BOX3.taxRate),
+  currentAllowance:BOX3.allowancePerPerson,
+  currentNotional:policyPct(BOX3.investmentDeemedRate),
+  currentSavingsNotional:policyPct(BOX3.savingsDeemedRate),
+  currentDebtNotional:policyPct(BOX3.debtDeemedRate),
+  currentDebtThreshold:BOX3.debtThresholdPerPerson,
+  futureStart:FUTURE_BOX3.startYear,
+  futureTaxRate:policyPct(FUTURE_BOX3.taxRate),
+  futureExempt:FUTURE_BOX3.exempt,
+  futureLossThreshold:FUTURE_BOX3.lossThreshold,
   deductionMode:'auto',
   qualifyingShare:100,
   unusedMortgageDestination:'invest',
@@ -43,7 +50,8 @@ const DEFAULTS=Object.freeze({
   maintenanceAnnual:1500,
   ownerTaxesAnnual:0,
   insuranceAnnual:0,
-  groundLeaseAnnual:0
+  groundLeaseAnnual:0,
+  ownerCostGrowthPct:2
 });
 
 function normalizeView(){return DEFAULT_VIEW;}
@@ -118,7 +126,8 @@ function collectAdvancedState(values={}){
   if(values.scenarioReturnOverrideEnabled)add('scenario','scenario-return','Custom scenario return');
   const customSensitivity=!near(values.sensitivityLow,DEFAULTS.sensitivityLow)||!near(values.sensitivityHigh,DEFAULTS.sensitivityHigh)||!near(values.sensitivityStep,DEFAULTS.sensitivityStep);
   if(customSensitivity)add('scenario','sensitivity','Custom return sensitivity range');
-  const customOwner=!near(values.vveMonthly,DEFAULTS.vveMonthly)||!near(values.maintenanceAnnual,DEFAULTS.maintenanceAnnual)||!near(values.ownerTaxesAnnual,DEFAULTS.ownerTaxesAnnual)||!near(values.insuranceAnnual,DEFAULTS.insuranceAnnual)||!near(values.groundLeaseAnnual,DEFAULTS.groundLeaseAnnual);
+  const ownerCostGrowth=values.ownerCostGrowthPct==null?DEFAULTS.ownerCostGrowthPct:number(values.ownerCostGrowthPct);
+  const customOwner=!near(values.vveMonthly,DEFAULTS.vveMonthly)||!near(values.maintenanceAnnual,DEFAULTS.maintenanceAnnual)||!near(values.ownerTaxesAnnual,DEFAULTS.ownerTaxesAnnual)||!near(values.insuranceAnnual,DEFAULTS.insuranceAnnual)||!near(values.groundLeaseAnnual,DEFAULTS.groundLeaseAnnual)||!near(ownerCostGrowth,DEFAULTS.ownerCostGrowthPct);
   if(customOwner)add('scenario','owner-costs',`Customized owner-cost split: ${money(monthlyOwnerCost(values))}/mo`);
   return items;
 }
@@ -154,8 +163,7 @@ function bootBrowser(){
     style.id='r65InterfaceStyle';
     style.textContent=`
       #viewDensityBar,#advancedStateSummary{display:none!important}
-      .planner-storage-bar.r65-save-compact{display:inline-flex;align-items:center;gap:10px;width:auto;margin:12px 0 0;padding:0;background:transparent;border:0;border-radius:0;font-size:11px;color:var(--muted)}
-      .planner-storage-bar.r65-save-compact>span:first-child{display:none!important}
+      .planner-storage-bar.r65-save-compact{display:inline-flex;align-items:center;gap:10px;width:auto;max-width:100%;margin:12px 0 0;padding:0;background:transparent;border:0;border-radius:0;font-size:11px;color:var(--muted);flex-wrap:wrap}
       .r65-save-compact .planner-storage-actions{gap:8px}
       .r65-save-compact .planner-reset{padding:5px 8px;background:transparent}
       .r65-local-fold{margin-top:12px}
@@ -189,6 +197,62 @@ function bootBrowser(){
     document.head.appendChild(style);
   }
 
+  function showExampleStatus(status){
+    status.dataset.saveState='example';
+    status.textContent='Example values';
+    status.removeAttribute('title');
+    status.removeAttribute('role');
+    status.removeAttribute('aria-label');
+    status.removeAttribute('aria-labelledby');
+  }
+  function showRestoredStatus(status){
+    status.dataset.saveState='restored';
+    status.textContent='Previous plan restored';
+    status.removeAttribute('title');
+    status.removeAttribute('role');
+    status.removeAttribute('aria-label');
+    status.removeAttribute('aria-labelledby');
+  }
+  function showSavedStatus(status,timeLabel){
+    status.dataset.saveState='saved';
+    status.setAttribute('role','status');
+    status.removeAttribute('aria-label');
+    const visible=document.createElement('span');
+    visible.setAttribute('aria-hidden','true');
+    visible.textContent='✓ Saved';
+    const name=document.createElement('span');
+    name.id='plannerSaveStatusName';
+    name.className='visually-hidden';
+    name.textContent='Saved in this browser';
+    if(timeLabel)visible.title=timeLabel;
+    status.replaceChildren(visible,name);
+    status.setAttribute('aria-labelledby','plannerSaveStatusName');
+    status.removeAttribute('title');
+  }
+  function syncSaveStatus(){
+    const status=$('plannerSaveStatus');
+    if(!status)return;
+    const raw=String(status.textContent||'').replace(/\s+/g,' ').trim();
+    const fresh=/^Saved locally (\d{2}:\d{2})$/.exec(raw);
+    if(fresh){showSavedStatus(status,fresh[1]);return;}
+    if(raw==='Saved locally'||/Restored/i.test(raw)){showRestoredStatus(status);return;}
+    if(/Not saved/i.test(raw)){showExampleStatus(status);return;}
+    if(raw==='Example values'||raw==='Previous plan restored')return;
+    if(status.dataset.saveState==='saved'&&raw.includes('Saved in this browser'))return;
+  }
+  function ensureHeaderTrust(){
+    const line=$('headerTrustLine'),panel=$('headerTrustPanel'),button=$('headerTrustInfo');
+    if(line)line.textContent=HEADER_TRUST_LINE;
+    if(panel)panel.textContent=HEADER_TRUST_DETAILS;
+    if(!button||button.dataset.bound==='1')return;
+    button.dataset.bound='1';
+    button.addEventListener('click',()=>{
+      const open=button.getAttribute('aria-expanded')!=='true';
+      button.setAttribute('aria-expanded',open?'true':'false');
+      panel?.classList.toggle('is-open',open);
+    });
+  }
+
   function compactSaveBar(){
     const bar=$('plannerStorageBar'),header=document.querySelector('header');
     if(!bar||!header)return;
@@ -196,16 +260,10 @@ function bootBrowser(){
     header.appendChild(bar);
     const reset=$('plannerReset');
     if(reset){reset.textContent='Start fresh';reset.title='Clear the saved plan in this browser and restore the example values.';}
-    const status=$('plannerSaveStatus');
-    if(!status)return;
-    const raw=String(status.textContent||'');
-    const desired=/Restored/i.test(raw)?'Previous plan restored':/Saved locally/i.test(raw)?'Saved in this browser':/Not saved/i.test(raw)?'Example values':raw;
-    if(desired!==raw)status.textContent=desired;
+    syncSaveStatus();
   }
 
   function simplifyStaticCopy(){
-    const header=document.querySelector('header>p');
-    if(header)header.textContent='Plan investments, mortgage choices and Dutch tax assumptions in one timeline.';
     const investmentDivider=$('tab-investment')?.querySelector(':scope>.section-divider p');
     if(investmentDivider)investmentDivider.textContent='Set your timeline, contributions and investment assumptions.';
     const mortgageDivider=$('tab-mortgage')?.querySelector(':scope>.section-divider p');
@@ -332,7 +390,7 @@ function bootBrowser(){
   }
 
   function ensureScenarioReturn(){
-    if($('scenarioReturnOverrideEnabled'))return;
+    if($('scenarioReturnOverrideEnabled')||$('scenarioSourceCard'))return;
     const input=$('scenarioReturnNew'),wrap=input?.closest('.field'),grid=wrap?.parentElement;
     if(!input||!wrap||!grid)return;
     const global=$('annualReturn');
@@ -350,7 +408,7 @@ function bootBrowser(){
   }
 
   function ensureOwnerLight(){
-    if(document.querySelector('[data-r65-role="owner-total"]'))return;
+    if(document.querySelector('[data-r65-role="owner-total"]')||$('scenarioOwnerTotalNew'))return;
     const advanced=field('scenarioVveNew'),grid=advanced?.parentElement;
     if(!advanced||!grid)return;
     const wrap=document.createElement('div');wrap.className='field r65-owner-total';
@@ -383,6 +441,7 @@ function bootBrowser(){
   }
 
   function ensureScenarioWozFields(){
+    if($('scenarioSourceCard'))return;
     const definitions=[['buy-rent','scenarioBuyWozNew','Scenario WOZ value'],['downpayment','scenarioDpWozNew','Scenario WOZ value'],['sell-rent','scenarioSellWozNew','Current-home WOZ value']];
     definitions.forEach(([mode,id,label])=>{
       if($(id))return;
@@ -398,7 +457,7 @@ function bootBrowser(){
     const card=$('scenarioMonthlyBudgetNew')?.closest('.card');if(!card)return;
     const details=createDetails('r65ScenarioAdvanced','Advanced scenario assumptions');
     const body=bodyOf(details),grid=document.createElement('div');grid.className='r65-advanced-grid';body.appendChild(grid);
-    const ids=['scenarioMortgageMethodNew','scenarioUpfrontCashTreatmentNew','scenarioVveNew','scenarioMaintenanceNew','scenarioOwnerTaxesNew','scenarioInsuranceNew','scenarioGroundLeaseNew'];
+    const ids=['scenarioMortgageMethodNew','scenarioUpfrontCashTreatmentNew'];
     ids.forEach(id=>{const el=field(id);if(el)grid.appendChild(el);});
     document.querySelectorAll('.r65-scenario-woz-field').forEach(el=>grid.appendChild(el));
     card.appendChild(details);
@@ -489,7 +548,7 @@ function bootBrowser(){
   function compactBudgetStatus(){
     const el=$('scenarioBudgetStatusNew');if(!el)return;
     if(el.classList.contains('warn')){el.classList.remove('r65-compact-ok');return;}
-    el.classList.add('r65-compact-ok');el.innerHTML='<span class="r65-status-ok">Within entered monthly budget</span>';
+    el.classList.add('r65-compact-ok');el.innerHTML=$('scenarioMonthlyBudgetNew')?.value?'<span class="r65-status-ok">Starting housing cost is within your comfortable limit</span>':'<span class="r65-status-ok">Optional comfortable housing limit not entered</span>';
   }
 
   function mortgageTermMonths(){const purchase=$('mortgageMode')?.value==='purchase';const years=purchase?number($('purchaseYears')?.value,30):number($('mortYears')?.value,25);return Math.max(0,Math.round(Math.min(years,30)*12));}
@@ -497,10 +556,10 @@ function bootBrowser(){
   function domState(){
     const firstValues=[$('firstJan1Portfolio')?.value,$('firstJan1Savings')?.value,$('firstJan1Debt')?.value];
     return{
-      bonusMonth:number($('bonusMonth')?.value,12),box3Mode:$('box3Mode')?.value||'current',box3PaySource:$('box3PaySource')?.value||'savings',box3Debt:number($('box3Debt')?.value),box3DebtInterest:number($('box3DebtInterest')?.value,2.70),box3DebtMonthlyRepayment:number($('box3DebtMonthlyRepayment')?.value),box3DebtRepaymentSource:$('box3DebtRepaymentSource')?.value||'external',box3DebtFallbackDestination:$('box3DebtFallbackDestination')?.value||'invest',
-      currentTaxRate:number($('currentTaxRate')?.value,36),currentAllowance:number($('currentAllowance')?.value,59357),currentNotional:number($('currentNotional')?.value,6),currentSavingsNotional:number($('currentSavingsNotional')?.value,1.28),currentDebtNotional:number($('currentDebtNotional')?.value,2.70),currentDebtThreshold:number($('currentDebtThreshold')?.value,3800),futureStart:number($('futureStart')?.value,2028),futureTaxRate:number($('futureTaxRate')?.value,36),futureExempt:number($('futureExempt')?.value,1800),futureLossThreshold:number($('futureLossThreshold')?.value,500),jan1Assumption:Boolean($('assumePlanStartAsJan1')?.checked),jan1SnapshotEntered:firstValues.some(value=>value!==undefined&&value!==''),
+      bonusMonth:number($('bonusMonth')?.value,12),box3Mode:$('box3Mode')?.value||'current',box3PaySource:$('box3PaySource')?.value||'savings',box3Debt:number($('box3Debt')?.value),box3DebtInterest:number($('box3DebtInterest')?.value,4),box3DebtMonthlyRepayment:number($('box3DebtMonthlyRepayment')?.value),box3DebtRepaymentSource:$('box3DebtRepaymentSource')?.value||'external',box3DebtFallbackDestination:$('box3DebtFallbackDestination')?.value||'invest',
+      currentTaxRate:number($('currentTaxRate')?.value,DEFAULTS.currentTaxRate),currentAllowance:number($('currentAllowance')?.value,DEFAULTS.currentAllowance),currentNotional:number($('currentNotional')?.value,DEFAULTS.currentNotional),currentSavingsNotional:number($('currentSavingsNotional')?.value,DEFAULTS.currentSavingsNotional),currentDebtNotional:number($('currentDebtNotional')?.value,DEFAULTS.currentDebtNotional),currentDebtThreshold:number($('currentDebtThreshold')?.value,DEFAULTS.currentDebtThreshold),futureStart:number($('futureStart')?.value,DEFAULTS.futureStart),futureTaxRate:number($('futureTaxRate')?.value,DEFAULTS.futureTaxRate),futureExempt:number($('futureExempt')?.value,DEFAULTS.futureExempt),futureLossThreshold:number($('futureLossThreshold')?.value,DEFAULTS.futureLossThreshold),jan1Assumption:Boolean($('assumePlanStartAsJan1')?.checked),jan1SnapshotEntered:firstValues.some(value=>value!==undefined&&value!==''),
       deductionMode:$('deductionMode')?.value||'auto',hraRemainingMonths:Math.max(0,Math.round(number($('hraRemainingYears')?.value,30)*12+number($('hraRemainingMonths')?.value))),defaultHraMonths:mortgageTermMonths(),qualifyingShare:number($('qualifyingBox1DebtPct')?.value,100),hillenOverrideEnabled:Boolean($('hillenOverrideEnabled')?.checked),hillenOverridePct:number($('hillenOverridePct')?.value,71.867),unusedMortgageDestination:$('unusedMortgageDestination')?.value||'invest',mortgageReportHorizon:$('mortgageReportHorizon')?.value||'investment',transferTaxMode:$('purchaseTransferTaxMode')?.value||'main',appraisedValue:number($('purchaseAppraisedValue')?.value),housePrice:number($('housePrice')?.value),nhgMode:$('purchaseNhgMode')?.value||'none',
-      upfrontCashTreatment:$('scenarioUpfrontCashTreatmentNew')?.value||'invest',scenarioMortgageMethod:$('scenarioMortgageMethodNew')?.value||'selected',scenarioWoz:activeScenarioWoz(),scenarioReturnOverrideEnabled:Boolean($('scenarioReturnOverrideEnabled')?.checked),sensitivityLow:number($('sensitivityLowNew')?.value,2),sensitivityHigh:number($('sensitivityHighNew')?.value,10),sensitivityStep:number($('sensitivityStepNew')?.value,2),vveMonthly:number($('scenarioVveNew')?.value,250),maintenanceAnnual:number($('scenarioMaintenanceNew')?.value,1500),ownerTaxesAnnual:number($('scenarioOwnerTaxesNew')?.value),insuranceAnnual:number($('scenarioInsuranceNew')?.value),groundLeaseAnnual:number($('scenarioGroundLeaseNew')?.value)
+      upfrontCashTreatment:$('scenarioUpfrontCashTreatmentNew')?.value||'invest',scenarioMortgageMethod:$('scenarioMortgageMethodNew')?.value||'selected',scenarioWoz:activeScenarioWoz(),scenarioReturnOverrideEnabled:Boolean($('scenarioReturnOverrideEnabled')?.checked),sensitivityLow:number($('sensitivityLowNew')?.value,2),sensitivityHigh:number($('sensitivityHighNew')?.value,10),sensitivityStep:number($('sensitivityStepNew')?.value,2),vveMonthly:number($('scenarioVveNew')?.value,250),maintenanceAnnual:number($('scenarioMaintenanceNew')?.value,1500),ownerTaxesAnnual:number($('scenarioOwnerTaxesNew')?.value),insuranceAnnual:number($('scenarioInsuranceNew')?.value),groundLeaseAnnual:number($('scenarioGroundLeaseNew')?.value),ownerCostGrowthPct:number($('scenarioOwnerCostGrowthNew')?.value,2)
     };
   }
   function setBadge(details,count){
@@ -522,28 +581,39 @@ function bootBrowser(){
   function assumptionRows(){
     const rows=[],seen=new Set();
     document.querySelectorAll('input,select').forEach(el=>{if(el.type==='hidden'||el.disabled)return;const key=el.id||`${el.dataset?.i||''}:${el.dataset?.field||''}:${el.name||''}`;if(!key||seen.has(key))return;seen.add(key);const value=(el.type==='checkbox'||el.type==='radio')?(el.checked?'Yes':'No'):(el.selectedOptions?.[0]?.textContent||el.value);rows.push({section:el.closest('.panel')?.id?.replace('tab-','')||'Planner',label:labelForControl(el),value});});
-    [['Results','Investment portfolio','sPortfolio'],['Results','Savings / cash at end','householdSavingsEnd'],['Results','Mortgage remaining','sMortgage'],['Results','Scenario verdict','scenarioVerdictNew'],['Results','Next € break-even','nextEuroBreakEven']].forEach(([section,label,id])=>{const el=$(id);if(el)rows.push({section,label,value:String(el.textContent||'').trim().replace(/\s+/g,' ')});});
+    const canonicalRows=window.OutputIntegrity?.canonicalExportRows?.({plan:window.__DIMP_CANONICAL_RESULT,comparison:window.__DIMP_CANONICAL_COMPARISON,nextEuro:window.__DIMP_CANONICAL_NEXT_EURO})||[];
+    canonicalRows.forEach(([section,label,value])=>rows.push({section,label,value}));
     return rows;
   }
-  function renderAssumptionLog(){const log=$('assumptionLog');if(!log)return;const meta=window.MODEL_META||{};const lines=[`Model: ${meta.version||'R6.5'} · rule year ${meta.ruleYear||2026}`,`Generated: ${new Date().toISOString()}`,''];assumptionRows().forEach(row=>lines.push(`[${row.section}] ${row.label}: ${row.value}`));log.textContent=lines.join('\n');}
-  function exportAssumptionCsv(){const meta=window.MODEL_META||{};const rows=[{section:'Model',label:'Version',value:meta.version||'R6.5'},{section:'Model',label:'Rule year',value:meta.ruleYear||2026},{section:'Model',label:'Generated',value:new Date().toISOString()},...assumptionRows()];const blob=new Blob(['\uFEFF'+assumptionsToCsv(rows)],{type:'text/csv;charset=utf-8'});const url=URL.createObjectURL(blob),link=document.createElement('a');link.href=url;link.download=`dutch-investment-mortgage-plan-${meta.version||'R6.5'}-${new Date().toISOString().slice(0,10)}.csv`;document.body.appendChild(link);link.click();link.remove();URL.revokeObjectURL(url);}
-  function setModelMarker(){const meta=window.MODEL_META,marker=$('modelVersion');if(meta&&marker)marker.textContent=`Calculation build ${meta.version} · ${meta.ruleYear} rules · updated 2 Sep 2026`;}
+  function renderAssumptionLog(){const log=$('assumptionLog');if(!log)return;const meta=window.MODEL_META||{};const lines=[`Model: ${meta.version||'R6.6'} · rule year ${meta.ruleYear||2026}`,`Generated: ${new Date().toISOString()}`,''];assumptionRows().forEach(row=>lines.push(`[${row.section}] ${row.label}: ${row.value}`));log.textContent=lines.join('\n');}
+  function exportAssumptionCsv(){const meta=window.MODEL_META||{};const rows=[{section:'Model',label:'Version',value:meta.version||'R6.6'},{section:'Model',label:'Rule year',value:meta.ruleYear||2026},{section:'Model',label:'Generated',value:new Date().toISOString()},...assumptionRows()];const blob=new Blob(['\uFEFF'+assumptionsToCsv(rows)],{type:'text/csv;charset=utf-8'});const url=URL.createObjectURL(blob),link=document.createElement('a');link.href=url;link.download=`dutch-investment-mortgage-plan-${meta.version||'R6.6'}-${new Date().toISOString().slice(0,10)}.csv`;document.body.appendChild(link);link.click();link.remove();URL.revokeObjectURL(url);}
+  function setModelMarker(){const marker=$('modelVersion');if(marker&&window.OutputIntegrity?.releaseLabel)marker.textContent=window.OutputIntegrity.releaseLabel();}
 
   function refresh(){
-    compactSaveBar();syncBox3();syncJan1Gate();syncPurchaseLight();syncHillenControls();syncScenarioReturn();syncOwnerLight();syncScenarioVisibility();compactBudgetStatus();updateBadges();setModelMarker();
+    ensureHeaderTrust();compactSaveBar();syncBox3();syncJan1Gate();syncPurchaseLight();syncHillenControls();syncScenarioReturn();syncOwnerLight();syncScenarioVisibility();compactBudgetStatus();updateBadges();setModelMarker();
     document.querySelectorAll('#phaseCount option,#comparisonType option').forEach(option=>{option.hidden=false;option.classList.remove('density-option-hidden');});
     document.querySelectorAll('#phaseList .density-advanced-phase').forEach(card=>card.classList.remove('density-advanced-phase'));
   }
   function queueRefresh(){if(refreshQueued)return;refreshQueued=true;requestAnimationFrame(()=>{refreshQueued=false;refresh();});}
 
-  injectStyle();compactSaveBar();simplifyStaticCopy();ensurePlanTiming();ensureBox3Simple();ensureBox3Advanced();ensureJan1Gate();ensurePurchaseLight();ensureHillenAdvanced();ensureMortgageAdvanced();ensureScenarioReturn();ensureOwnerLight();ensureScenarioWozFields();ensureScenarioAdvanced();ensureScenarioHow();ensureAuditTools();decorateFinanceForHillen();decorateScenarioForWoz();
+  injectStyle();ensureHeaderTrust();compactSaveBar();simplifyStaticCopy();ensurePlanTiming();ensureBox3Simple();ensureBox3Advanced();ensureJan1Gate();ensurePurchaseLight();ensureHillenAdvanced();ensureMortgageAdvanced();ensureScenarioReturn();ensureOwnerLight();ensureScenarioWozFields();ensureScenarioAdvanced();ensureScenarioHow();ensureAuditTools();decorateFinanceForHillen();decorateScenarioForWoz();
+  document.addEventListener('keydown',event=>{
+    if(event.key!=='Escape')return;
+    const button=$('headerTrustInfo'),panel=$('headerTrustPanel');
+    if(!button||button.getAttribute('aria-expanded')!=='true')return;
+    event.preventDefault();
+    button.setAttribute('aria-expanded','false');
+    panel?.classList.remove('is-open');
+    button.focus();
+  });
+  document.addEventListener('dimp-save-status',syncSaveStatus);
   document.addEventListener('input',queueRefresh);
   document.addEventListener('change',queueRefresh);
   window.addEventListener('load',refresh,{once:true});
   refresh();
 }
 
-return{DEFAULT_VIEW,STANDARD_PHASE_LIMIT,ADVANCED_SCENARIOS,DEFAULTS,normalizeView,number,optionalNumber,monthlyOwnerCost,resolveScenarioReturn,escapeCsv,assumptionsToCsv,applyScenarioWoz,collectAdvancedState,bootBrowser};
+return{DEFAULT_VIEW,STANDARD_PHASE_LIMIT,ADVANCED_SCENARIOS,DEFAULTS,HEADER_TRUST_LINE,HEADER_TRUST_DETAILS,normalizeView,number,optionalNumber,monthlyOwnerCost,resolveScenarioReturn,escapeCsv,assumptionsToCsv,applyScenarioWoz,collectAdvancedState,bootBrowser};
 });
 
 if(typeof window!=='undefined'&&window.document)window.ViewDensity.bootBrowser();

@@ -98,25 +98,30 @@ test('local advanced and methodology folds replace the global density banner',()
 
 test('browser save is compact and clearly distinguishes restored data from examples',()=>{
   const source=read('view-density.js');
+  assert.equal(UI.HEADER_TRUST_LINE,'Planning estimates only, not financial, tax or mortgage advice. Your financial inputs are calculated and saved locally in your browser.');
+  assert.equal(UI.HEADER_TRUST_DETAILS,'Rules simplified, as of 27 Oct 2026. Your inputs are stored in this browser\'s localStorage and are not sent to us or to any third party. Our web host sees standard request logs (e.g. IP address). "Start fresh" deletes everything this planner saved in this browser.');
   assert.match(source,/Start fresh/);
   assert.match(source,/Previous plan restored/);
   assert.match(source,/Saved in this browser/);
   assert.match(source,/Example values/);
+  assert.match(source,/event\.key!=='Escape'/);
+  assert.doesNotMatch(source,/header\.textContent=/);
   assert.match(source,/r65-save-compact/);
+  assert.doesNotMatch(source,/planner-storage-bar\.r65-save-compact>span:first-child\{display:none/);
 });
 
 test('successful affordability is compact while warnings remain available',()=>{
   const source=read('view-density.js');
-  assert.match(source,/Within entered monthly budget/);
+  assert.match(source,/Starting housing cost is within your comfortable limit/);
   assert.match(source,/scenarioBudgetStatusNew/);
   assert.match(source,/classList\.contains\('warn'\)/);
   assert.match(source,/How this comparison works/);
 });
 
-test('combined owner cost remains exactly equal to its detailed split',()=>{
+test('combined owner cost remains available without recreating a hidden duplicate field',()=>{
   assert.equal(UI.monthlyOwnerCost({vveMonthly:250,maintenanceAnnual:1500,ownerTaxesAnnual:600,insuranceAnnual:240,groundLeaseAnnual:1200}),545);
   const source=read('view-density.js');
-  assert.match(source,/r65-owner-total input/);
+  assert.match(source,/scenarioOwnerTotalNew/);
   assert.match(source,/scenarioVveNew/);
   assert.match(source,/scenarioMaintenanceNew/);
 });
@@ -124,14 +129,14 @@ test('combined owner cost remains exactly equal to its detailed split',()=>{
 test('Hillen, scenario WOZ and audit export remain available without a second engine',()=>{
   const source=read('view-density.js');
   assert.match(source,/hillenOverrideEnabled/);
-  assert.match(source,/scenarioBuyWozNew/);
+  assert.match(read('scenario-engine.js'),/scenarioWozFresh/);
   assert.match(source,/exportAssumptionCsv/);
   assert.match(source,/__viewDensityHillenDecorated/);
   assert.match(source,/__viewDensityWozDecorated/);
 });
 
 test('scenario-specific WOZ is added only to the selected scenario branch',()=>{
-  const base={mode:'buy-rent',buyRent:{price:350000},downpayment:{price:300000},sellRent:{homeValue:400000}};
+  const base={mode:'buy-rent',buyRent:{purchaseCosts:0,mortgageType:'annuity',price:350000},downpayment:{purchaseCosts:0,mortgageType:'annuity',price:300000},sellRent:{homeValue:400000}};
   const buy=UI.applyScenarioWoz(base,{buyRentWoz:330000,downpaymentWoz:290000,sellRentWoz:390000});
   assert.equal(buy.buyRent.wozValue,330000);
   assert.equal(buy.downpayment.wozValue,undefined);

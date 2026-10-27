@@ -1,0 +1,18 @@
+
+> dutch-investment-mortgage-planner@1.0.0 verify:50
+> node scripts/verify-50-scenarios.js
+
+{
+  "release": "R6.5",
+  "scenarios": 50,
+  "reconciled": 50,
+  "byMode": {
+    "buy-rent": 10,
+    "downpayment": 10,
+    "mortgage-invest": 10,
+    "linear-annuity": 10,
+    "sell-rent": 10
+  },
+  "failures": 0
+}
+R6.5: 50/50 scenario calculations and displayed rounded values reconciled.
