@@ -14,4 +14,4 @@ Validation: 308/308 Node tests pass, including 13 new tests covering independent
 
 Browser checks: rate reset and payment recalculation, both mortgage types, 30-year mortgage/27-year investment independence, a full multi-phase investment conclusion, and reload/persistence were exercised in the managed browser. A complete new desktop/mobile browser gate has not been run.
 
-The prior frozen identity is preserved at audits/r6.6/frozen-release-identity.json. The active calculation identity is explicitly unfrozen. The statutory 2027 parameter and Box 3 legislative-timeline update remain outstanding; no policy verification date has been advanced. Keep PR 13 draft and unmerged.
+On this replay the active calculation identity stays the frozen R6.6 identity in release-identity.js (source a4377ce1050277b5ce13b97779c4af27ede94f65, build R6.6-stage10-a4377ce1). The same record is kept at audits/r6.6/frozen-release-identity.json. The statutory 2027 parameter and Box 3 legislative-timeline update remain outstanding; no policy verification date has been advanced.

@@ -98,7 +98,11 @@ test('mortgage reporting covers the remaining loan term independently of 27-year
   assert.equal(saved.controls['id:mortRateLaterPct'].value,'6');
 });
 
-test('the changed calculation build is explicitly unfrozen and keeps the audited baseline identity',()=>{
-  const id=require('../release-identity.js');assert.equal(id.calculationSourceSha,null);assert.equal(id.frozenAt,null);
-  assert.equal(id.baselineCalculationSourceSha,'a4377ce1050277b5ce13b97779c4af27ede94f65');assert.match(id.buildId,/preview/);
+test('the replayed rate-period build keeps the frozen R6.6 calculation identity',()=>{
+  const id=require('../release-identity.js');
+  assert.equal(id.release,'R6.6');
+  assert.equal(id.calculationSourceSha,'a4377ce1050277b5ce13b97779c4af27ede94f65');
+  assert.equal(id.buildId,'R6.6-stage10-a4377ce1');
+  assert.equal(id.frozenAt,'2026-09-15T07:58:07.939Z');
+  assert.equal(id.stage,'Stage 10 remediation');
 });

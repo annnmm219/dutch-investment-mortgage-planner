@@ -62,8 +62,10 @@ test('missing Next Euro household rates use labelled 2.00% and 4.00% defaults',(
   const source=fs.readFileSync(path.join(ROOT,'next-euro.js'),'utf8');
   assert.doesNotMatch(source,/box3SavingsReturn',\s*1\.28/);
   assert.doesNotMatch(source,/box3DebtInterest',\s*2\.7/);
-  assert.match(source,/currentSavingsNotional',\s*1\.28/);
-  assert.match(source,/currentDebtNotional',\s*2\.7/);
+  assert.doesNotMatch(source,/savingsReturnPct:clamp\(num\('box3SavingsReturn'/);
+  assert.doesNotMatch(source,/debtInterestPct:clamp\(num\('box3DebtInterest'/);
+  assert.match(source,/currentSavingsNotional',B3\.savingsDeemedRate\*100/);
+  assert.match(source,/currentDebtNotional',B3\.debtDeemedRate\*100/);
   assert.match(source,/toFixed\(2\)\}% \(\$\{label\}\)/);
   assert.match(source,/HOUSEHOLD_RATE_DEFAULTS\.savingsLabel/);
   assert.match(source,/HOUSEHOLD_RATE_DEFAULTS\.debtLabel/);
