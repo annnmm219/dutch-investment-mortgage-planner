@@ -96,7 +96,7 @@ function calculateScenarioPurchase2026(input={}){
 
 function simulateInvestmentFlowsStage91(args={},property={}){
   const flows=Array.isArray(args.flows)?args.flows:[];
-  const monthlyReturn=FC.effectiveAnnualPctToMonthly(args.annualReturnPct),monthlySavingsRate=FC.effectiveAnnualPctToMonthly(args.savingsReturnPct),monthlyDebtRate=FC.nominalAnnualPctToMonthly(args.debtInterestPct);
+  const monthlyReturn=FC.effectiveAnnualPctToMonthly(args.annualReturnPct),monthlySavingsRate=args.omitSavingsYield===true?null:FC.effectiveAnnualPctToMonthly(args.savingsReturnPct),monthlyDebtRate=args.omitDebtInterest===true?null:FC.nominalAnnualPctToMonthly(args.debtInterestPct);
   let portfolio=nonNegative(args.initialPortfolio),savings=nonNegative(args.box3Savings),debt=nonNegative(args.box3Debt);
   let totalTax=0,currentTax=0,futureTax=0,unsettledTaxEstimate=0,externalTax=0,taxPaidFromSavings=0,taxPaidFromPortfolio=0,lossCarry=0;
   let externalDebtRepayment=0,totalDebtRepaid=0,totalDebtInterest=0,cashShortfall=0;
@@ -109,8 +109,8 @@ function simulateInvestmentFlowsStage91(args={},property={}){
   const paySource=args.paySource||'portfolio',debtRepaymentSource=args.debtRepaymentSource==='savings'?'savings':'external',fallback=['invest','savings','consume'].includes(args.box3DebtFallbackDestination)?args.box3DebtFallbackDestination:'invest';
   for(let i=0;i<flows.length;i++){
     const growth=portfolio*monthlyReturn;portfolio+=growth;marketGain+=growth;portfolio+=nonNegative(flows[i]);
-    const saveInterest=savings*monthlySavingsRate;savings+=saveInterest;savingsIncome+=saveInterest;
-    const interestOnDebt=debt*monthlyDebtRate;debtInterest+=interestOnDebt;totalDebtInterest+=interestOnDebt;externalCashFlows[i]+=interestOnDebt;
+    if(monthlySavingsRate!=null){const saveInterest=savings*monthlySavingsRate;savings+=saveInterest;savingsIncome+=saveInterest;}
+    if(monthlyDebtRate!=null){const interestOnDebt=debt*monthlyDebtRate;debtInterest+=interestOnDebt;totalDebtInterest+=interestOnDebt;externalCashFlows[i]+=interestOnDebt;}
     const propGrowth=propertyValue*propertyGrowth;propertyValue+=propGrowth;propertyGain+=propGrowth;
     const propInterest=nonNegative(propertyDebtRows[i]?.interest);propertyDebtInterest+=propInterest;
     const savingFlow=finite(monthlySavingsFlows[i],0);if(savingFlow>=0)savings+=savingFlow;else{const req=-savingFlow,used=Math.min(savings,req),shortfall=req-used;savings-=used;cashShortfall+=shortfall;externalCashFlows[i]+=shortfall;}

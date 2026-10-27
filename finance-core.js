@@ -293,12 +293,12 @@ function provisionalBox3({regime,jan1Portfolio,jan1Savings,jan1Debt,marketGain,s
 function simulateInvestmentFlows({
   initialPortfolio=0,flows=[],annualReturnPct=0,startYear=2026,startMonth=1,box3Mode='none',taxPartners=1,paySource='portfolio',
   currentTaxRate=POLICY.box3.taxRate,currentAllowance=POLICY.box3.allowancePerPerson,currentNotional=POLICY.box3.investmentDeemedRate,currentSavingsNotional=POLICY.box3.savingsDeemedRate,currentDebtNotional=POLICY.box3.debtDeemedRate,currentDebtThreshold=POLICY.box3.debtThresholdPerPerson,
-  firstJan1Portfolio=0,box3Savings=0,box3Debt=0,firstJan1Savings=null,firstJan1Debt=null,savingsReturnPct=0,debtInterestPct=0,
+  firstJan1Portfolio=0,box3Savings=0,box3Debt=0,firstJan1Savings=null,firstJan1Debt=null,savingsReturnPct=0,debtInterestPct=0,omitSavingsYield=false,omitDebtInterest=false,
   savingsFlows=[],box3DebtMonthlyRepayment=0,debtRepayments=[],debtRepaymentSource='external',box3DebtFallbackDestination='invest',futureStart=POLICY.futureBox3Proposal.startYear,futureTaxRate=POLICY.futureBox3Proposal.taxRate,futureExempt=POLICY.futureBox3Proposal.exempt,futureLossThreshold=POLICY.futureBox3Proposal.lossThreshold
 }={}){
   const monthlyReturn=effectiveAnnualPctToMonthly(annualReturnPct),
-    monthlySavingsRate=effectiveAnnualPctToMonthly(savingsReturnPct),
-    monthlyDebtRate=nominalAnnualPctToMonthly(debtInterestPct);
+    monthlySavingsRate=omitSavingsYield===true?null:effectiveAnnualPctToMonthly(savingsReturnPct),
+    monthlyDebtRate=omitDebtInterest===true?null:nominalAnnualPctToMonthly(debtInterestPct);
   let portfolio=nonNegative(initialPortfolio),savings=nonNegative(box3Savings),debt=nonNegative(box3Debt);
   let totalTax=0,currentTax=0,futureTax=0,unsettledTaxEstimate=0,externalTax=0,taxPaidFromSavings=0,taxPaidFromPortfolio=0,lossCarry=0;
   let externalDebtRepayment=0,totalDebtRepaid=0,totalDebtInterest=0,cashShortfall=0;
@@ -311,8 +311,8 @@ function simulateInvestmentFlows({
 
   for(let i=0;i<monthlyFlows.length;i++){
     const growth=portfolio*monthlyReturn;portfolio+=growth;marketGain+=growth;portfolio+=nonNegative(monthlyFlows[i]);
-    const saveInterest=savings*monthlySavingsRate;savings+=saveInterest;savingsIncome+=saveInterest;
-    const interestOnDebt=debt*monthlyDebtRate;debtInterest+=interestOnDebt;totalDebtInterest+=interestOnDebt;externalCashFlows[i]+=interestOnDebt;
+    if(monthlySavingsRate!=null){const saveInterest=savings*monthlySavingsRate;savings+=saveInterest;savingsIncome+=saveInterest;}
+    if(monthlyDebtRate!=null){const interestOnDebt=debt*monthlyDebtRate;debtInterest+=interestOnDebt;totalDebtInterest+=interestOnDebt;externalCashFlows[i]+=interestOnDebt;}
 
     const savingFlow=number(monthlySavingsFlows[i]);
     if(savingFlow>=0)savings+=savingFlow;
@@ -408,7 +408,7 @@ function simulatePlan(config={}){
   const annuityPayment=monthlyMortRate===0?initialMort/mortTermMonths:initialMort*monthlyMortRate/(1-Math.pow(1+monthlyMortRate,-mortTermMonths));
   const paymentAt=mortgagePaymentPlan({balance:initialMort,annualRatePct:mortRatePct,termMonths:mortTermMonths,type:mortType,ratePeriods:config.mortRatePeriods});
   const totalMonths=phases.reduce((sum,p)=>sum+Math.max(0,Math.round((Number(p.years)||0)*12)),0);
-  const monthlySavingsRate=effectiveAnnualPctToMonthly(config.savingsReturnPct),monthlyDebtRate=nominalAnnualPctToMonthly(config.debtInterestPct);
+  const monthlySavingsRate=config.omitSavingsYield===true?null:effectiveAnnualPctToMonthly(config.savingsReturnPct),monthlyDebtRate=config.omitDebtInterest===true?null:nominalAnnualPctToMonthly(config.debtInterestPct);
   const hraRemainingMonths=config.hraRemainingMonths==null?Math.min(mortTermMonths,POLICY.ownHome.maximumQualifyingMortgageMonths):Math.max(0,Math.round(Number(config.hraRemainingMonths)||0));
   const qualifyingInterestFraction=clamp(Number(config.qualifyingInterestFraction??1)||0,0,1);
   const homeOwnershipMonths=config.homeOwnershipMonths==null?totalMonths:Math.max(0,Math.round(Number(config.homeOwnershipMonths)||0));
@@ -434,8 +434,8 @@ function simulatePlan(config={}){
       const monthIndex=global;global++;const b=bucket(year);
       if(b.startPortfolio===null){b.startPortfolio=portfolio;b.startSavings=savings;b.startDebt=box3Debt;}
       const growth=portfolio*monthlyReturn;portfolio+=growth;b.marketGain+=growth;
-      const saveInterest=savings*monthlySavingsRate;savings+=saveInterest;b.savingsIncome+=saveInterest;
-      const debtInterest=box3Debt*monthlyDebtRate;b.debtInterest+=debtInterest;totalDebtInterest+=debtInterest;externalCashFlows[monthIndex]+=debtInterest;
+      if(monthlySavingsRate!=null){const saveInterest=savings*monthlySavingsRate;savings+=saveInterest;b.savingsIncome+=saveInterest;}
+      if(monthlyDebtRate!=null){const debtInterest=box3Debt*monthlyDebtRate;b.debtInterest+=debtInterest;totalDebtInterest+=debtInterest;externalCashFlows[monthIndex]+=debtInterest;}
 
       const debtRepayRequested=nonNegative(config.box3DebtMonthlyRepayment);
       plannedBox3DebtRepayment+=debtRepayRequested;
