@@ -77,6 +77,9 @@ Verified on 27 October 2026:
 - Syntax checks and `git diff --check` pass.
 - Desktop Chromium interaction checks confirm: the new selector and separate input panel; correct default cash results; a negative sale settlement; zero-return investment parity; unavailable investment results when January 1 inputs are missing; successful investment calculation after entering those snapshots; invalid-input clearing; rate resets; original-fact safeguards when importing an existing mortgage; saved-state restoration; and switching to a valid existing buy-versus-rent comparison and back.
 - The scenario CSV and combined assumption CSV were downloaded and parsed. Both contain the displayed scenario's source inputs, exact unrounded thresholds, dated period, investment results and current build identity.
+- `scripts/sale-break-even-browser-contract.mjs` is registered in browser CI for desktop (1440 px) and mobile (390 px). It checks displayed numerical results, invalid-input clearing, zero-return parity, explicit midyear snapshots, persistence, scenario switching, horizontal overflow and browser errors.
+
+The first browser CI attempt stopped at the older smoke test's hardcoded R6.6 footer assertion. That assertion now compares the complete visible label, runtime model metadata and release identity with the checked-in release metadata. Existing behavioral checks remain enabled.
 
 The default January 2026 illustrative case shows a rent-parity price of EUR 331,030, a cash-recovery price of EUR 422,401, and EUR 70,407 cash released with EUR 18,686 advantage over renting at a EUR 350,000 sale after 60 months. These displayed values are rounded; threshold displays round upward to whole euros. The investment case starting March 2026 at a 5% return with January 1 portfolio/savings/debt of EUR 0 / 60,000 / 0 shows an investment-parity price of EUR 345,642 and EUR 4,293 advantage at the same sale price.
 
