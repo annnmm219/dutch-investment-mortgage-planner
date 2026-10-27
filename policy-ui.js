@@ -27,7 +27,11 @@ function applyPolicyDefaults(documentRef){
     ['currentSavingsNotional',VALUES.box3.savingsDeemedRate*100],
     ['currentDebtNotional',VALUES.box3.debtDeemedRate*100],
     ['currentDebtThreshold',VALUES.box3.debtThresholdPerPerson],
-    ['manualDeduction',VALUES.box1.ownHomeDeductionMaxRate*100]
+    ['manualDeduction',VALUES.box1.ownHomeDeductionMaxRate*100],
+    ['futureStart',VALUES.futureBox3Proposal.startYear],
+    ['futureTaxRate',VALUES.futureBox3Proposal.taxRate*100],
+    ['futureExempt',VALUES.futureBox3Proposal.exempt],
+    ['futureLossThreshold',VALUES.futureBox3Proposal.lossThreshold]
   ];
   const applied=[],missing=[];
   definitions.forEach(([id,value])=>{
@@ -41,6 +45,16 @@ function applyPolicyDefaults(documentRef){
 function bootBrowser(){
   if(typeof document==='undefined')return;
   applyPolicyDefaults(document);
+  const alt=document.getElementById('futureExemptAltPreset');
+  const field=document.getElementById('futureExempt');
+  if(alt&&field&&alt.dataset.bound!=='1'){
+    alt.dataset.bound='1';
+    alt.addEventListener('click',()=>{
+      field.value=String(VALUES.futureBox3Proposal.alternativeExempt);
+      field.dispatchEvent(new Event('input',{bubbles:true}));
+      field.dispatchEvent(new Event('change',{bubbles:true}));
+    });
+  }
 }
 
 return{applyPolicyDefaults,bootBrowser};

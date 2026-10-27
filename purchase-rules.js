@@ -10,8 +10,21 @@ const POLICY=Policy2026.VALUES;
 
 const nonNegative=v=>Math.max(0,Number(v)||0);
 
+function starterAcquisitionYear(acquisitionYear){
+  if(acquisitionYear==null||acquisitionYear==='')return POLICY.taxYear;
+  const year=Math.round(Number(acquisitionYear));
+  return Number.isFinite(year)?year:POLICY.taxYear;
+}
+
+function starterLimitForAcquisitionYear(acquisitionYear){
+  return starterAcquisitionYear(acquisitionYear)>=2027
+    ?POLICY.transferTax.starterExemptionValueLimitFrom2027
+    :POLICY.transferTax.starterExemptionValueLimit;
+}
+
 const RULES_2026=Object.freeze({
   starterValueLimit:POLICY.transferTax.starterExemptionValueLimit,
+  starterValueLimitFrom2027:POLICY.transferTax.starterExemptionValueLimitFrom2027,
   mainResidenceTransferTaxRate:POLICY.transferTax.mainResidenceRate,
   otherResidenceTransferTaxRate:POLICY.transferTax.otherResidenceRate,
   otherRealEstateTransferTaxRate:POLICY.transferTax.otherRealEstateRate,
@@ -21,19 +34,23 @@ const RULES_2026=Object.freeze({
   standardLtvLimit:POLICY.ltv.standardLimit
 });
 
-function transferTax2026({propertyValue=0,mode='main',manualAmount=0}={}){
+function transferTax2026({propertyValue=0,mode='main',manualAmount=0,acquisitionYear}={}){
   const value=nonNegative(propertyValue);
   if(mode==='manual')return{amount:nonNegative(manualAmount),rate:null,mode,starterEligible:null,propertyValue:value};
   if(mode==='starter'){
-    const eligible=value>0&&value<=RULES_2026.starterValueLimit;
+    const year=starterAcquisitionYear(acquisitionYear);
+    const limit=starterLimitForAcquisitionYear(year);
+    const eligible=value>0&&value<=limit;
     const rate=eligible?0:RULES_2026.mainResidenceTransferTaxRate;
     return{
       amount:value*rate,
       rate,
       mode,
       propertyValue:value,
+      acquisitionYear:year,
+      starterLimit:limit,
       starterEligible:eligible,
-      warning:eligible?'':`Starter exemption cannot apply above €${RULES_2026.starterValueLimit.toLocaleString('en-US')} in 2026; ${(RULES_2026.mainResidenceTransferTaxRate*100).toLocaleString('nl-NL')}% main-residence transfer tax is used instead.`
+      warning:eligible?'':`Starter exemption cannot apply above €${limit.toLocaleString('en-US')} in ${year}; ${(RULES_2026.mainResidenceTransferTaxRate*100).toLocaleString('nl-NL')}% main-residence transfer tax is used instead.`
     };
   }
   if(mode==='other-home')return{amount:value*RULES_2026.otherResidenceTransferTaxRate,rate:RULES_2026.otherResidenceTransferTaxRate,mode,propertyValue:value,starterEligible:null};
@@ -95,7 +112,8 @@ function calculatePurchase2026({
   transferTaxMode='main',
   manualTransferTax=0,
   appraisedValue=0,
-  nhgMode='none'
+  nhgMode='none',
+  acquisitionYear
 }={}){
   const price=nonNegative(housePrice);
   const savings=nonNegative(ownSavings);
@@ -104,7 +122,7 @@ function calculatePurchase2026({
   // Dutch transfer tax is based on economic value, which is at least the consideration paid.
   // In this planning model the entered appraisal is our market-value proxy, so the automatic tax base is the higher of price and appraisal.
   const transferTaxBase=Math.max(price,appraisal);
-  const transfer=transferTax2026({propertyValue:transferTaxBase,mode:transferTaxMode,manualAmount:manualTransferTax});
+  const transfer=transferTax2026({propertyValue:transferTaxBase,mode:transferTaxMode,manualAmount:manualTransferTax,acquisitionYear});
 
   let nhgFee=0;
   let loan=0;
@@ -146,21 +164,25 @@ function calculatePurchase2026({
 }
 
 
-function starterEligibility2026({buyerAge,mainResidence=true,exemptionUnused=true,propertyValue=0}={}){
+function starterEligibility2026({buyerAge,mainResidence=true,exemptionUnused=true,propertyValue=0,acquisitionYear}={}){
   const age=Number(buyerAge);
   const value=nonNegative(propertyValue);
+  const year=starterAcquisitionYear(acquisitionYear);
+  const limit=starterLimitForAcquisitionYear(year);
   const ageEligible=Number.isFinite(age)&&age>=18&&age<=34;
-  const valueEligible=value>0&&value<=RULES_2026.starterValueLimit;
+  const valueEligible=value>0&&value<=limit;
   const residenceEligible=Boolean(mainResidence);
   const unusedEligible=Boolean(exemptionUnused);
   const reasons=[];
   if(!ageEligible)reasons.push('buyer age must be 18–34 at acquisition');
   if(!residenceEligible)reasons.push('the property must be used as the buyer’s main residence');
   if(!unusedEligible)reasons.push('the starter exemption must not have been used before');
-  if(!valueEligible)reasons.push(`the full property value must not exceed €${RULES_2026.starterValueLimit.toLocaleString('en-US')} in 2026`);
+  if(!valueEligible)reasons.push(`the full property value must not exceed €${limit.toLocaleString('en-US')} in ${year}`);
   return{
     eligible:ageEligible&&valueEligible&&residenceEligible&&unusedEligible,
     buyerAge:Number.isFinite(age)?age:null,
+    acquisitionYear:year,
+    starterLimit:limit,
     ageEligible,
     valueEligible,
     residenceEligible,
@@ -181,7 +203,8 @@ function calculateScenarioPurchase2026({
   nhgMode='none',
   buyerAge=35,
   starterMainResidence=true,
-  starterExemptionUnused=true
+  starterExemptionUnused=true,
+  acquisitionYear
 }={}){
   const price=nonNegative(housePrice);
   const cash=nonNegative(availableSavings);
@@ -197,10 +220,10 @@ function calculateScenarioPurchase2026({
   let effectiveTransferTaxMode=requestedTransferTaxMode;
   let starterEligibility=null;
   if(requestedTransferTaxMode==='starter'){
-    starterEligibility=starterEligibility2026({buyerAge,mainResidence:starterMainResidence,exemptionUnused:starterExemptionUnused,propertyValue:transferTaxBase});
+    starterEligibility=starterEligibility2026({buyerAge,mainResidence:starterMainResidence,exemptionUnused:starterExemptionUnused,propertyValue:transferTaxBase,acquisitionYear});
     if(!starterEligibility.eligible)effectiveTransferTaxMode=starterEligibility.residenceEligible?'main':'other-home';
   }
-  const transferTax=transferTax2026({propertyValue:transferTaxBase,mode:effectiveTransferTaxMode,manualAmount:manualTransferTax});
+  const transferTax=transferTax2026({propertyValue:transferTaxBase,mode:effectiveTransferTaxMode,manualAmount:manualTransferTax,acquisitionYear});
   transferTax.requestedMode=requestedTransferTaxMode;
   transferTax.effectiveMode=effectiveTransferTaxMode;
   transferTax.starterEligibility=starterEligibility;
@@ -255,5 +278,5 @@ function calculateScenarioPurchase2026({
   };
 }
 
-return{RULES_2026,transferTax2026,nhg2026,ltv2026,calculatePurchase2026,starterEligibility2026,calculateScenarioPurchase2026};
+return{RULES_2026,starterAcquisitionYear,starterLimitForAcquisitionYear,transferTax2026,nhg2026,ltv2026,calculatePurchase2026,starterEligibility2026,calculateScenarioPurchase2026};
 });

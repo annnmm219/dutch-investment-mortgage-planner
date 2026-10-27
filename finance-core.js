@@ -21,12 +21,15 @@ function nominalAnnualPctToMonthly(value){
   return ModelContract.nominalAnnualToMonthly((Number(value)||0)/100);
 }
 
-function deductionRate2026({mode='auto',manualRatePct=POLICY.box1.ownHomeDeductionMaxRate*100,grossIncome=0}={}){
+function appliedOwnHomeDeductionRate({mode='auto',manualRatePct=POLICY.box1.ownHomeDeductionMaxRate*100,grossIncome=0}={}){
   if(mode==='manual')return clamp(Number(manualRatePct)||0,0,60)/100;
   const income=Number(grossIncome)||0;
-  return income<=POLICY.box1.preAowBrackets[0].upper
-    ?POLICY.box1.preAowBrackets[0].rate
-    :POLICY.box1.ownHomeDeductionMaxRate;
+  const brackets=POLICY.box1.preAowBrackets;
+  let band=brackets[brackets.length-1];
+  for(const candidate of brackets){
+    if(candidate.upper==null||income<=candidate.upper){band=candidate;break;}
+  }
+  return Math.min(band.rate,POLICY.box1.ownHomeDeductionMaxRate);
 }
 
 function ewf2026(woz){
@@ -126,17 +129,17 @@ function allocateAnnualMortgageTax(rows=[],tax={}){
   return{rows:resultRows,annualBuckets,totalTaxBenefit};
 }
 
-function regimeForYear({mode='none',year,futureStart=2028}={}){
+function regimeForYear({mode='none',year,futureStart=POLICY.futureBox3Proposal.startYear}={}){
   if(mode==='none')return'none';
   if(mode==='current')return'current';
   if(mode==='future')return'future';
-  return Number(year)>=Number(futureStart||2028)?'future':'current';
+  return Number(year)>=Number(futureStart||POLICY.futureBox3Proposal.startYear)?'future':'current';
 }
 
 function box3TaxForYear({
   regime='none',jan1Portfolio=0,jan1Savings=0,jan1Debt=0,marketGain=0,savingsIncome=0,debtInterest=0,lossCarry=0,allowActualRebuttal=true,
   taxPartners=1,currentTaxRate=POLICY.box3.taxRate,currentAllowance=POLICY.box3.allowancePerPerson,currentNotional=POLICY.box3.investmentDeemedRate,currentSavingsNotional=POLICY.box3.savingsDeemedRate,currentDebtNotional=POLICY.box3.debtDeemedRate,currentDebtThreshold=POLICY.box3.debtThresholdPerPerson,
-  futureTaxRate=.36,futureExempt=1800,futureLossThreshold=500
+  futureTaxRate=POLICY.futureBox3Proposal.taxRate,futureExempt=POLICY.futureBox3Proposal.exempt,futureLossThreshold=POLICY.futureBox3Proposal.lossThreshold
 }={}){
   let tax=0;
   let nextLossCarry=nonNegative(lossCarry);
@@ -253,7 +256,7 @@ function simulateInvestmentFlows({
   initialPortfolio=0,flows=[],annualReturnPct=0,startYear=2026,startMonth=1,box3Mode='none',taxPartners=1,paySource='portfolio',
   currentTaxRate=POLICY.box3.taxRate,currentAllowance=POLICY.box3.allowancePerPerson,currentNotional=POLICY.box3.investmentDeemedRate,currentSavingsNotional=POLICY.box3.savingsDeemedRate,currentDebtNotional=POLICY.box3.debtDeemedRate,currentDebtThreshold=POLICY.box3.debtThresholdPerPerson,
   firstJan1Portfolio=0,box3Savings=0,box3Debt=0,firstJan1Savings=null,firstJan1Debt=null,savingsReturnPct=0,debtInterestPct=0,
-  savingsFlows=[],box3DebtMonthlyRepayment=0,debtRepayments=[],debtRepaymentSource='external',box3DebtFallbackDestination='invest',futureStart=2028,futureTaxRate=.36,futureExempt=1800,futureLossThreshold=500
+  savingsFlows=[],box3DebtMonthlyRepayment=0,debtRepayments=[],debtRepaymentSource='external',box3DebtFallbackDestination='invest',futureStart=POLICY.futureBox3Proposal.startYear,futureTaxRate=POLICY.futureBox3Proposal.taxRate,futureExempt=POLICY.futureBox3Proposal.exempt,futureLossThreshold=POLICY.futureBox3Proposal.lossThreshold
 }={}){
   const monthlyReturn=effectiveAnnualPctToMonthly(annualReturnPct),
     monthlySavingsRate=effectiveAnnualPctToMonthly(savingsReturnPct),
@@ -499,5 +502,5 @@ function simulatePlan(config={}){
     plannedBox3DebtRepayment,unusedBox3DebtRepayment,box3DebtFallbackInvested,box3DebtFallbackSaved,box3DebtFallbackConsumed,box3DebtRepaymentShortfall,externalBox3DebtFallback,box3DebtCashConservationDifference,box3DebtFallbackDestination};
 }
 
-return{clamp,effectiveAnnualPctToMonthly,nominalAnnualPctToMonthly,deductionRate2026,ewf2026,hillenReliefForYear,mortgageTaxBenefit,allocateAnnualMortgageTax,regimeForYear,box3TaxForYear,payTaxFromSource,terminalValueOfDatedCashFlows,mortgageSchedule,simulateInvestmentFlows,equalizeCashFlows,simulatePlan};
+return{clamp,effectiveAnnualPctToMonthly,nominalAnnualPctToMonthly,appliedOwnHomeDeductionRate,ewf2026,hillenReliefForYear,mortgageTaxBenefit,allocateAnnualMortgageTax,regimeForYear,box3TaxForYear,payTaxFromSource,terminalValueOfDatedCashFlows,mortgageSchedule,simulateInvestmentFlows,equalizeCashFlows,simulatePlan};
 });

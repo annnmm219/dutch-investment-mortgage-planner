@@ -307,7 +307,11 @@ function setModelMeta(){
   document.documentElement.dataset.modelVersion=MODEL_META.version;
   document.documentElement.dataset.stateSchema=String(MODEL_META.stateSchema);
   const marker=document.getElementById('modelVersion');
-  if(marker)marker.textContent=`Calculation build ${MODEL_META.version} · ${MODEL_META.ruleYear} rules · updated 3 Sep 2026`;
+  if(marker){
+    const months=['','Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
+    const short=iso=>{const date=String(iso||'').split('-');return date.length===3?`${Number(date[2])} ${months[Number(date[1])]||date[1]} ${date[0]}`:String(iso||'');};
+    marker.textContent=window.OutputIntegrity?.releaseLabel?.()||`Calculation build ${MODEL_META.version} · ${MODEL_META.ruleYear} rules · released ${short(MODEL_META.updated)} · Rules verified ${short(Policy2026.LAST_VERIFIED_AT)}`;
+  }
   try{localStorage.setItem('dimp-model-meta',JSON.stringify(MODEL_META));}catch(_error){}
 }
 

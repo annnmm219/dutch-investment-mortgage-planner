@@ -64,10 +64,10 @@ function calculateScenarioPurchase2026(input={}){
   const requested=['main','starter','other-home','other-real-estate','manual'].includes(input.transferTaxMode)?input.transferTaxMode:'main';
   let effective=requested,starterEligibility=null;
   if(requested==='starter'){
-    starterEligibility=PR.starterEligibility2026({buyerAge:input.buyerAge,mainResidence:input.starterMainResidence!==false,exemptionUnused:input.starterExemptionUnused!==false,propertyValue:transferTaxBase});
+    starterEligibility=PR.starterEligibility2026({buyerAge:input.buyerAge,mainResidence:input.starterMainResidence!==false,exemptionUnused:input.starterExemptionUnused!==false,propertyValue:transferTaxBase,acquisitionYear:input.acquisitionYear});
     if(!starterEligibility.eligible)effective=starterEligibility.residenceEligible?'main':'other-home';
   }
-  const transferTax=PR.transferTax2026({propertyValue:transferTaxBase,mode:effective,manualAmount:input.manualTransferTax});
+  const transferTax=PR.transferTax2026({propertyValue:transferTaxBase,mode:effective,manualAmount:input.manualTransferTax,acquisitionYear:input.acquisitionYear});
   transferTax.requestedMode=requested;transferTax.effectiveMode=effective;transferTax.starterEligibility=starterEligibility;
   if(requested==='starter'&&!starterEligibility?.eligible)transferTax.warning=`Starter exemption not applied: ${starterEligibility.reasons.join('; ')}. ${effective==='other-home'?'The 8% residential non-main-residence rate is used.':'The 2% main-residence rate is used.'}`;
 
@@ -200,7 +200,7 @@ function installCorePatches(){
     if(!isPurchase(config.mode)||!isNonMain(config.purchaseRules))return null;
     if(config.mode==='buy-rent'&&callIndex!==0)return null;
     const d=config.mode==='buy-rent'?config.buyRent:config.downpayment,down=config.mode==='buy-rent'?d?.downPayment:(callIndex===0?d?.downA:d?.downB);
-    const funding=calculateScenarioPurchase2026({housePrice:d?.price,downPayment:down,availableSavings:config.box3?.savings,baseCosts:d?.purchaseCosts,transferTaxMode:config.purchaseRules?.transferTaxMode,manualTransferTax:config.purchaseRules?.manualTransferTax,appraisedValue:config.purchaseRules?.appraisedValue,nhgMode:config.purchaseRules?.nhgMode,buyerAge:config.purchaseRules?.buyerAge,starterMainResidence:config.purchaseRules?.starterMainResidence,starterExemptionUnused:config.purchaseRules?.starterExemptionUnused,qualifyingEnergyExpenditure:config.purchaseRules?.qualifyingEnergyExpenditure});
+    const funding=calculateScenarioPurchase2026({housePrice:d?.price,downPayment:down,availableSavings:config.box3?.savings,baseCosts:d?.purchaseCosts,transferTaxMode:config.purchaseRules?.transferTaxMode,manualTransferTax:config.purchaseRules?.manualTransferTax,appraisedValue:config.purchaseRules?.appraisedValue,nhgMode:config.purchaseRules?.nhgMode,buyerAge:config.purchaseRules?.buyerAge,starterMainResidence:config.purchaseRules?.starterMainResidence,starterExemptionUnused:config.purchaseRules?.starterExemptionUnused,qualifyingEnergyExpenditure:config.purchaseRules?.qualifyingEnergyExpenditure,acquisitionYear:config.startYear});
     if(!funding.valid)return null;
     const debt=originalMortgage({balance:funding.mortgageProceeds,annualRatePct:d?.mortgageRatePct,termYears:d?.mortgageYears,type:d?.mortgageType,months:flowsLength,startYear:config.startYear,startMonth:config.startMonth,tax:{enabled:false,hraRemainingMonths:0,qualifyingInterestFraction:0,wozValue:0}});
     return{startValue:nonNegative(d?.wozValue||d?.price),growthPct:finite(config.homeGrowthPct,0),startDebt:funding.mortgageProceeds,debtRows:debt.rows};

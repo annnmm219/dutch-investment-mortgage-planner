@@ -19,7 +19,7 @@ test('Stage 4 policy registry contains the dated 2026 own-home rate adjustment',
   assert.equal(item.taxYear,2026);
   assert.equal(item.status,'final');
   assert.equal(item.authority,'Belastingdienst');
-  assert.equal(item.lastVerifiedAt,'2026-09-03');
+  assert.equal(item.lastVerifiedAt,'2026-10-27');
   assert.match(item.sourceUrl,/tariefsaanpassing-eigen-woning/);
 });
 

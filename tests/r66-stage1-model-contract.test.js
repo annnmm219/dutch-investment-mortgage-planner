@@ -75,7 +75,7 @@ test('every dated policy item has tax year, status, official source and verifica
   assert.deepEqual(validation,{valid:true,errors:[]});
   assert.equal(Policy.TAX_YEAR,2026);
   assert.equal(Policy.EFFECTIVE_FROM,'2026-01-01');
-  assert.equal(Policy.LAST_VERIFIED_AT,'2026-09-03');
+  assert.equal(Policy.LAST_VERIFIED_AT,'2026-10-27');
   Policy.ITEMS.forEach(item=>{
     assert.equal(item.taxYear,2026);
     assert.match(item.sourceUrl,/^https:\/\//);
@@ -107,8 +107,9 @@ test('purchase rules consume the same central 2026 values',()=>{
 
 test('FinanceCore 2026 boundaries remain aligned with central policy values',()=>{
   const V=Policy.VALUES;
-  assert.equal(FC.deductionRate2026({grossIncome:V.box1.preAowBrackets[0].upper}),V.box1.preAowBrackets[0].rate);
-  assert.equal(FC.deductionRate2026({grossIncome:V.box1.preAowBrackets[0].upper+1}),V.box1.ownHomeDeductionMaxRate);
+  assert.equal(FC.appliedOwnHomeDeductionRate({grossIncome:V.box1.preAowBrackets[0].upper}),V.box1.preAowBrackets[0].rate);
+  assert.equal(FC.appliedOwnHomeDeductionRate({grossIncome:V.box1.preAowBrackets[0].upper+1}),V.box1.ownHomeDeductionMaxRate);
+  assert.equal(FC.appliedOwnHomeDeductionRate({grossIncome:V.box1.preAowBrackets[1].upper+1}),V.box1.ownHomeDeductionMaxRate);
   assert.equal(FC.ewf2026(400000),1400);
   assert.equal(FC.ewf2026(V.eigenwoningforfait.highValueThreshold),V.eigenwoningforfait.highValueBase);
   assert.equal(FC.ewf2026(V.eigenwoningforfait.highValueThreshold+100000),V.eigenwoningforfait.highValueBase+100000*V.eigenwoningforfait.highValueExcessRate);
@@ -118,7 +119,7 @@ test('FinanceCore 2026 boundaries remain aligned with central policy values',()=
 
 test('policy UI applies central defaults without creating a second calculation engine',()=>{
   const nodes={};
-  const ids=['currentTaxRate','currentAllowance','currentNotional','currentSavingsNotional','currentDebtNotional','currentDebtThreshold','manualDeduction'];
+  const ids=['currentTaxRate','currentAllowance','currentNotional','currentSavingsNotional','currentDebtNotional','currentDebtThreshold','manualDeduction','futureStart','futureTaxRate','futureExempt','futureLossThreshold'];
   ids.forEach(id=>{nodes[id]={id,value:'stale',dataset:{}};});
   const attributes={};
   const fakeDocument={
@@ -134,8 +135,12 @@ test('policy UI applies central defaults without creating a second calculation e
   assert.equal(nodes.currentDebtNotional.value,'2.7');
   assert.equal(nodes.currentDebtThreshold.value,'3800');
   assert.equal(nodes.manualDeduction.value,'37.56');
+  assert.equal(nodes.futureStart.value,'2028');
+  assert.equal(nodes.futureTaxRate.value,'36');
+  assert.equal(nodes.futureExempt.value,'1800');
+  assert.equal(nodes.futureLossThreshold.value,'500');
   assert.equal(attributes['data-policy-year'],'2026');
-  assert.equal(attributes['data-policy-verified-at'],'2026-09-03');
+  assert.equal(attributes['data-policy-verified-at'],'2026-10-27');
 });
 
 test('Stage 1 documentation and policy modules are present on the staged branch',()=>{

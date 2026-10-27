@@ -13,7 +13,8 @@ function deepFreeze(value){
 
 const TAX_YEAR=2026;
 const EFFECTIVE_FROM='2026-01-01';
-const LAST_VERIFIED_AT='2026-09-03';
+const LAST_VERIFIED_AT='2026-10-27';
+const MAX_POLICY_VERIFIED_AGE_DAYS=365;
 
 const SOURCES=deepFreeze({
   box1Rates:{
@@ -76,6 +77,12 @@ const SOURCES=deepFreeze({
     authority:'Belastingdienst',
     lastVerifiedAt:LAST_VERIFIED_AT
   },
+  starterExemption2027:{
+    sourceTitle:'Stcrt. 2025, 40375',
+    sourceUrl:'https://zoek.officielebekendmakingen.nl/stcrt-2025-40375.html',
+    authority:'Staatscourant',
+    lastVerifiedAt:LAST_VERIFIED_AT
+  },
   nhg:{
     sourceTitle:'NHG-grens in 2026 vastgesteld op € 470.000',
     sourceUrl:'https://www.nhg.nl/nhg-actueel/nhg-grens-in-2026-vastgesteld-op-470000/',
@@ -131,11 +138,21 @@ const VALUES=deepFreeze({
     debtDeemedRate:.027,
     debtThresholdPerPerson:3800
   },
+  futureBox3Proposal:{
+    taxRate:.36,
+    exempt:1800,
+    alternativeExempt:1000,
+    lossThreshold:500,
+    startYear:2028,
+    status:'proposed',
+    sourceKey:'futureBox3ProposalStatus'
+  },
   transferTax:{
     mainResidenceRate:.02,
     otherResidenceRate:.08,
     otherRealEstateRate:.104,
     starterExemptionValueLimit:555000,
+    starterExemptionValueLimitFrom2027:615000,
     starterMinimumAge:18,
     starterMaximumAge:34
   },
@@ -180,8 +197,8 @@ const ITEMS=deepFreeze([
   item('box3.taxRate',VALUES.box3.taxRate,'final','box3'),
   item('box3.allowancePerPerson',VALUES.box3.allowancePerPerson,'final','box3'),
   item('box3.investmentDeemedRate',VALUES.box3.investmentDeemedRate,'final','box3'),
-  item('box3.savingsDeemedRate',VALUES.box3.savingsDeemedRate,'provisional','box3','Belastingdienst states this percentage will be finalised in early 2027 for the definitive 2026 assessment.'),
-  item('box3.debtDeemedRate',VALUES.box3.debtDeemedRate,'provisional','box3','Belastingdienst states this percentage will be finalised in early 2027 for the definitive 2026 assessment.'),
+  item('box3.savingsDeemedRate',VALUES.box3.savingsDeemedRate,'provisional','box3','Belastingdienst states this percentage will be finalised in early 2027 for the definitive 2026 assessment. Recheck in Q1 2027.'),
+  item('box3.debtDeemedRate',VALUES.box3.debtDeemedRate,'provisional','box3','Belastingdienst states this percentage will be finalised in early 2027 for the definitive 2026 assessment. Recheck in Q1 2027.'),
   item('box3.debtThresholdPerPerson',VALUES.box3.debtThresholdPerPerson,'final','box3'),
   item('transferTax.mainResidenceRate',VALUES.transferTax.mainResidenceRate,'final','transferTax'),
   item('transferTax.otherResidenceRate',VALUES.transferTax.otherResidenceRate,'final','transferTax'),
@@ -231,6 +248,7 @@ return{
   TAX_YEAR,
   EFFECTIVE_FROM,
   LAST_VERIFIED_AT,
+  MAX_POLICY_VERIFIED_AGE_DAYS,
   SOURCES,
   VALUES,
   ITEMS,

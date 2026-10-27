@@ -2,6 +2,7 @@
   "name": "dutch-investment-mortgage-planner",
   "version": "1.0.0",
   "private": true,
+  "license": "UNLICENSED",
   "description": "Static Dutch investment and mortgage planning tool",
   "scripts": {
     "test": "node --test tests/*.test.js",

@@ -1,9 +1,11 @@
 (function(root,factory){
-  const api=factory();
+  const Policy2026=typeof module==='object'&&module.exports?require('./policy-2026.js'):root.Policy2026;
+  const api=factory(Policy2026);
   if(typeof module==='object'&&module.exports)module.exports=api;
   if(root)root.OutputIntegrity=api;
-})(typeof globalThis!=='undefined'?globalThis:this,function(){
+})(typeof globalThis!=='undefined'?globalThis:this,function(Policy2026){
 'use strict';
+if(!Policy2026)throw new Error('Policy2026 is required by OutputIntegrity');
 
 const RELEASE_META=Object.freeze({
   version:'R6.6',
@@ -55,10 +57,14 @@ function formatPercent(value){
   return number===null?'Unavailable':number.toLocaleString('nl-NL',{maximumFractionDigits:2})+'%';
 }
 
+function shortDate(iso){
+  const date=String(iso||'').split('-');
+  const months=['','Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
+  return date.length===3?`${Number(date[2])} ${months[Number(date[1])]||date[1]} ${date[0]}`:String(iso||'');
+}
+
 function releaseLabel(meta=RELEASE_META){
-  const date=String(meta.updated||'').split('-');
-  const display=date.length===3?`${Number(date[2])} ${['','Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'][Number(date[1])]||date[1]} ${date[0]}`:String(meta.updated||'');
-  return `Calculation build ${meta.version} · ${meta.ruleYear} rules · updated ${display}`;
+  return `Calculation build ${meta.version} · ${meta.ruleYear} rules · released ${shortDate(meta.updated)} · Rules verified ${shortDate(Policy2026.LAST_VERIFIED_AT)}`;
 }
 
 function cloneSeries(source={}){
