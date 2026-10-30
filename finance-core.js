@@ -206,7 +206,45 @@ function payTaxFromSource({tax=0,paySource='portfolio',portfolio=0,savings=0}={}
   return{portfolio:p,savings:s,fromPortfolio,fromSavings,external};
 }
 
-function mortgageSchedule({balance=0,annualRatePct=0,termYears=30,type='annuity',months,extraMonthly=0,startYear=2026,startMonth=1,tax={}}={}){
+// A rate reset re-amortises the actual opening balance over the remaining
+// original term. Extra repayments before the reset are never borrowed again.
+function twoPeriodMortgageRates({enabled=false,termYears=30,fixedYears=10,currentRatePct=0,laterRatePct=0}={}){
+  if(!enabled)return[];
+  const term=Math.max(1,Math.round(Number(termYears)*12)),fixed=Math.max(1,Math.min(term,Math.round(Number(fixedYears)*12)));
+  const periods=[{months:fixed,annualRatePct:clamp(Number(currentRatePct)||0,0,100)}];
+  if(fixed<term)periods.push({months:term-fixed,annualRatePct:clamp(Number(laterRatePct)||0,0,100)});
+  return periods;
+}
+
+function mortgagePaymentPlan({balance,annualRatePct,termMonths,type,ratePeriods=[]}){
+  const periods=Array.isArray(ratePeriods)?ratePeriods:[];
+  const changes=[];
+  let offset=0;
+  for(const period of periods){
+    const duration=Math.round(Number(period.months));
+    const rate=Number(period.annualRatePct);
+    if(!Number.isFinite(duration)||duration<=0||!Number.isFinite(rate)||rate<0||rate>100)throw new RangeError('Mortgage rate periods need positive months and a rate between 0 and 100.');
+    if(offset<termMonths)changes.push({month:offset,rate});
+    offset+=duration;
+  }
+  let active=-1,rate=clamp(Number(annualRatePct)||0,0,100),monthly=nominalAnnualPctToMonthly(rate);
+  let capital=balance/termMonths;
+  let payment=monthly===0?capital:balance*monthly/(1-Math.pow(1+monthly,-termMonths));
+  return function(monthIndex,openingBalance){
+    const next=changes.findLastIndex(change=>change.month<=monthIndex);
+    if(next!==active){
+      active=next;rate=changes[next].rate;monthly=nominalAnnualPctToMonthly(rate);
+      const remaining=Math.max(1,termMonths-monthIndex);
+      capital=openingBalance/remaining;
+      payment=monthly===0?capital:openingBalance*monthly/(1-Math.pow(1+monthly,-remaining));
+    }
+    const interest=openingBalance*monthly;
+    const principal=Math.min(openingBalance,type==='linear'?capital:Math.max(0,payment-interest));
+    return{interest,principal,annualRatePct:rate};
+  };
+}
+
+function mortgageSchedule({balance=0,annualRatePct=0,termYears=30,type='annuity',months,extraMonthly=0,startYear=2026,startMonth=1,tax={},ratePeriods=[]}={}){
   const initialBalance=nonNegative(balance);
   const annualRate=clamp(Number(annualRatePct)||0,0,100)/100,monthlyRate=ModelContract.nominalAnnualToMonthly(annualRate);
   const termMonths=Math.max(1,Math.round(clamp(Number(termYears)||1,1,100)*12));
@@ -214,6 +252,7 @@ function mortgageSchedule({balance=0,annualRatePct=0,termYears=30,type='annuity'
   const mortgageType=type==='linear'?'linear':'annuity';
   const linearPrincipal=initialBalance/termMonths;
   const annuityPayment=monthlyRate===0?initialBalance/termMonths:initialBalance*monthlyRate/(1-Math.pow(1+monthlyRate,-termMonths));
+  const paymentAt=mortgagePaymentPlan({balance:initialBalance,annualRatePct,termMonths,type:mortgageType,ratePeriods});
   const taxEnabled=tax.enabled!==false,deductionRate=clamp(Number(tax.deductionRate)||0,0,1),wozValue=nonNegative(tax.wozValue);
   const hraRemainingMonths=tax.hraRemainingMonths==null?Math.min(termMonths,POLICY.ownHome.maximumQualifyingMortgageMonths):Math.max(0,Math.round(Number(tax.hraRemainingMonths)||0));
   const qualifyingInterestFraction=clamp(Number(tax.qualifyingInterestFraction??1)||0,0,1);
@@ -229,8 +268,7 @@ function mortgageSchedule({balance=0,annualRatePct=0,termYears=30,type='annuity'
     totalRequestedExtra+=requestedExtra;
     let interest=0,principal=0,gross=0,extra=0;
     if(outstanding>0){
-      interest=outstanding*monthlyRate;
-      principal=mortgageType==='linear'?Math.min(outstanding,linearPrincipal):Math.min(outstanding,Math.max(0,annuityPayment-interest));
+      ({interest,principal}=paymentAt(i,outstanding));
       gross=interest+principal;outstanding-=principal;
       extra=Math.min(outstanding,requestedExtra);outstanding-=extra;
       if(outstanding<=.005){outstanding=0;if(payoffMonthIndex===null)payoffMonthIndex=i;}
@@ -239,7 +277,7 @@ function mortgageSchedule({balance=0,annualRatePct=0,termYears=30,type='annuity'
     totalInterest+=interest;totalScheduledPrincipal+=principal;totalExtra+=extra;totalUnusedExtra+=unusedExtra;
     const hraEligible=taxEnabled&&homeOwned&&i<hraRemainingMonths&&balanceAtStart>0&&qualifyingInterestFraction>0;
     const deductibleInterest=hraEligible?interest*qualifyingInterestFraction:0;
-    rawRows.push({monthIndex:i,year,month,balance:outstanding,gross,principal,interest,deductibleInterest,taxReturn:0,net:gross,extra,requestedExtra,unusedExtra,cash:gross+extra,cashWithRequestedExtra:gross+requestedExtra,homeOwned,hraEligible});
+    rawRows.push({monthIndex:i,year,month,openingBalance:balanceAtStart,annualRatePct:paymentAt(i,balanceAtStart).annualRatePct,balance:outstanding,gross,principal,interest,deductibleInterest,taxReturn:0,net:gross,extra,requestedExtra,unusedExtra,cash:gross+extra,cashWithRequestedExtra:gross+requestedExtra,homeOwned,hraEligible});
     month++;if(month===13){month=1;year++;}
   }
   const allocation=allocateAnnualMortgageTax(rawRows,{enabled:taxEnabled,deductionRate,wozValue,hillenRelief:tax.hillenRelief});
@@ -255,12 +293,12 @@ function provisionalBox3({regime,jan1Portfolio,jan1Savings,jan1Debt,marketGain,s
 function simulateInvestmentFlows({
   initialPortfolio=0,flows=[],annualReturnPct=0,startYear=2026,startMonth=1,box3Mode='none',taxPartners=1,paySource='portfolio',
   currentTaxRate=POLICY.box3.taxRate,currentAllowance=POLICY.box3.allowancePerPerson,currentNotional=POLICY.box3.investmentDeemedRate,currentSavingsNotional=POLICY.box3.savingsDeemedRate,currentDebtNotional=POLICY.box3.debtDeemedRate,currentDebtThreshold=POLICY.box3.debtThresholdPerPerson,
-  firstJan1Portfolio=0,box3Savings=0,box3Debt=0,firstJan1Savings=null,firstJan1Debt=null,savingsReturnPct=0,debtInterestPct=0,
+  firstJan1Portfolio=0,box3Savings=0,box3Debt=0,firstJan1Savings=null,firstJan1Debt=null,savingsReturnPct=0,debtInterestPct=0,omitSavingsYield=false,omitDebtInterest=false,
   savingsFlows=[],box3DebtMonthlyRepayment=0,debtRepayments=[],debtRepaymentSource='external',box3DebtFallbackDestination='invest',futureStart=POLICY.futureBox3Proposal.startYear,futureTaxRate=POLICY.futureBox3Proposal.taxRate,futureExempt=POLICY.futureBox3Proposal.exempt,futureLossThreshold=POLICY.futureBox3Proposal.lossThreshold
 }={}){
   const monthlyReturn=effectiveAnnualPctToMonthly(annualReturnPct),
-    monthlySavingsRate=effectiveAnnualPctToMonthly(savingsReturnPct),
-    monthlyDebtRate=nominalAnnualPctToMonthly(debtInterestPct);
+    monthlySavingsRate=omitSavingsYield===true?null:effectiveAnnualPctToMonthly(savingsReturnPct),
+    monthlyDebtRate=omitDebtInterest===true?null:nominalAnnualPctToMonthly(debtInterestPct);
   let portfolio=nonNegative(initialPortfolio),savings=nonNegative(box3Savings),debt=nonNegative(box3Debt);
   let totalTax=0,currentTax=0,futureTax=0,unsettledTaxEstimate=0,externalTax=0,taxPaidFromSavings=0,taxPaidFromPortfolio=0,lossCarry=0;
   let externalDebtRepayment=0,totalDebtRepaid=0,totalDebtInterest=0,cashShortfall=0;
@@ -273,8 +311,8 @@ function simulateInvestmentFlows({
 
   for(let i=0;i<monthlyFlows.length;i++){
     const growth=portfolio*monthlyReturn;portfolio+=growth;marketGain+=growth;portfolio+=nonNegative(monthlyFlows[i]);
-    const saveInterest=savings*monthlySavingsRate;savings+=saveInterest;savingsIncome+=saveInterest;
-    const interestOnDebt=debt*monthlyDebtRate;debtInterest+=interestOnDebt;totalDebtInterest+=interestOnDebt;externalCashFlows[i]+=interestOnDebt;
+    if(monthlySavingsRate!=null){const saveInterest=savings*monthlySavingsRate;savings+=saveInterest;savingsIncome+=saveInterest;}
+    if(monthlyDebtRate!=null){const interestOnDebt=debt*monthlyDebtRate;debtInterest+=interestOnDebt;totalDebtInterest+=interestOnDebt;externalCashFlows[i]+=interestOnDebt;}
 
     const savingFlow=number(monthlySavingsFlows[i]);
     if(savingFlow>=0)savings+=savingFlow;
@@ -368,8 +406,9 @@ function simulatePlan(config={}){
   const mortTermMonths=Math.max(1,Math.round(clamp(Number(config.mortYears)||1,1,100)*12));
   const initialMort=nonNegative(config.mortBalance),mortType=config.mortType==='linear'?'linear':'annuity',linearPrincipal=initialMort/mortTermMonths;
   const annuityPayment=monthlyMortRate===0?initialMort/mortTermMonths:initialMort*monthlyMortRate/(1-Math.pow(1+monthlyMortRate,-mortTermMonths));
+  const paymentAt=mortgagePaymentPlan({balance:initialMort,annualRatePct:mortRatePct,termMonths:mortTermMonths,type:mortType,ratePeriods:config.mortRatePeriods});
   const totalMonths=phases.reduce((sum,p)=>sum+Math.max(0,Math.round((Number(p.years)||0)*12)),0);
-  const monthlySavingsRate=effectiveAnnualPctToMonthly(config.savingsReturnPct),monthlyDebtRate=nominalAnnualPctToMonthly(config.debtInterestPct);
+  const monthlySavingsRate=config.omitSavingsYield===true?null:effectiveAnnualPctToMonthly(config.savingsReturnPct),monthlyDebtRate=config.omitDebtInterest===true?null:nominalAnnualPctToMonthly(config.debtInterestPct);
   const hraRemainingMonths=config.hraRemainingMonths==null?Math.min(mortTermMonths,POLICY.ownHome.maximumQualifyingMortgageMonths):Math.max(0,Math.round(Number(config.hraRemainingMonths)||0));
   const qualifyingInterestFraction=clamp(Number(config.qualifyingInterestFraction??1)||0,0,1);
   const homeOwnershipMonths=config.homeOwnershipMonths==null?totalMonths:Math.max(0,Math.round(Number(config.homeOwnershipMonths)||0));
@@ -395,8 +434,8 @@ function simulatePlan(config={}){
       const monthIndex=global;global++;const b=bucket(year);
       if(b.startPortfolio===null){b.startPortfolio=portfolio;b.startSavings=savings;b.startDebt=box3Debt;}
       const growth=portfolio*monthlyReturn;portfolio+=growth;b.marketGain+=growth;
-      const saveInterest=savings*monthlySavingsRate;savings+=saveInterest;b.savingsIncome+=saveInterest;
-      const debtInterest=box3Debt*monthlyDebtRate;b.debtInterest+=debtInterest;totalDebtInterest+=debtInterest;externalCashFlows[monthIndex]+=debtInterest;
+      if(monthlySavingsRate!=null){const saveInterest=savings*monthlySavingsRate;savings+=saveInterest;b.savingsIncome+=saveInterest;}
+      if(monthlyDebtRate!=null){const debtInterest=box3Debt*monthlyDebtRate;b.debtInterest+=debtInterest;totalDebtInterest+=debtInterest;externalCashFlows[monthIndex]+=debtInterest;}
 
       const debtRepayRequested=nonNegative(config.box3DebtMonthlyRepayment);
       plannedBox3DebtRepayment+=debtRepayRequested;
@@ -437,8 +476,7 @@ function simulatePlan(config={}){
       const balanceAtStart=mort;
       let interest=0,principal=0,extra=0,grossScheduled=0;
       if(mort>0){
-        interest=mort*monthlyMortRate;grossInterest+=interest;
-        principal=mortType==='linear'?Math.min(mort,linearPrincipal):Math.min(mort,Math.max(0,annuityPayment-interest));
+        ({interest,principal}=paymentAt(monthIndex,mort));grossInterest+=interest;
         grossScheduled=interest+principal;mort-=principal;scheduledPrincipal+=principal;
       }
       let requestedExtra=0;
@@ -456,7 +494,7 @@ function simulatePlan(config={}){
       if(balanceAtStart>0&&mort<=.005){mort=0;if(!payoffDate)payoffDate={year,month};}
       const hraEligible=config.mortTaxEnabled!==false&&homeOwned&&monthIndex<hraRemainingMonths&&balanceAtStart>0&&qualifyingInterestFraction>0;
       const deductibleInterest=hraEligible?interest*qualifyingInterestFraction:0;
-      rawSchedule.push({year,month,balance:mort,gross:grossScheduled,principal,interest,deductibleInterest,taxReturn:0,net:grossScheduled,extra,requestedExtra,unusedExtra,cash:grossScheduled+extra,cashWithRequestedExtra:grossScheduled+requestedExtra,homeOwned,hraEligible});
+      rawSchedule.push({year,month,openingBalance:balanceAtStart,annualRatePct:paymentAt(monthIndex,balanceAtStart).annualRatePct,balance:mort,gross:grossScheduled,principal,interest,deductibleInterest,taxReturn:0,net:grossScheduled,extra,requestedExtra,unusedExtra,cash:grossScheduled+extra,cashWithRequestedExtra:grossScheduled+requestedExtra,homeOwned,hraEligible});
       b.endBeforeTax=portfolio;
 
       const nextMonth=month===12?1:month+1,nextYear=month===12?year+1:year,endOfCalendarYear=nextYear!==year,finalMonth=global===totalMonths;
@@ -502,5 +540,5 @@ function simulatePlan(config={}){
     plannedBox3DebtRepayment,unusedBox3DebtRepayment,box3DebtFallbackInvested,box3DebtFallbackSaved,box3DebtFallbackConsumed,box3DebtRepaymentShortfall,externalBox3DebtFallback,box3DebtCashConservationDifference,box3DebtFallbackDestination};
 }
 
-return{clamp,effectiveAnnualPctToMonthly,nominalAnnualPctToMonthly,appliedOwnHomeDeductionRate,ewf2026,hillenReliefForYear,mortgageTaxBenefit,allocateAnnualMortgageTax,regimeForYear,box3TaxForYear,payTaxFromSource,terminalValueOfDatedCashFlows,mortgageSchedule,simulateInvestmentFlows,equalizeCashFlows,simulatePlan};
+return{clamp,effectiveAnnualPctToMonthly,nominalAnnualPctToMonthly,appliedOwnHomeDeductionRate,ewf2026,hillenReliefForYear,mortgageTaxBenefit,allocateAnnualMortgageTax,regimeForYear,box3TaxForYear,payTaxFromSource,terminalValueOfDatedCashFlows,twoPeriodMortgageRates,mortgageSchedule,simulateInvestmentFlows,equalizeCashFlows,simulatePlan};
 });

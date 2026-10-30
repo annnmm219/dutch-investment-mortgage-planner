@@ -1,3 +1,5 @@
+> Development preview: `r6-7-sale-break-even` builds on the mortgage-rate-period preview and adds a separate **Home sale: break-even vs renting** scenario. See [sale scenario scope and validation](audits/r6.7/sale-break-even-preview.md) and the [earlier rate-period preview](audits/r6.7/rate-periods-preview.md). This branch is unfrozen; the R6.6 audit records below describe the earlier candidate.
+
 # Dutch Investment & Mortgage Planner
 
 A static, browser-based planner for comparing Dutch mortgage, investment, Box 3, purchase-cost, and household strategy choices.
@@ -10,7 +12,7 @@ Live on main, and on the public site: **R6.5**.
 
 R6.6 Decision Integrity is in draft review. R6.7 is also in draft review. The public site stays on R6.5 until a release is explicitly authorized for merge.
 
-R6.6 completes the controlled decision-integrity review across inputs, calculations, comparison economics, tax boundaries, displayed outputs, exports, browser state and primary-source facts. This branch still has five scenario types. The sixth scenario exists only on the R6.7 draft.
+R6.6 completes the controlled decision-integrity review across inputs, calculations, comparison economics, tax boundaries, displayed outputs, exports, browser state and primary-source facts. This branch has six scenario types, including Home Sale: Break-even versus Renting.
 
 ### What changed in R6.6
 
@@ -55,7 +57,7 @@ Detailed HRA eligibility, qualifying debt share, manual deduction rate, Hillen o
 
 ### Scenarios
 
-Begin by choosing one data route:
+For the first five comparisons, begin by choosing one data route:
 
 - **Use my existing planner data** copies the relevant Investment and Mortgage values into a visible scenario snapshot. Later changes in those tabs do not change the comparison unless **Refresh imported data** is selected.
 - **Start a fresh comparison** clears personal scenario fields and reads no values from Investment or Mortgage.
@@ -67,6 +69,9 @@ Choose one comparison:
 3. Extra Mortgage Repayment versus Invest
 4. Linear versus Annuity
 5. Keep Home versus Sell and Rent
+6. Home Sale: Break-even versus Renting
+
+The sixth scenario evaluates ownership from the original purchase to a selected sale month. It reports the selling price needed to match renting, cash released after paying the lender, the price needed to recover ownership spending, and any cash required to settle a sale shortfall. An optional investment comparison uses the shared investment engine and equal monthly budgets. Its own visible purchase and sale assumptions are saved in the browser and exported with the result. Existing-mortgage imports do not treat current debt or the remaining repayment term as original purchase facts.
 
 All personal inputs used by the calculation are visible inside Scenarios. Purchase price, purchase mortgage and purchase-tax facts remain scenario-owned because they cannot be safely inferred from an existing mortgage.
 
@@ -180,7 +185,7 @@ Before-Box-3 values come from a separate no-Box-3 counterfactual run. After-Box-
 - `input-integrity.js`: strict browser input validation and unavailable-result gating
 - `app.js`: main Investment and Mortgage interface
 - `purchase-costs.js`: purchase-cost controls and adapters
-- `scenario-engine.js`: five comparison strategies and scenario interface
+- `scenario-engine.js`: scenario comparisons and the scenario interface, including the home-sale path
 - `next-euro.js`: marginal invest-versus-repay break-even solver
 - `app-state.js`: browser-local persistence and input normalization
 - `view-density.js`: R6.5 local interface folds, inherited scenario return, compact save status, and audit controls
@@ -229,7 +234,7 @@ The R6.6 release candidate passes:
 - all three pinned Chromium browser contracts with zero page errors;
 - exact Stage 7 to Stage 8 financial-result parity across the 50-scenario matrix, with no leader changes.
 
-The test suite covers mortgage identities, HRA allocation, EWF/Hillen, HRA expiry, mixed-asset Box 3, partial-year gates, dynamic household balances, cash conservation, purchase rules, all five scenario types, canonical output availability, screen/export field identity, local persistence primitives, local assumption folds, and CSV escaping.
+The test suite covers mortgage identities, HRA allocation, EWF/Hillen, HRA expiry, mixed-asset Box 3, partial-year gates, dynamic household balances, cash conservation, purchase rules, all six scenario types, canonical output availability, screen/export field identity, local persistence primitives, local assumption folds, and CSV escaping.
 
 ## Main limitations
 
@@ -260,7 +265,7 @@ The test suite covers mortgage identities, HRA allocation, EWF/Hillen, HRA expir
 - R6.4.2 Browser responsiveness hotfix: complete
 - **R6.5 Interface simplification: complete** (live / main; public site)
 - **R6.6 Decision integrity: in draft review.** The public site stays on R6.5.
-- R6.7 is in draft review and is not part of this branch. This page still describes five scenario types.
+- This branch includes the home-sale scenario on top of R6.6 and describes six scenario types.
 
 ## Run locally
 

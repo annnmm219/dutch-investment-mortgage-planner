@@ -194,8 +194,10 @@ function normalize(config={}){
     firstJan1Debt:optionalNonNegative(rawBox3.firstJan1Debt),
     savings:nonNegative(rawBox3.savings??rawBox3.box3Savings),
     debt:nonNegative(rawBox3.debt??rawBox3.box3Debt),
-    savingsReturnPct:Number(rawBox3.savingsReturnPct)||0,
-    debtInterestPct:Number(rawBox3.debtInterestPct)||0,
+    savingsReturnPct:rawBox3.omitSavingsYield===true?null:(Number.isFinite(Number(rawBox3.savingsReturnPct))?Number(rawBox3.savingsReturnPct):0),
+    debtInterestPct:rawBox3.omitDebtInterest===true?null:(Number.isFinite(Number(rawBox3.debtInterestPct))?Number(rawBox3.debtInterestPct):0),
+    omitSavingsYield:rawBox3.omitSavingsYield===true,
+    omitDebtInterest:rawBox3.omitDebtInterest===true,
     debtMonthlyRepayment:nonNegative(rawBox3.debtMonthlyRepayment??rawBox3.box3DebtMonthlyRepayment),
     debtRepaymentSource:rawBox3.debtRepaymentSource==='savings'?'savings':'external',
     debtFallbackDestination:['invest','savings','consume'].includes(rawBox3.debtFallbackDestination??rawBox3.box3DebtFallbackDestination)?(rawBox3.debtFallbackDestination??rawBox3.box3DebtFallbackDestination):'invest',
@@ -324,6 +326,8 @@ function investment(S,{initialPortfolio=S.startPortfolio,flows=[],startingSaving
     firstJan1Debt,
     savingsReturnPct:S.box3.savingsReturnPct,
     debtInterestPct:S.box3.debtInterestPct,
+    omitSavingsYield:S.box3.omitSavingsYield===true,
+    omitDebtInterest:S.box3.omitDebtInterest===true,
     box3DebtMonthlyRepayment:S.box3.debtMonthlyRepayment,
     debtRepaymentSource:S.box3.debtRepaymentSource,
     box3DebtFallbackDestination:S.box3.debtFallbackDestination,
@@ -852,6 +856,15 @@ function renderInvalidInputs(mode,report){
   renderFunding(canonical);
 }
 function updateEngine(){
+  const selectedMode=$('comparisonType').value;
+  if(selectedMode==='sale-break-even'){
+    window.__DIMP_ACTIVE_SCENARIO_CONFIG=null;
+    window.__DIMP_CANONICAL_COMPARISON=null;
+    window.__DIMP_CANONICAL_NEXT_EURO=null;
+    window.SaleBreakEvenUI?.update();
+    return;
+  }
+  window.SaleBreakEvenUI?.setActive(false);
   visibility();const mode=$('comparisonType').value;renderReview(mode);if(!scenarioSourceMode){renderInvalidInputs(mode,{valid:false,errors:[{message:'Choose whether to use existing planner data or start fresh.'}]});return;}const report=scenarioInputReport(mode);if(!report.valid){renderInvalidInputs(mode,report);return;}const activeConfig=config();window.__DIMP_ACTIVE_SCENARIO_CONFIG=activeConfig;const x=SC.runScenario(activeConfig),gap=budgetStatus(x),verdict=$('scenarioVerdictNew'),years=clamp(num('scenarioHorizonNew',10),1,40),returnPct=clamp(num('scenarioReturnNew',5),-30,30),canonical=OI.canonicalComparisonResult(x,{mode,years,returnPct,budgetGap:gap}),model=OI.comparisonOutputModel(canonical),A=canonical.strategies.A,B=canonical.strategies.B;renderFunding(canonical);
   window.__DIMP_CANONICAL_COMPARISON=canonical;
   if(!canonical.valid){card($('strategyAResultNew'),A,false,false);card($('strategyBResultNew'),B,false,false);verdict.classList.add('invalid');verdict.innerHTML=`<strong>${model.title}</strong><span> ${model.detail}</span>`;$('scenarioBreakdownBodyNew').innerHTML='';$('sensitivityBodyNew').innerHTML='';$('sensitivitySummaryNew').innerHTML='<strong>Sensitivity unavailable.</strong> Resolve the comparison inputs first.';return;}

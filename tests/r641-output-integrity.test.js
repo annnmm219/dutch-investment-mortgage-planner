@@ -40,7 +40,7 @@ function canonical(selected,config={box3Mode:'current',box3PaySource:'savings'},
   },config);
 }
 
-test('R6.6 is the single final output release identity',()=>{
+test('Preview is the single output build identity',()=>{
   assert.equal(OI.RELEASE_META.version,'R6.6');
   assert.equal(OI.RELEASE_META.ruleYear,2026);
   assert.equal(OI.RELEASE_META.updated,'2026-10-27');

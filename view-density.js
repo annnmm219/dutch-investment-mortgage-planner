@@ -38,7 +38,7 @@ const DEFAULTS=Object.freeze({
   deductionMode:'auto',
   qualifyingShare:100,
   unusedMortgageDestination:'invest',
-  mortgageReportHorizon:'investment',
+  mortgageReportHorizon:'mortgage',
   transferTaxMode:'main',
   nhgMode:'none',
   upfrontCashTreatment:'invest',
@@ -381,7 +381,7 @@ function bootBrowser(){
     const details=createDetails('r65MortgageAdvanced','Advanced mortgage and tax assumptions');
     const body=bodyOf(details),grid=document.createElement('div');grid.className='r65-advanced-grid';body.appendChild(grid);
     move(grid,field('deductionMode'),field('manualDeduction'));
-    move(body,$('hraEligibilityDetails'),$('mortgageFallbackControls'),$('mortgageHorizonControls'));
+    move(body,$('hraEligibilityDetails'),$('mortgageFallbackControls'));
     card.appendChild(details);
     const how=createDetails('r65MortgageHow','How the mortgage tax estimate works','inner-fold r65-local-fold r65-how-fold');
     const howBody=bodyOf(how);
