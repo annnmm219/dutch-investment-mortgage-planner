@@ -150,8 +150,8 @@ test('unavailable tax result exposes only the canonical before-Box-3 projection'
 test('scenario conclusion puts assumption dependence before the outcome',()=>{
   const canonical=OI.canonicalComparisonResult({valid:true,A:{name:'Buy home',net:610000},B:{name:'Rent + invest',net:590000},sourcesAndUses:{A:{totalUses:500000,totalSources:500000},B:null}},{mode:'buy-rent',years:15,returnPct:5,budgetGap:0});
   const model=OI.comparisonOutputModel(canonical);
-  assert.match(model.title,/^Under the entered assumptions,/);
-  assert.match(model.title,/Buy home has €20\.000 more modeled wealth after 15 years\./);
+  assert.match(model.title,/^Under these assumptions,/);
+  assert.equal(model.title,'Under these assumptions, Buy home ends €20.000 higher than Rent + invest after 15 years.');
   assert.doesNotMatch(model.title,/wins?|leads?|clearly ahead/i);
   assert.deepEqual(model.exportRows.find(row=>row[1]==='Comparison type'),['Decision comparison','Comparison type','buy-rent']);
   assert.equal(canonical.sourcesAndUses.A.totalUses,canonical.sourcesAndUses.A.totalSources);

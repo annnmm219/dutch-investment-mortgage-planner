@@ -140,7 +140,7 @@ function ensureInterface(){
   const taxToggle=document.querySelector('label[for="mortTaxEnabled"]');
   if(modeLabel)modeLabel.textContent='Box 1 calculation';
   if(manualLabel)manualLabel.textContent='Manual tax-effect rate %';
-  if(taxToggle)taxToggle.textContent='Include modeled Box 1 own-home effect';
+  if(taxToggle)taxToggle.innerHTML='Include own-home tax effect <button type="button" class="info-button" id="ownHomeTaxInfo" aria-expanded="false" aria-controls="ownHomeTaxPanel" aria-label="More about the own-home tax effect">ⓘ</button><span id="ownHomeTaxPanel" class="info-panel" role="region" aria-labelledby="ownHomeTaxInfo">Mortgage-interest deduction minus the eigenwoningforfait, including the Wet Hillen deduction, for 2026 Box 1.</span>';
   if(mode){
     const automatic=mode.querySelector('option[value="auto"]');
     const manual=mode.querySelector('option[value="manual"]');
@@ -158,7 +158,7 @@ function ensureInterface(){
     const notice=document.createElement('div');
     notice.id='box1ScopeNotice';
     notice.className='callout';
-    notice.innerHTML='<strong>Bounded automatic Box 1 scope:</strong><br><span>Use the automatic profile only for a taxpayer below AOW age with ordinary employment income. It compares 2026 Box 1 tax before and after eigenwoningforfait, qualifying own-home costs, Hillen and the high-income rate adjustment. Tax credits, Box 1 losses, other rate-adjusted deductions, complex fiscal-partner allocation and mixed transitional debt are excluded. Projection years after 2026 keep the 2026 brackets and EWF rules as a scenario assumption; the existing Hillen schedule still changes by calendar year.</span>';
+    notice.innerHTML='Tax estimate: employees below AOW age, simple cases only. <button type="button" class="info-button" id="box1ScopeInfo" aria-expanded="false" aria-controls="box1ScopePanel" aria-label="More about the Box 1 tax scope">ⓘ</button><span id="box1ScopePanel" class="info-panel" role="region" aria-labelledby="box1ScopeInfo">Bounded automatic Box 1 scope: Use the automatic profile only for a taxpayer below AOW age with ordinary employment income. It compares 2026 Box 1 tax before and after eigenwoningforfait, qualifying own-home costs, Hillen and the high-income rate adjustment. Tax credits, Box 1 losses, other rate-adjusted deductions, complex fiscal-partner allocation and mixed transitional debt are excluded. Projection years after 2026 keep the 2026 brackets and EWF rules as a scenario assumption; the existing Hillen schedule still changes by calendar year.</span>';
     woz.insertAdjacentElement('afterend',notice);
   }
 

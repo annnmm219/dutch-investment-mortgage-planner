@@ -349,9 +349,10 @@ function comparisonOutputModel(canonical){
   };
   const years=canonical.assumptions.years;
   const period=years===null?'at the selected horizon':`after ${years.toLocaleString('nl-NL',{maximumFractionDigits:2})} years`;
+  const winner=canonical.strategies[canonical.outcome],other=canonical.strategies[canonical.outcome==='A'?'B':'A'];
   const title=canonical.outcome==='tie'
-    ?`Under the entered assumptions, neither strategy has meaningfully higher modeled wealth ${period}.`
-    :`Under the entered assumptions, ${canonical.strategies[canonical.outcome].name} has ${formatMoney(canonical.absoluteDifference)} more modeled wealth ${period}.`;
+    ?`Under these assumptions, ${canonical.strategies.A.name} and ${canonical.strategies.B.name} end level ${period}.`
+    :`Under these assumptions, ${winner.name} ends ${formatMoney(canonical.absoluteDifference)} higher than ${other.name} ${period}.`;
   const rate=canonical.assumptions.effectiveAnnualInvestmentReturnPct;
   const detail=rate===null?'Uses the selected tax, mortgage and cash-flow assumptions.':`Uses the entered ${formatPercent(rate)} effective annual investment return and selected tax, mortgage and cash-flow assumptions.`;
   return{title,detail,outcome:canonical.outcome,strategies:canonical.strategies,exportRows:comparisonExportRows(canonical)};
@@ -552,9 +553,10 @@ function bootBrowser(){
       callout.className='callout';
       host.appendChild(callout);
     }
+    callout.classList.toggle('hidden',model.available);
     callout.classList.toggle('warn',!model.available);
     callout.innerHTML=model.available
-      ?'<strong>Output status:</strong> cards, charts, year tables and CSV exports use the same canonical result fields.'
+      ?''
       :`<strong>Output status: tax-adjusted values unavailable.</strong><br><span>${model.reason} Untaxed projections are labeled Before Box 3.</span>`;
   }
 
@@ -582,14 +584,14 @@ function bootBrowser(){
       const warning=document.createElement('div');
       warning.id='r641ThirtyPercentBox3Warning';
       warning.className='callout warn';
-      warning.innerHTML='<strong>30% ruling and Box 3:</strong> the ruling checkbox changes only the Box 1 income estimate. It does not model transitional partial foreign taxpayer treatment that may affect Box 3 for some users through 2026.';
+      warning.innerHTML='<strong>30% ruling and Box 3:</strong> the ruling checkbox changes only the Box 1 income estimate. It does not model transitional partial foreign taxpayer treatment that may affect Box 3 for some users through 2026.';warning.classList.add('hidden');
       boxCard.appendChild(warning);
     }
     if(boxCard&&!$('r641FrozenRulesWarning')){
       const warning=document.createElement('div');
       warning.id='r641FrozenRulesWarning';
       warning.className='callout';
-      warning.innerHTML='<strong>Long-horizon assumption:</strong> except for the Hillen phase-out, entered WOZ and most 2026 tax parameters are held constant. This is a constant-rules scenario, not a forecast of future Dutch law.';
+      warning.innerHTML='2026 rules are held constant for later years. This is not a forecast of Dutch law. <button type="button" class="info-button" id="frozenRulesInfo" aria-expanded="false" aria-controls="frozenRulesPanel" aria-label="More about rules held constant">ⓘ</button><span id="frozenRulesPanel" class="info-panel" role="region" aria-labelledby="frozenRulesInfo">Long-horizon assumption: except for the Hillen phase-out, entered WOZ and most 2026 tax parameters are held constant. This is a constant-rules scenario, not a forecast of future Dutch law.</span>';
       boxCard.appendChild(warning);
     }
     const owner=$('scenarioVveNew')?.closest('.card');
@@ -597,7 +599,7 @@ function bootBrowser(){
       const warning=document.createElement('div');
       warning.id='r641OwnerCostWarning';
       warning.className='callout';
-      warning.innerHTML='<strong>Owner-cost assumption:</strong> VvE, maintenance, owner taxes, insurance and ground lease escalate at the entered effective annual owner-cost growth rate. This is a planning assumption, not a forecast.';
+      warning.classList.add('hidden');warning.innerHTML='<strong>Owner-cost assumption:</strong> VvE, maintenance, owner taxes, insurance and ground lease escalate at the entered effective annual owner-cost growth rate. This is a planning assumption, not a forecast.';
       owner.appendChild(warning);
     }
     const savingsLabel=document.querySelector('label[for="box3SavingsReturn"]');

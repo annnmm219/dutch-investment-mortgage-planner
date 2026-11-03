@@ -244,13 +244,7 @@ function bootBrowser(){
     const line=$('headerTrustLine'),panel=$('headerTrustPanel'),button=$('headerTrustInfo');
     if(line)line.textContent=HEADER_TRUST_LINE;
     if(panel)panel.textContent=HEADER_TRUST_DETAILS;
-    if(!button||button.dataset.bound==='1')return;
-    button.dataset.bound='1';
-    button.addEventListener('click',()=>{
-      const open=button.getAttribute('aria-expanded')!=='true';
-      button.setAttribute('aria-expanded',open?'true':'false');
-      panel?.classList.toggle('is-open',open);
-    });
+    if(button)button.dataset.bound='1';
   }
 
   function compactSaveBar(){
@@ -263,25 +257,19 @@ function bootBrowser(){
     syncSaveStatus();
   }
 
+  function cutNote(el){if(!el)return;el.textContent='';el.classList.add('r65-copy-hidden');}
   function simplifyStaticCopy(){
-    const investmentDivider=$('tab-investment')?.querySelector(':scope>.section-divider p');
-    if(investmentDivider)investmentDivider.textContent='Set your timeline, contributions and investment assumptions.';
-    const mortgageDivider=$('tab-mortgage')?.querySelector(':scope>.section-divider p');
-    if(mortgageDivider)mortgageDivider.textContent='Enter an existing mortgage or plan a purchase.';
+    cutNote($('tab-investment')?.querySelector(':scope>.section-divider p'));
+    cutNote($('tab-mortgage')?.querySelector(':scope>.section-divider p'));
     const scenarioDivider=$('tab-scenarios')?.querySelector(':scope>.section-divider p');
     if(scenarioDivider)scenarioDivider.textContent='Compare two strategies under one shared set of assumptions.';
-    const notes=[
-      [$('startMonth')?.closest('.card')?.querySelector('.section-note'),'Choose when the plan starts.'],
-      [$('phaseList')?.closest('.card')?.querySelector('.section-note'),'Set how monthly contributions change over time.'],
-      [$('annualReturn')?.closest('.card')?.querySelector('.section-note'),'One return assumption applies to the whole plan.'],
-      [$('mortgageMode')?.closest('.card')?.querySelector('.section-note'),'Use either your current loan or a planned purchase.'],
-      [$('linearCompare')?.closest('.card')?.querySelector('.section-note'),'Both structures are calculated; select the one used elsewhere in the planner.'],
-      [$('wozValue')?.closest('.card')?.querySelector('.section-note'),'Planning estimate based on income, WOZ and HRA eligibility.'],
-      [$('comparisonType')?.closest('.card')?.querySelector('.section-note'),'Choose the decision and horizon.'],
-      [$('scenarioMonthlyBudgetNew')?.closest('.card')?.querySelector('.section-note'),'Only assumptions relevant to the selected decision remain visible.'],
-      [$('scenarioVerdictNew')?.closest('.card')?.querySelector('.section-note'),'The result compares final modeled positions under the same cash-flow rule.']
-    ];
-    notes.forEach(([el,text])=>{if(el)el.textContent=text;});
+    [
+      $('startMonth')?.closest('.card')?.querySelector('.section-note'),
+      $('annualReturn')?.closest('.card')?.querySelector('.section-note'),
+      $('mortgageMode')?.closest('.card')?.querySelector('.section-note'),
+      $('wozValue')?.closest('.card')?.querySelector('.section-note'),
+      $('scenarioVerdictNew')?.closest('.card')?.querySelector('.section-note')
+    ].forEach(cutNote);
     const phaseFoot=$('phaseList')?.closest('.card')?.querySelector('.foot');
     if(phaseFoot)phaseFoot.classList.add('r65-copy-hidden');
   }
@@ -588,23 +576,53 @@ function bootBrowser(){
   function renderAssumptionLog(){const log=$('assumptionLog');if(!log)return;const meta=window.MODEL_META||{};const lines=[`Model: ${meta.version||'R6.6'} · rule year ${meta.ruleYear||2026}`,`Generated: ${new Date().toISOString()}`,''];assumptionRows().forEach(row=>lines.push(`[${row.section}] ${row.label}: ${row.value}`));log.textContent=lines.join('\n');}
   function exportAssumptionCsv(){const meta=window.MODEL_META||{};const rows=[{section:'Model',label:'Version',value:meta.version||'R6.6'},{section:'Model',label:'Rule year',value:meta.ruleYear||2026},{section:'Model',label:'Generated',value:new Date().toISOString()},...assumptionRows()];const blob=new Blob(['\uFEFF'+assumptionsToCsv(rows)],{type:'text/csv;charset=utf-8'});const url=URL.createObjectURL(blob),link=document.createElement('a');link.href=url;link.download=`dutch-investment-mortgage-plan-${meta.version||'R6.6'}-${new Date().toISOString().slice(0,10)}.csv`;document.body.appendChild(link);link.click();link.remove();URL.revokeObjectURL(url);}
   function setModelMarker(){const marker=$('modelVersion');if(marker&&window.OutputIntegrity?.releaseLabel)marker.textContent=window.OutputIntegrity.releaseLabel();}
+  function syncCopyHints(){
+    const ruling=$('r641ThirtyPercentBox3Warning');
+    if(ruling)ruling.classList.toggle('hidden',!$('use30Ruling')?.checked);
+    const savings=document.querySelector('label[for="box3SavingsReturn"]');
+    if(savings&&!$('savingsInterestInfo')){
+      savings.insertAdjacentHTML('beforeend',' <button type="button" class="info-button" id="savingsInterestInfo" aria-expanded="false" aria-controls="savingsInterestPanel" aria-label="More about savings interest">ⓘ</button><span id="savingsInterestPanel" class="info-panel" role="region" aria-labelledby="savingsInterestInfo">Editable household assumption, not the statutory Box 3 bank-deposit percentage. Savings interest is included in modeled actual return.</span>');
+    }
+    const scenarioReturn=document.querySelector('label[for="scenarioReturnNew"]');
+    if(scenarioReturn&&!$('scenarioReturnInfo')){
+      scenarioReturn.insertAdjacentHTML('afterend','<button type="button" class="info-button" id="scenarioReturnInfo" aria-expanded="false" aria-controls="scenarioReturnPanel" aria-label="More about the planning return">ⓘ</button><span id="scenarioReturnPanel" class="info-panel" role="region" aria-labelledby="scenarioReturnInfo">5% is an effective annual planning starting point, not a forecast.</span>');
+    }
+    const owner=document.querySelector('label[for="scenarioOwnerCostGrowthNew"]');
+    if(owner&&!$('ownerCostInfo')){
+      owner.insertAdjacentHTML('afterend','<button type="button" class="info-button" id="ownerCostInfo" aria-expanded="false" aria-controls="ownerCostPanel" aria-label="More about owner-cost growth">ⓘ</button><span id="ownerCostPanel" class="info-panel" role="region" aria-labelledby="ownerCostInfo">VvE, maintenance, owner taxes, insurance and ground lease escalate at the entered effective annual owner-cost growth rate. This is a planning assumption, not a forecast.</span>');
+    }
+  }
 
   function refresh(){
-    ensureHeaderTrust();compactSaveBar();syncBox3();syncJan1Gate();syncPurchaseLight();syncHillenControls();syncScenarioReturn();syncOwnerLight();syncScenarioVisibility();compactBudgetStatus();updateBadges();setModelMarker();
+    ensureHeaderTrust();compactSaveBar();syncBox3();syncJan1Gate();syncPurchaseLight();syncHillenControls();syncScenarioReturn();syncOwnerLight();syncScenarioVisibility();compactBudgetStatus();updateBadges();setModelMarker();syncCopyHints();
     document.querySelectorAll('#phaseCount option,#comparisonType option').forEach(option=>{option.hidden=false;option.classList.remove('density-option-hidden');});
     document.querySelectorAll('#phaseList .density-advanced-phase').forEach(card=>card.classList.remove('density-advanced-phase'));
   }
   function queueRefresh(){if(refreshQueued)return;refreshQueued=true;requestAnimationFrame(()=>{refreshQueued=false;refresh();});}
 
   injectStyle();ensureHeaderTrust();compactSaveBar();simplifyStaticCopy();ensurePlanTiming();ensureBox3Simple();ensureBox3Advanced();ensureJan1Gate();ensurePurchaseLight();ensureHillenAdvanced();ensureMortgageAdvanced();ensureScenarioReturn();ensureOwnerLight();ensureScenarioWozFields();ensureScenarioAdvanced();ensureScenarioHow();ensureAuditTools();decorateFinanceForHillen();decorateScenarioForWoz();
+  document.addEventListener('click',event=>{
+    const button=event.target.closest?.('.info-button');
+    if(!button)return;
+    const panel=document.getElementById(button.getAttribute('aria-controls')||'');
+    const open=button.getAttribute('aria-expanded')!=='true';
+    button.setAttribute('aria-expanded',open?'true':'false');
+    panel?.classList.toggle('is-open',open);
+  });
   document.addEventListener('keydown',event=>{
     if(event.key!=='Escape')return;
-    const button=$('headerTrustInfo'),panel=$('headerTrustPanel');
-    if(!button||button.getAttribute('aria-expanded')!=='true')return;
+    const button=document.querySelector('.info-button[aria-expanded="true"]');
+    if(!button)return;
     event.preventDefault();
     button.setAttribute('aria-expanded','false');
-    panel?.classList.remove('is-open');
+    document.getElementById(button.getAttribute('aria-controls')||'')?.classList.remove('is-open');
     button.focus();
+  });
+  document.getElementById('exampleReturnsLink')?.addEventListener('click',()=>{
+    document.querySelector('.tab[data-tab="scenarios"]')?.click();
+    const target=document.getElementById('exampleReturnsFields')||document.getElementById('scenarioRate1');
+    target?.focus?.();
+    document.getElementById('scenarioRate1')?.focus();
   });
   document.addEventListener('dimp-save-status',syncSaveStatus);
   document.addEventListener('input',queueRefresh);

@@ -62,8 +62,10 @@ try{
     const el=document.getElementById('scenarioPurchaseBorrowingNotice');
     if(!el)return{missing:true};
     const style=getComputedStyle(el);
+    const panel=document.getElementById('scenarioPurchaseBorrowingPanel');
     return{
-      text:el.textContent,
+      text:(el.innerText||'').replace(/\s+/g,' ').trim(),
+      panel:(panel?.textContent||'').replace(/\s+/g,' ').trim(),
       hidden:el.classList.contains('hidden'),
       display:style.display,
       inDetails:Boolean(el.closest('details')),
@@ -72,7 +74,8 @@ try{
       expected
     };
   },BORROWING_NOTICE);
-  if(purchaseNotice.missing||purchaseNotice.text!==BORROWING_NOTICE||purchaseNotice.hidden||purchaseNotice.display==='none'||purchaseNotice.inDetails||!purchaseNotice.panelShown||!purchaseNotice.nextToFunding){
+  const shortNotice="This planner doesn't check what a lender would let you borrow. Ask a lender or an AFM-licensed adviser.";
+  if(purchaseNotice.missing||!purchaseNotice.text.startsWith(shortNotice)||purchaseNotice.panel!==BORROWING_NOTICE||purchaseNotice.hidden||purchaseNotice.display==='none'||purchaseNotice.inDetails||!purchaseNotice.panelShown||!purchaseNotice.nextToFunding){
     throw new Error(`Scenario purchase borrowing notice is not visible beside the purchase result: ${JSON.stringify(purchaseNotice)}`);
   }
 

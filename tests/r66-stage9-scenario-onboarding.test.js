@@ -34,7 +34,7 @@ test('purchase scenarios retain scenario-owned mortgage and tax inputs',()=>{
 
 test('browser Scenarios exposes both entry paths and locks calculation until selection',()=>{
   const source=read('scenario-engine.js');
-  assert.match(source,/Use my existing planner data/);assert.match(source,/Start a fresh comparison/);
+  assert.match(source,/Use my existing planner data/);assert.match(source,/Start blank\./);assert.match(source,/Enter new values here\./);
   assert.match(source,/if\(!scenarioSourceMode\)/);assert.match(source,/Changes in other tabs will not alter it unless you refresh/);
   assert.doesNotMatch(source,/document\.querySelectorAll\('#tab-investment input,#tab-investment select,#tab-mortgage input,#tab-mortgage select'\)/);
 });

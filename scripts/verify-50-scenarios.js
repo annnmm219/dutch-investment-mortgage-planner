@@ -191,7 +191,7 @@ function verifyDisplay(result,config){
   assert.equal(canonical.strategies.A.net,result.A.net);
   assert.equal(canonical.strategies.B.net,result.B.net);
   close(canonical.difference,gap,1e-8,'canonical displayed difference');
-  assert.match(model.title,/^Under the entered assumptions,/);
+  assert.match(model.title,/^Under these assumptions,/);
   assert.doesNotMatch(`${model.title} ${model.detail}`,/undefined|null|NaN/);
 }
 

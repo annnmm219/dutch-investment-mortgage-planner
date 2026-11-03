@@ -75,7 +75,7 @@ test('scenario assumptions hide fields that are irrelevant to the selected decis
   const js=read('app-state.js');
   assert.match(js,/scenarioRentGrowthNew[^]*\['buy-rent','sell-rent'\]/);
   assert.match(js,/scenarioUpfrontCashTreatmentNew[^]*\['buy-rent','downpayment'\]/);
-  assert.match(js,/Only assumptions used by the selected comparison are shown/);
+  assert.doesNotMatch(js,/Only assumptions used by the selected comparison are shown/);
 });
 
 test('linear vs annuity result explains why a higher remaining mortgage can still show higher modeled wealth',()=>{
