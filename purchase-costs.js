@@ -84,6 +84,8 @@ function sync(){
   if(!appraisalTouched)appraisal.value=String(price);
   const manual=transferMode.value==='manual';
   transferInput.disabled=!manual;
+  const planYear=Number(document.getElementById('startYear')?.value);
+  const acquisitionYear=Number.isFinite(planYear)?planYear:undefined;
   const result=PR.calculatePurchase2026({
     housePrice:price,
     ownSavings:Math.max(0,Number(ownSavings?.value)||0),
@@ -91,7 +93,8 @@ function sync(){
     transferTaxMode:transferMode.value,
     manualTransferTax:Math.max(0,Number(transferInput.value)||0),
     appraisedValue:Math.max(0,Number(appraisal.value)||0),
-    nhgMode:nhgMode.value
+    nhgMode:nhgMode.value,
+    acquisitionYear
   });
 
   if(!manual)transferInput.value=String(Math.round(result.transferTax.amount*100)/100);
@@ -101,8 +104,16 @@ function sync(){
   document.getElementById('purchaseCostsBreakdownTotal').textContent=fmt(result.totalCosts);
 
   const status=document.getElementById('purchaseRuleStatus');
+  const starterYear=result.transferTax.acquisitionYear||PR.starterAcquisitionYear(acquisitionYear);
+  const starterLimit=result.transferTax.starterLimit||PR.starterLimitForAcquisitionYear(acquisitionYear);
+  const starterHelp=document.querySelector('label[for="purchaseTransferTaxMode"]')?.parentElement?.querySelector('.inline');
+  if(starterHelp){
+    starterHelp.textContent=starterYear===2026
+      ?'Starter exemption assumes you are 18–34, will use the home as your main residence, have not used the exemption before, and the full home value is ≤ €555,000.'
+      :`Starter exemption assumes you are 18–34, will use the home as your main residence, have not used the exemption before, and the full home value is ≤ €${starterLimit.toLocaleString('en-US')} in ${starterYear}.`;
+  }
   const transferLabel=transferMode.value==='starter'
-    ?(result.transferTax.starterEligible?'Starter exemption passes the €555,000 value test.':'Starter exemption value test fails; 2% is used.')
+    ?(result.transferTax.starterEligible?`Starter exemption passes the €${starterLimit.toLocaleString('en-US')} value test.`:'Starter exemption value test fails; 2% is used.')
     :transferMode.value==='main'?'Main-residence transfer tax: 2%.'
     :transferMode.value==='other-home'?'Residential property not used as the main residence: 8%.'
     :transferMode.value==='other-real-estate'?'Other real estate transfer tax: 10.4%.'

@@ -1,0 +1,776 @@
+{
+  "stage": "R6.6 Stage 3",
+  "implementation": "legacy-shared-purchase-state",
+  "canonical": {
+    "buyRent": {
+      "valid": true,
+      "reason": "",
+      "leader": "Buy home",
+      "strategyA": {
+        "name": "Buy home",
+        "net": 305335.8872285141,
+        "investment": 107815.8869627397,
+        "savings": 0,
+        "mortgage": 220595.0857924298,
+        "equity": 197520.0002657744
+      },
+      "strategyB": {
+        "name": "Rent + invest",
+        "net": 243083.9950017887,
+        "investment": 243083.9950017887,
+        "savings": 0,
+        "mortgage": 0,
+        "equity": 0
+      },
+      "sourcesAndUses": null
+    },
+    "downpayment": {
+      "valid": true,
+      "reason": "",
+      "leader": "Smaller down payment",
+      "strategyA": {
+        "name": "Larger down payment",
+        "net": 323690.7946566647,
+        "investment": 118292.398469732,
+        "savings": 0,
+        "mortgage": 212716.6898712715,
+        "equity": 205398.3961869327
+      },
+      "strategyB": {
+        "name": "Smaller down payment",
+        "net": 328895.8792588855,
+        "investment": 162889.4626777441,
+        "savings": 0,
+        "mortgage": 252108.6694770628,
+        "equity": 166006.4165811414
+      },
+      "sourcesAndUses": null
+    },
+    "oversizedContribution": {
+      "valid": true,
+      "reason": "",
+      "leader": "Buy home",
+      "strategyA": {
+        "name": "Buy home",
+        "net": 524463.6795426317,
+        "investment": 405002.2263831448,
+        "savings": 0,
+        "mortgage": 0,
+        "equity": 119461.4531594869
+      },
+      "strategyB": {
+        "name": "Rent + invest",
+        "net": 366501.2910249246,
+        "investment": 366501.2910249246,
+        "savings": 0,
+        "mortgage": 0,
+        "equity": 0
+      },
+      "sourcesAndUses": null
+    }
+  },
+  "isolation": {
+    "buyRent": {
+      "reference": {
+        "valid": true,
+        "reason": "",
+        "leader": "Buy home",
+        "strategyA": {
+          "name": "Buy home",
+          "net": 305335.8872285141,
+          "investment": 107815.8869627397,
+          "savings": 0,
+          "mortgage": 220595.0857924298,
+          "equity": 197520.0002657744
+        },
+        "strategyB": {
+          "name": "Rent + invest",
+          "net": 243083.9950017887,
+          "investment": 243083.9950017887,
+          "savings": 0,
+          "mortgage": 0,
+          "equity": 0
+        },
+        "sourcesAndUses": null
+      },
+      "withTopLevelMortgageTabDecoys": {
+        "valid": false,
+        "reason": "Comparison unavailable: starting savings are 937654.00 below the required down payment and purchase costs. Add a funded cash source before comparing.",
+        "leader": "Unavailable",
+        "strategyA": {
+          "name": "Buy home",
+          "net": 0,
+          "investment": 0,
+          "savings": 0,
+          "mortgage": 0,
+          "equity": null
+        },
+        "strategyB": {
+          "name": "Rent + invest",
+          "net": 0,
+          "investment": 0,
+          "savings": 0,
+          "mortgage": 0,
+          "equity": null
+        },
+        "sourcesAndUses": null
+      },
+      "strategyANetDelta": -305335.887228514,
+      "strategyBNetDelta": -243083.9950017887,
+      "strategyAMortgageDelta": -220595.0857924297,
+      "strategyBMortgageDelta": 0
+    },
+    "downpayment": {
+      "reference": {
+        "valid": true,
+        "reason": "",
+        "leader": "Smaller down payment",
+        "strategyA": {
+          "name": "Larger down payment",
+          "net": 323690.7946566647,
+          "investment": 118292.398469732,
+          "savings": 0,
+          "mortgage": 212716.6898712715,
+          "equity": 205398.3961869327
+        },
+        "strategyB": {
+          "name": "Smaller down payment",
+          "net": 328895.8792588855,
+          "investment": 162889.4626777441,
+          "savings": 0,
+          "mortgage": 252108.6694770628,
+          "equity": 166006.4165811414
+        },
+        "sourcesAndUses": null
+      },
+      "withTopLevelMortgageTabDecoys": {
+        "valid": false,
+        "reason": "Comparison unavailable: at least one strategy is 947654.00 short of funded upfront cash. Increase starting savings or reduce the down payment before comparing.",
+        "leader": "Unavailable",
+        "strategyA": {
+          "name": "Larger down payment",
+          "net": 0,
+          "investment": 0,
+          "savings": 0,
+          "mortgage": 0,
+          "equity": null
+        },
+        "strategyB": {
+          "name": "Smaller down payment",
+          "net": 0,
+          "investment": 0,
+          "savings": 0,
+          "mortgage": 0,
+          "equity": null
+        },
+        "sourcesAndUses": null
+      },
+      "strategyANetDelta": -323690.7946566646,
+      "strategyBNetDelta": -328895.8792588855,
+      "strategyAMortgageDelta": -212716.6898712715,
+      "strategyBMortgageDelta": -252108.6694770628
+    }
+  },
+  "scenarios": [
+    {
+      "id": "buy-rent-1",
+      "mode": "buy-rent",
+      "strategyANet": 200600.3811004072,
+      "strategyBNet": 167938.1435955344,
+      "differenceAminusB": 32662.2375048728,
+      "leader": "Buy home",
+      "strategyAMortgage": 194703.5240505049,
+      "strategyBMortgage": 0,
+      "strategyAPurchaseCosts": 12000,
+      "strategyBPurchaseCosts": 0
+    },
+    {
+      "id": "buy-rent-2",
+      "mode": "buy-rent",
+      "strategyANet": 275144.6004831548,
+      "strategyBNet": 208691.7881122421,
+      "differenceAminusB": 66452.8123709126,
+      "leader": "Buy home",
+      "strategyAMortgage": 187559.9999999992,
+      "strategyBMortgage": 0,
+      "strategyAPurchaseCosts": 12250,
+      "strategyBPurchaseCosts": 0
+    },
+    {
+      "id": "buy-rent-3",
+      "mode": "buy-rent",
+      "strategyANet": 379758.2794819221,
+      "strategyBNet": 257119.2986417256,
+      "differenceAminusB": 122638.9808401965,
+      "leader": "Buy home",
+      "strategyAMortgage": 212932.3488414501,
+      "strategyBMortgage": 0,
+      "strategyAPurchaseCosts": 12500,
+      "strategyBPurchaseCosts": 0
+    },
+    {
+      "id": "buy-rent-4",
+      "mode": "buy-rent",
+      "strategyANet": 537436.6221989688,
+      "strategyBNet": 406422.8643318459,
+      "differenceAminusB": 131013.7578671229,
+      "leader": "Buy home",
+      "strategyAMortgage": 116599.9999999995,
+      "strategyBMortgage": 0,
+      "strategyAPurchaseCosts": 12750,
+      "strategyBPurchaseCosts": 0
+    },
+    {
+      "id": "buy-rent-5",
+      "mode": "buy-rent",
+      "strategyANet": 731692.0130073896,
+      "strategyBNet": 526659.1446096477,
+      "differenceAminusB": 205032.8683977419,
+      "leader": "Buy home",
+      "strategyAMortgage": 162815.6491219158,
+      "strategyBMortgage": 0,
+      "strategyAPurchaseCosts": 13000,
+      "strategyBPurchaseCosts": 0
+    },
+    {
+      "id": "buy-rent-6",
+      "mode": "buy-rent",
+      "strategyANet": 546273.781322648,
+      "strategyBNet": 331073.3355777955,
+      "differenceAminusB": 215200.4457448525,
+      "leader": "Buy home",
+      "strategyAMortgage": 128999.9999999999,
+      "strategyBMortgage": 0,
+      "strategyAPurchaseCosts": 13250,
+      "strategyBPurchaseCosts": 0
+    },
+    {
+      "id": "buy-rent-7",
+      "mode": "buy-rent",
+      "strategyANet": 920608.5413122209,
+      "strategyBNet": 593035.6604495203,
+      "differenceAminusB": 327572.8808627004,
+      "leader": "Buy home",
+      "strategyAMortgage": 0,
+      "strategyBMortgage": 0,
+      "strategyAPurchaseCosts": 13500,
+      "strategyBPurchaseCosts": 0
+    },
+    {
+      "id": "buy-rent-8",
+      "mode": "buy-rent",
+      "strategyANet": 1393980.0286723706,
+      "strategyBNet": 596847.479762419,
+      "differenceAminusB": 797132.5489099516,
+      "leader": "Buy home",
+      "strategyAMortgage": 0,
+      "strategyBMortgage": 0,
+      "strategyAPurchaseCosts": 13750,
+      "strategyBPurchaseCosts": 0
+    },
+    {
+      "id": "buy-rent-9",
+      "mode": "buy-rent",
+      "strategyANet": 372683.8495519823,
+      "strategyBNet": 270666.1927343363,
+      "differenceAminusB": 102017.656817646,
+      "leader": "Buy home",
+      "strategyAMortgage": 303909.2858576975,
+      "strategyBMortgage": 0,
+      "strategyAPurchaseCosts": 14000,
+      "strategyBPurchaseCosts": 0
+    },
+    {
+      "id": "buy-rent-10",
+      "mode": "buy-rent",
+      "strategyANet": 2455905.7754331646,
+      "strategyBNet": 1676041.5093306198,
+      "differenceAminusB": 779864.2661025447,
+      "leader": "Buy home",
+      "strategyAMortgage": 0,
+      "strategyBMortgage": 0,
+      "strategyAPurchaseCosts": 14250,
+      "strategyBPurchaseCosts": 0
+    },
+    {
+      "id": "downpayment-1",
+      "mode": "downpayment",
+      "strategyANet": 210629.2708671871,
+      "strategyBNet": 207464.0312444579,
+      "differenceAminusB": 3165.2396227292,
+      "leader": "Larger down payment",
+      "strategyAMortgage": 182782.9001290457,
+      "strategyBMortgage": 218544.771893424,
+      "strategyAPurchaseCosts": 12000,
+      "strategyBPurchaseCosts": 12000
+    },
+    {
+      "id": "downpayment-2",
+      "mode": "downpayment",
+      "strategyANet": 288188.5740759683,
+      "strategyBNet": 286139.2136915309,
+      "differenceAminusB": 2049.3603844373,
+      "leader": "Larger down payment",
+      "strategyAMortgage": 175320.0000000008,
+      "strategyBMortgage": 208800,
+      "strategyAPurchaseCosts": 12250,
+      "strategyBPurchaseCosts": 12250
+    },
+    {
+      "id": "downpayment-3",
+      "mode": "downpayment",
+      "strategyANet": 360190.8625626856,
+      "strategyBNet": 364815.7679346901,
+      "differenceAminusB": -4624.9053720045,
+      "leader": "Smaller down payment",
+      "strategyAMortgage": 198273.962508162,
+      "strategyBMortgage": 235305.6753501535,
+      "strategyAPurchaseCosts": 12500,
+      "strategyBPurchaseCosts": 12500
+    },
+    {
+      "id": "downpayment-4",
+      "mode": "downpayment",
+      "strategyANet": 587536.0297960215,
+      "strategyBNet": 562015.1603839471,
+      "differenceAminusB": 25520.8694120744,
+      "leader": "Larger down payment",
+      "strategyAMortgage": 108199.9999999991,
+      "strategyBMortgage": 127999.9999999999,
+      "strategyAPurchaseCosts": 12750,
+      "strategyBPurchaseCosts": 12750
+    },
+    {
+      "id": "downpayment-5",
+      "mode": "downpayment",
+      "strategyANet": 738573.5963542359,
+      "strategyBNet": 775387.5211084834,
+      "differenceAminusB": -36813.9247542475,
+      "leader": "Smaller down payment",
+      "strategyAMortgage": 150617.7340411216,
+      "strategyBMortgage": 177665.2848724492,
+      "strategyAPurchaseCosts": 13000,
+      "strategyBPurchaseCosts": 13000
+    },
+    {
+      "id": "downpayment-6",
+      "mode": "downpayment",
+      "strategyANet": 554238.8629453328,
+      "strategyBNet": 535248.3856397495,
+      "differenceAminusB": 18990.4773055833,
+      "leader": "Larger down payment",
+      "strategyAMortgage": 119000.0000000026,
+      "strategyBMortgage": 139999.9999999981,
+      "strategyAPurchaseCosts": 13250,
+      "strategyBPurchaseCosts": 13250
+    },
+    {
+      "id": "downpayment-7",
+      "mode": "downpayment",
+      "strategyANet": 920680.316015894,
+      "strategyBNet": 953090.4978716944,
+      "differenceAminusB": -32410.1818558004,
+      "leader": "Smaller down payment",
+      "strategyAMortgage": 0,
+      "strategyBMortgage": 0,
+      "strategyAPurchaseCosts": 13500,
+      "strategyBPurchaseCosts": 13500
+    },
+    {
+      "id": "downpayment-8",
+      "mode": "downpayment",
+      "strategyANet": 1207410.6638220348,
+      "strategyBNet": 1123615.4761613607,
+      "differenceAminusB": 83795.1876606741,
+      "leader": "Larger down payment",
+      "strategyAMortgage": 0,
+      "strategyBMortgage": 0,
+      "strategyAPurchaseCosts": 13750,
+      "strategyBPurchaseCosts": 13750
+    },
+    {
+      "id": "downpayment-9",
+      "mode": "downpayment",
+      "strategyANet": 388257.0702351314,
+      "strategyBNet": 381822.8328741134,
+      "differenceAminusB": 6434.237361018,
+      "leader": "Larger down payment",
+      "strategyAMortgage": 278377.6114360478,
+      "strategyBMortgage": 325322.948275855,
+      "strategyAPurchaseCosts": 14000,
+      "strategyBPurchaseCosts": 14000
+    },
+    {
+      "id": "downpayment-10",
+      "mode": "downpayment",
+      "strategyANet": 2308816.170127984,
+      "strategyBNet": 2005632.7760780507,
+      "differenceAminusB": 303183.3940499332,
+      "leader": "Larger down payment",
+      "strategyAMortgage": 0,
+      "strategyBMortgage": 0,
+      "strategyAPurchaseCosts": 14250,
+      "strategyBPurchaseCosts": 14250
+    },
+    {
+      "id": "mortgage-invest-1",
+      "mode": "mortgage-invest",
+      "strategyANet": 33936.1073399238,
+      "strategyBNet": 33398.8006413795,
+      "differenceAminusB": 537.3066985443,
+      "leader": "Repay mortgage",
+      "strategyAMortgage": 130279.3793571703,
+      "strategyBMortgage": 143047.4870575139,
+      "strategyAPurchaseCosts": 0,
+      "strategyBPurchaseCosts": 0
+    },
+    {
+      "id": "mortgage-invest-2",
+      "mode": "mortgage-invest",
+      "strategyANet": 73751.1919226693,
+      "strategyBNet": 73182.604555233,
+      "differenceAminusB": 568.5873674363,
+      "leader": "Repay mortgage",
+      "strategyAMortgage": 118740.0000000006,
+      "strategyBMortgage": 141840.0000000008,
+      "strategyAPurchaseCosts": 0,
+      "strategyBPurchaseCosts": 0
+    },
+    {
+      "id": "mortgage-invest-3",
+      "mode": "mortgage-invest",
+      "strategyANet": 112721.8140570658,
+      "strategyBNet": 116015.9855082204,
+      "differenceAminusB": -3294.1714511546,
+      "leader": "Invest instead",
+      "strategyAMortgage": 115160.198858665,
+      "strategyBMortgage": 165099.7197538782,
+      "strategyAPurchaseCosts": 0,
+      "strategyBPurchaseCosts": 0
+    },
+    {
+      "id": "mortgage-invest-4",
+      "mode": "mortgage-invest",
+      "strategyANet": 247690.1103550927,
+      "strategyBNet": 254167.229291946,
+      "differenceAminusB": -6477.1189368533,
+      "leader": "Invest instead",
+      "strategyAMortgage": 31200,
+      "strategyBMortgage": 92400,
+      "strategyAPurchaseCosts": 0,
+      "strategyBPurchaseCosts": 0
+    },
+    {
+      "id": "mortgage-invest-5",
+      "mode": "mortgage-invest",
+      "strategyANet": 294440.321629759,
+      "strategyBNet": 331300.6979131325,
+      "differenceAminusB": -36860.3762833735,
+      "leader": "Invest instead",
+      "strategyAMortgage": 5414.9819387409,
+      "strategyBMortgage": 131525.3452190068,
+      "strategyAPurchaseCosts": 0,
+      "strategyBPurchaseCosts": 0
+    },
+    {
+      "id": "mortgage-invest-6",
+      "mode": "mortgage-invest",
+      "strategyANet": 300211.1765178611,
+      "strategyBNet": 290768.4308613094,
+      "differenceAminusB": 9442.7456565517,
+      "leader": "Repay mortgage",
+      "strategyAMortgage": 0,
+      "strategyBMortgage": 105999.9999999977,
+      "strategyAPurchaseCosts": 0,
+      "strategyBPurchaseCosts": 0
+    },
+    {
+      "id": "mortgage-invest-7",
+      "mode": "mortgage-invest",
+      "strategyANet": 511923.3666737882,
+      "strategyBNet": 555576.8129803938,
+      "differenceAminusB": -43653.4463066056,
+      "leader": "Invest instead",
+      "strategyAMortgage": 0,
+      "strategyBMortgage": 0,
+      "strategyAPurchaseCosts": 0,
+      "strategyBPurchaseCosts": 0
+    },
+    {
+      "id": "mortgage-invest-8",
+      "mode": "mortgage-invest",
+      "strategyANet": 717376.5257717345,
+      "strategyBNet": 844376.091953402,
+      "differenceAminusB": -126999.5661816675,
+      "leader": "Invest instead",
+      "strategyAMortgage": 0,
+      "strategyBMortgage": 0,
+      "strategyAPurchaseCosts": 0,
+      "strategyBPurchaseCosts": 0
+    },
+    {
+      "id": "mortgage-invest-9",
+      "mode": "mortgage-invest",
+      "strategyANet": 75426.9879282582,
+      "strategyBNet": 70458.745228417,
+      "differenceAminusB": 4968.2426998412,
+      "leader": "Repay mortgage",
+      "strategyAMortgage": 172141.0123059302,
+      "strategyBMortgage": 260258.3586206837,
+      "strategyAPurchaseCosts": 0,
+      "strategyBPurchaseCosts": 0
+    },
+    {
+      "id": "mortgage-invest-10",
+      "mode": "mortgage-invest",
+      "strategyANet": 1556468.842635341,
+      "strategyBNet": 1873310.9599260883,
+      "differenceAminusB": -316842.1172907473,
+      "leader": "Invest instead",
+      "strategyAMortgage": 0,
+      "strategyBMortgage": 0,
+      "strategyAPurchaseCosts": 0,
+      "strategyBPurchaseCosts": 0
+    },
+    {
+      "id": "linear-annuity-1",
+      "mode": "linear-annuity",
+      "strategyANet": 29215.4866970941,
+      "strategyBNet": 28835.9100033617,
+      "differenceAminusB": 379.5766937323,
+      "leader": "Linear mortgage",
+      "strategyAMortgage": 135000,
+      "strategyBMortgage": 143047.4870575139,
+      "strategyAPurchaseCosts": 0,
+      "strategyBPurchaseCosts": 0
+    },
+    {
+      "id": "linear-annuity-2",
+      "mode": "linear-annuity",
+      "strategyANet": 50651.1919226691,
+      "strategyBNet": 50284.1805492246,
+      "differenceAminusB": 367.0113734445,
+      "leader": "Linear mortgage",
+      "strategyAMortgage": 141840.0000000008,
+      "strategyBMortgage": 155556.5515633266,
+      "strategyAPurchaseCosts": 0,
+      "strategyBPurchaseCosts": 0
+    },
+    {
+      "id": "linear-annuity-3",
+      "mode": "linear-annuity",
+      "strategyANet": 85215.3462490633,
+      "strategyBNet": 87008.8819093721,
+      "differenceAminusB": -1793.5356603088,
+      "leader": "Annuity mortgage",
+      "strategyAMortgage": 142666.6666666675,
+      "strategyBMortgage": 165099.7197538782,
+      "strategyAPurchaseCosts": 0,
+      "strategyBPurchaseCosts": 0
+    },
+    {
+      "id": "linear-annuity-4",
+      "mode": "linear-annuity",
+      "strategyANet": 188986.9589969486,
+      "strategyBNet": 192568.5117270935,
+      "differenceAminusB": -3581.5527301449,
+      "leader": "Annuity mortgage",
+      "strategyAMortgage": 92400,
+      "strategyBMortgage": 113998.939243228,
+      "strategyAPurchaseCosts": 0,
+      "strategyBPurchaseCosts": 0
+    },
+    {
+      "id": "linear-annuity-5",
+      "mode": "linear-annuity",
+      "strategyANet": 203824.2701651881,
+      "strategyBNet": 219396.8329245568,
+      "differenceAminusB": -15572.5627593687,
+      "leader": "Annuity mortgage",
+      "strategyAMortgage": 99200.0000000012,
+      "strategyBMortgage": 131525.3452190068,
+      "strategyAPurchaseCosts": 0,
+      "strategyBPurchaseCosts": 0
+    },
+    {
+      "id": "linear-annuity-6",
+      "mode": "linear-annuity",
+      "strategyANet": 184487.088654829,
+      "strategyBNet": 179640.7855962899,
+      "differenceAminusB": 4846.3030585391,
+      "leader": "Linear mortgage",
+      "strategyAMortgage": 105999.9999999977,
+      "strategyBMortgage": 151508.846666368,
+      "strategyAPurchaseCosts": 0,
+      "strategyBPurchaseCosts": 0
+    },
+    {
+      "id": "linear-annuity-7",
+      "mode": "linear-annuity",
+      "strategyANet": 390750.01496056,
+      "strategyBNet": 400301.641535333,
+      "differenceAminusB": -9551.626574773,
+      "leader": "Annuity mortgage",
+      "strategyAMortgage": 0,
+      "strategyBMortgage": 0,
+      "strategyAPurchaseCosts": 0,
+      "strategyBPurchaseCosts": 0
+    },
+    {
+      "id": "linear-annuity-8",
+      "mode": "linear-annuity",
+      "strategyANet": 567103.4895058741,
+      "strategyBNet": 605453.2536428266,
+      "differenceAminusB": -38349.7641369525,
+      "leader": "Annuity mortgage",
+      "strategyAMortgage": 0,
+      "strategyBMortgage": 0,
+      "strategyAPurchaseCosts": 0,
+      "strategyBPurchaseCosts": 0
+    },
+    {
+      "id": "linear-annuity-9",
+      "mode": "linear-annuity",
+      "strategyANet": 15834.6669008535,
+      "strategyBNet": 13992.8632151321,
+      "differenceAminusB": 1841.8036857215,
+      "leader": "Linear mortgage",
+      "strategyAMortgage": 231733.3333333348,
+      "strategyBMortgage": 260258.3586206837,
+      "strategyAPurchaseCosts": 0,
+      "strategyBPurchaseCosts": 0
+    },
+    {
+      "id": "linear-annuity-10",
+      "mode": "linear-annuity",
+      "strategyANet": 1113945.0467788386,
+      "strategyBNet": 1223760.9116702056,
+      "differenceAminusB": -109815.864891367,
+      "leader": "Annuity mortgage",
+      "strategyAMortgage": 0,
+      "strategyBMortgage": 0,
+      "strategyAPurchaseCosts": 0,
+      "strategyBPurchaseCosts": 0
+    },
+    {
+      "id": "sell-rent-1",
+      "mode": "sell-rent",
+      "strategyANet": 472583.8859370293,
+      "strategyBNet": 407765.4866970941,
+      "differenceAminusB": 64818.3992399353,
+      "leader": "Keep home",
+      "strategyAMortgage": 143047.4870575139,
+      "strategyBMortgage": 0,
+      "strategyAPurchaseCosts": 0,
+      "strategyBPurchaseCosts": 0
+    },
+    {
+      "id": "sell-rent-2",
+      "mode": "sell-rent",
+      "strategyANet": 562093.3685097678,
+      "strategyBNet": 469427.58249985,
+      "differenceAminusB": 92665.7860099178,
+      "leader": "Keep home",
+      "strategyAMortgage": 141840.0000000008,
+      "strategyBMortgage": 0,
+      "strategyAPurchaseCosts": 0,
+      "strategyBPurchaseCosts": 0
+    },
+    {
+      "id": "sell-rent-3",
+      "mode": "sell-rent",
+      "strategyANet": 704884.5430468754,
+      "strategyBNet": 572426.0173481785,
+      "differenceAminusB": 132458.5256986969,
+      "leader": "Keep home",
+      "strategyAMortgage": 165099.7197538782,
+      "strategyBMortgage": 0,
+      "strategyAPurchaseCosts": 0,
+      "strategyBPurchaseCosts": 0
+    },
+    {
+      "id": "sell-rent-4",
+      "mode": "sell-rent",
+      "strategyANet": 861655.58361013,
+      "strategyBNet": 796735.199347289,
+      "differenceAminusB": 64920.384262841,
+      "leader": "Keep home",
+      "strategyAMortgage": 92400,
+      "strategyBMortgage": 0,
+      "strategyAPurchaseCosts": 0,
+      "strategyBPurchaseCosts": 0
+    },
+    {
+      "id": "sell-rent-5",
+      "mode": "sell-rent",
+      "strategyANet": 1031329.0703007058,
+      "strategyBNet": 961548.6316378477,
+      "differenceAminusB": 69780.4386628579,
+      "leader": "Keep home",
+      "strategyAMortgage": 131525.3452190068,
+      "strategyBMortgage": 0,
+      "strategyAPurchaseCosts": 0,
+      "strategyBPurchaseCosts": 0
+    },
+    {
+      "id": "sell-rent-6",
+      "mode": "sell-rent",
+      "strategyANet": 911858.530791892,
+      "strategyBNet": 715203.0440556091,
+      "differenceAminusB": 196655.486736283,
+      "leader": "Keep home",
+      "strategyAMortgage": 105999.9999999977,
+      "strategyBMortgage": 0,
+      "strategyAPurchaseCosts": 0,
+      "strategyBPurchaseCosts": 0
+    },
+    {
+      "id": "sell-rent-7",
+      "mode": "sell-rent",
+      "strategyANet": 1236581.8555469657,
+      "strategyBNet": 1001813.8698014498,
+      "differenceAminusB": 234767.9857455159,
+      "leader": "Keep home",
+      "strategyAMortgage": 0,
+      "strategyBMortgage": 0,
+      "strategyAPurchaseCosts": 0,
+      "strategyBPurchaseCosts": 0
+    },
+    {
+      "id": "sell-rent-8",
+      "mode": "sell-rent",
+      "strategyANet": 1978722.698716296,
+      "strategyBNet": 1684474.8316189528,
+      "differenceAminusB": 294247.8670973433,
+      "leader": "Keep home",
+      "strategyAMortgage": 0,
+      "strategyBMortgage": 0,
+      "strategyAPurchaseCosts": 0,
+      "strategyBPurchaseCosts": 0
+    },
+    {
+      "id": "sell-rent-9",
+      "mode": "sell-rent",
+      "strategyANet": 731244.442548157,
+      "strategyBNet": 573148.7090270978,
+      "differenceAminusB": 158095.7335210592,
+      "leader": "Keep home",
+      "strategyAMortgage": 260258.3586206837,
+      "strategyBMortgage": 0,
+      "strategyAPurchaseCosts": 0,
+      "strategyBPurchaseCosts": 0
+    },
+    {
+      "id": "sell-rent-10",
+      "mode": "sell-rent",
+      "strategyANet": 3174436.4061239455,
+      "strategyBNet": 4195480.030094935,
+      "differenceAminusB": -1021043.6239709893,
+      "leader": "Sell now + rent/invest",
+      "strategyAMortgage": 0,
+      "strategyBMortgage": 0,
+      "strategyAPurchaseCosts": 0,
+      "strategyBPurchaseCosts": 0
+    }
+  ]
+}

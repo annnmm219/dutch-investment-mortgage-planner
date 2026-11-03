@@ -1,0 +1,225 @@
+{
+  "audit": {
+    "name": "R6.6 Stage 10 Independent Audit",
+    "first_audit_date": "2026-09-10",
+    "first_audited_candidate": "caa998f47346270c886606a3f0dc852a0864eaf8",
+    "first_status": "FAIL_NOT_RELEASE_READY",
+    "second_audit_date": "2026-09-14",
+    "second_status": "PASS_ORIGINAL_SIX_REMEDIATIONS_PUBLIC_RELEASE_HARDENING_PENDING",
+    "final_hardening_date": "2026-09-15",
+    "final_hardening_status": "PASS_TECHNICAL_HARDENING_PENDING_PERSONA_AND_OWNER_ACCEPTANCE",
+    "calculation_source": "a4377ce1050277b5ce13b97779c4af27ede94f65",
+    "freeze_metadata_commit": "56ef36e47ef8036432a71503f8b11e762d1e12d7",
+    "build_id": "R6.6-stage10-a4377ce1",
+    "final_evidence_head": "3f1e6fffe30453b0486b5d0e01425151e2357b3b",
+    "merge_authorized": false
+  },
+  "summary": {
+    "original_release_blockers_closed": 6,
+    "new_public_release_blockers": 0,
+    "dependency_hygiene_findings_open": 0,
+    "accepted_or_minor_limitations": 2,
+    "closed_findings": 9,
+    "technical_release_blockers_open": 0,
+    "acceptance_testing_pending": true
+  },
+  "findings": [
+    {
+      "id": "F-01",
+      "severity": "BLOCKER",
+      "status": "CLOSED_REMEDIATED",
+      "area": "Box 3 current law / non-main property",
+      "title": "2026 actual return omitted rental income and private-use addition for non-main property",
+      "release_blocker": false,
+      "closure": "Current-law non-main property models received rental/pacht income and the 2026 5.06% private-use addition, includes them in the actual-return comparison, and exposes the components in annual audit buckets."
+    },
+    {
+      "id": "F-02",
+      "severity": "BLOCKER",
+      "status": "CLOSED_REMEDIATED",
+      "area": "Proposed Box 3 / non-main property",
+      "title": "Future/transition path used generic accrual treatment for non-main real estate",
+      "release_blocker": false,
+      "closure": "Tax-adjusted non-main-property scenarios are blocked under Future or Transition Box 3 until the proposal's real-estate-specific branch is implemented."
+    },
+    {
+      "id": "F-03",
+      "severity": "BLOCKER",
+      "status": "CLOSED_REMEDIATED",
+      "area": "NHG 2026",
+      "title": "Enhanced NHG check did not independently cap the non-energy cost stack at EUR 470,000",
+      "release_blocker": false,
+      "closure": "For the supported existing-home purchase route, the exact NHG gate independently enforces a-g <= EUR 470,000 and a-h <= EUR 498,200 plus the related loan and qualifying-energy caps. The simplified Mortgage-tab route cannot return a pass without exact inputs."
+    },
+    {
+      "id": "F-04",
+      "severity": "BLOCKER",
+      "status": "CLOSED_REMEDIATED",
+      "area": "Property classification",
+      "title": "Manual transfer-tax mode could fall through as a main residence for Box 1 / Box 3 routing",
+      "release_blocker": false,
+      "closure": "Property-use classification is explicit and independent from transfer-tax mode; manual transfer tax no longer decides Box 1 versus Box 3 treatment."
+    },
+    {
+      "id": "F-05",
+      "severity": "MAJOR",
+      "status": "CLOSED_REMEDIATED",
+      "area": "Box 1 integration",
+      "title": "Erfpacht and qualifying purchase-financing costs were not passed into deductible own-home costs",
+      "release_blocker": false,
+      "closure": "Itemized periodic erfpacht and the explicitly classified deductible financing-cost subset are routed into the annual Box 1 bridge. Automatic NHG fee deduction follows the Box 1 qualifying-debt share; hidden/non-itemized ground lease is not silently deducted."
+    },
+    {
+      "id": "F-06",
+      "severity": "RELEASE_GOVERNANCE_BLOCKER",
+      "status": "CLOSED_REMEDIATED",
+      "area": "Release identity / exports",
+      "title": "Exports and calculation evidence lacked immutable exact source/build identity",
+      "release_blocker": false,
+      "closure": "R6.6 is frozen to calculation-source SHA a4377ce1050277b5ce13b97779c4af27ede94f65 and build ID R6.6-stage10-a4377ce1; canonical export evidence carries both values."
+    },
+    {
+      "id": "F-07",
+      "severity": "MEDIUM",
+      "status": "CLOSED_REMEDIATED",
+      "area": "Dependency hygiene",
+      "title": "Development Playwright dependency reported an advisory and lockfile contained an extraneous absolute-path entry",
+      "release_blocker": false,
+      "closure": "Playwright is pinned to 1.63.0, the lockfile was regenerated without the environment-specific extraneous path, npm audit --audit-level=high reports 0 vulnerabilities, and browser CI enforces the audit gate."
+    },
+    {
+      "id": "F-08",
+      "severity": "ACCEPTED_LIMITATION",
+      "status": "ACCEPTABLE_WITH_DISCLOSURE",
+      "area": "Tax cash-flow timing",
+      "title": "Box 3 payment is modeled at calendar-year end rather than actual assessment/payment date",
+      "release_blocker": false,
+      "required_action": "Retain the deterministic timing disclosure."
+    },
+    {
+      "id": "F-09",
+      "severity": "MINOR",
+      "status": "ACCEPTABLE_WITH_DISCLOSURE",
+      "area": "Next Euro numerical method",
+      "title": "The 0.1 percentage-point break-even scan is numerical rather than a mathematical proof against arbitrarily close double roots",
+      "release_blocker": false,
+      "required_action": "Retain numerical-search wording; adaptive subdivision remains optional hardening."
+    },
+    {
+      "id": "F-10",
+      "severity": "MAJOR",
+      "status": "CLOSED_REMEDIATED",
+      "area": "Box 3 non-main property input definition",
+      "title": "Rental-income field said gross rent even though current-law actual return uses received basic rent (kale huur), excluding service charges",
+      "release_blocker": false,
+      "closure": "The UI and browser contract now define the input as annual basic rent/pacht received excluding service charges, while retaining the disclosure that ordinary property operating/maintenance costs are not deducted from current-law actual Box 3 return."
+    },
+    {
+      "id": "F-11",
+      "severity": "MAJOR",
+      "status": "CLOSED_REMEDIATED",
+      "area": "NHG purchase scope",
+      "title": "Exact NHG a-g/a-h rule is an existing-home rule but the public purchase route did not explicitly exclude new-build purchases",
+      "release_blocker": false,
+      "closure": "R6.6 explicitly scopes the supported purchase/NHG rules to existing homes and blocks new-build scenarios instead of applying the existing-home rule set."
+    }
+  ],
+  "closed_checks": [
+    {
+      "id": "C-01",
+      "status": "CLOSED",
+      "title": "2026 Box 1 rates and 11.94-point own-home adjustment verified"
+    },
+    {
+      "id": "C-02",
+      "status": "CLOSED",
+      "title": "Hillen 2026 rate and statutory qualifying-cost ceiling verified"
+    },
+    {
+      "id": "C-03",
+      "status": "CLOSED",
+      "title": "2026 current Box 3 headline parameters verified"
+    },
+    {
+      "id": "C-04",
+      "status": "CLOSED",
+      "title": "2026 transfer-tax rates and starter ceiling verified"
+    },
+    {
+      "id": "C-05",
+      "status": "CLOSED",
+      "title": "Stage 10 deterministic/state/browser parity evidence verified on the final hardened build"
+    },
+    {
+      "id": "C-06",
+      "status": "CLOSED",
+      "title": "CSV injection, accessible chart table and third-party browser integrity controls retained"
+    },
+    {
+      "id": "C-07",
+      "status": "CLOSED",
+      "title": "F-07 dependency hygiene and high-severity npm audit gate verified"
+    },
+    {
+      "id": "C-08",
+      "status": "CLOSED",
+      "title": "F-10 rental-input definition verified in unit and browser contracts"
+    },
+    {
+      "id": "C-09",
+      "status": "CLOSED",
+      "title": "F-11 existing-home scope and new-build block verified in unit and browser contracts"
+    }
+  ],
+  "evidence": {
+    "finance_workflow_run": 34948639673,
+    "finance_tests": {
+      "total": 286,
+      "passed": 286,
+      "failed": 0
+    },
+    "stage10_deterministic": {
+      "scenarios": 50,
+      "reconciled": 50,
+      "tax_effect_changes": 19,
+      "comparable_wealth_changes": 14,
+      "leader_changes": 0,
+      "unexplained_changes": 0
+    },
+    "dependency_hygiene": {
+      "playwright_version": "1.63.0",
+      "lockfile_environment_specific_entries": 0,
+      "npm_audit_high_vulnerabilities": 0,
+      "browser_ci_audit_gate": true
+    },
+    "browser_workflow_run": 34948639790,
+    "browser_merge_commit": "ea4c3bd00b2f878ba6664cc9afb759c2c5bd3396",
+    "browser": {
+      "desktop_exact_pairs": 50,
+      "mobile_exact_pairs": 50,
+      "browser_errors": 0,
+      "save_reload": true,
+      "explicit_refresh": true,
+      "fresh_isolation": true,
+      "property_classification": true,
+      "non_main_current_return": true,
+      "proposed_non_main_blocked": true,
+      "exact_nhg_caps": true,
+      "deductible_cost_path": true,
+      "rental_input_definition": true,
+      "existing_home_scope": true,
+      "new_build_blocked": true,
+      "export_identity": true
+    },
+    "browser_artifact": {
+      "id": 10389725361,
+      "name": "stage91-browser-test-ea4c3bd00b2f878ba6664cc9afb759c2c5bd3396",
+      "sha256": "70595f1534d9811863cca79bb87418686866972b3de78d9af7f887bfe63c8153"
+    }
+  },
+  "next_gate": {
+    "status": "PENDING",
+    "name": "Persona and owner acceptance testing",
+    "note": "No technical Stage 10 release blocker remains. PR #13 stays draft and unmerged until persona/manual UX acceptance and explicit repository-owner merge authorization."
+  }
+}

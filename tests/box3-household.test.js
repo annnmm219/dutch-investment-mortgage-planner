@@ -36,7 +36,7 @@ test('household adapter injects dynamic savings, debt and repayment settings int
   const x=wrapped.simulateInvestmentFlows({initialPortfolio:100000,flows:Array(12).fill(0),annualReturnPct:10,startYear:2026,startMonth:1,box3Mode:'current',taxPartners:1,paySource:'external',currentTaxRate:.36,currentAllowance:59357,currentNotional:.06});
   approx(x.yearBuckets[2026].jan1Savings,100000,1e-9);
   approx(x.yearBuckets[2026].jan1Debt,20000,1e-9);
-  approx(x.yearBuckets[2026].savingsIncome,2018.4355681501315,1e-6);
+  approx(x.yearBuckets[2026].savingsIncome,2000,1e-6);
   approx(x.box3Debt,14000,1e-9);
   approx(x.totalDebtRepaid,6000,1e-9);
   approx(x.externalDebtRepayment,6000,1e-9);

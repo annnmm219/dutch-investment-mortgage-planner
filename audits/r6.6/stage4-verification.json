@@ -1,0 +1,86 @@
+{
+  "stage": "R6.6 Stage 4",
+  "title": "Bounded 2026 Box 1 own-home tax bridge",
+  "stage3FinalHead": "faaf18d31b561d8bba974158431d9219d6c349e8",
+  "stage4CalculationAndEvidenceHead": "a774ac1a69752eed0e7680abca66b81938e23a5c",
+  "publicMainCommit": "ac8f029788ff8d1fc2baf09fbc89b848a28f7803",
+  "branch": "r6-6-decision-integrity",
+  "verifiedAt": "2026-09-03",
+  "nodeVersion": "v24.19.0",
+  "tests": 201,
+  "passed": 201,
+  "failed": 0,
+  "scenarioReconciliation": {
+    "scenarios": 50,
+    "reconciled": 50,
+    "failures": 0
+  },
+  "stage4BeforeAfterMatrix": {
+    "scenarios": 50,
+    "scenariosWithNumericChanges": 25,
+    "strategyTaxEffectsChanged": 26,
+    "unchangedControlScenarios": 25,
+    "scenarioLeaderChanges": 0,
+    "changedLeaderIds": []
+  },
+  "criticalProbe": {
+    "incomeBeforeOwnHome": 80000,
+    "ewfIncome": 1750,
+    "deductibleOwnHomeCosts": 2000,
+    "legacyCompressedBenefit": 93.9,
+    "progressiveTableTaxReduction": 123.75,
+    "highIncomeAdjustment": 238.8,
+    "rebuiltTaxBenefit": -115.05,
+    "classification": "wrong-sign defect corrected"
+  },
+  "policy2026": {
+    "preAowRates": [0.3575, 0.3756, 0.495],
+    "thresholds": [38883, 78426],
+    "maximumOwnHomeDeductionRate": 0.3756,
+    "highIncomeAdjustmentRate": 0.1194,
+    "hillenRelief": 0.71867
+  },
+  "controls": {
+    "policyRegistryAuthoritative": true,
+    "mortgageScheduleParityPassed": true,
+    "combinedPlanParityPassed": true,
+    "scenarioParityPassed": true,
+    "nextEuroParityPassed": true,
+    "hraDurationPreserved": true,
+    "qualifyingDebtSharePreserved": true,
+    "hillenOverridePreserved": true,
+    "unsupportedProfilesRejected": true,
+    "manualModePreserved": true,
+    "mortgageBalancesUnchanged": true,
+    "grossInterestUnchanged": true,
+    "purchaseCostsUnchanged": true,
+    "sellingCostsUnchanged": true,
+    "sourcesAndUsesUnchanged": true,
+    "chromiumResponsive": true,
+    "browserPageErrors": 0,
+    "publicMainChanged": false
+  },
+  "officialSourceConflict": {
+    "present": true,
+    "subject": "Hillen overlap and the Article 2.10 rate-adjustment ceiling",
+    "statutoryRule": "The adjustment base is capped at total qualifying deductions.",
+    "belastingdienstExample": "The published 2026 Hillen example states an uncapped EUR 5,215 base despite EUR 3,500 of own-home costs.",
+    "implementationDecision": "Apply the statutory EUR 3,500 ceiling.",
+    "criticalWrongSignProbeAffected": false,
+    "requiresProfessionalExternalValidationBeforeDecisionGradeRelease": true
+  },
+  "automaticProfileBoundary": {
+    "taxYear": 2026,
+    "belowAowAge": true,
+    "ordinaryEmploymentIncome": true,
+    "taxCreditsIncluded": false,
+    "box1LossCarryIncluded": false,
+    "otherRateAdjustedDeductionsIncluded": false,
+    "complexFiscalPartnerAllocationIncluded": false,
+    "mixedTransitionalDebtIncluded": false,
+    "browserFinancingCostInputIncluded": false,
+    "browserErfpachtInputIncluded": false
+  },
+  "publicMainChanged": false,
+  "stage5Activated": false
+}

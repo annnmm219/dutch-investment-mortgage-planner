@@ -10,9 +10,10 @@ function approx(actual,expected,tolerance=1e-6,message=''){
 }
 
 test('2026 deduction rate switches at the configured income threshold',()=>{
-  approx(FC.deductionRate2026({grossIncome:38883}),0.3575,1e-12,'first bracket');
-  approx(FC.deductionRate2026({grossIncome:38884}),0.3756,1e-12,'second bracket');
-  approx(FC.deductionRate2026({mode:'manual',manualRatePct:34.5,grossIncome:999999}),0.345,1e-12,'manual rate');
+  approx(FC.appliedOwnHomeDeductionRate({grossIncome:38883}),0.3575,1e-12,'first bracket');
+  approx(FC.appliedOwnHomeDeductionRate({grossIncome:38884}),0.3756,1e-12,'second bracket');
+  approx(FC.appliedOwnHomeDeductionRate({grossIncome:78427}),0.3756,1e-12,'top bracket capped');
+  approx(FC.appliedOwnHomeDeductionRate({mode:'manual',manualRatePct:34.5,grossIncome:999999}),0.345,1e-12,'manual rate');
 });
 
 test('2026 eigenwoningforfait gives €1,400 on €400,000 WOZ',()=>{
@@ -165,7 +166,7 @@ test('mid-year current Box 3 honors firstJan1Portfolio override',()=>{
     firstJan1Portfolio:70000
   });
   approx(x.totalTax,229.8888,1e-6,'first-year tax');
-  approx(x.portfolio,105922.1262601,1e-6,'after-tax portfolio');
+  approx(x.portfolio,100000*Math.sqrt(1.12)-229.8888,1e-6,'after-tax portfolio');
   approx(x.yearBuckets[2026].jan1Portfolio,70000,1e-9,'Jan 1 base');
 });
 

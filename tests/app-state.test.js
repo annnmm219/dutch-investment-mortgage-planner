@@ -34,10 +34,25 @@ test('R6 payload normalization rejects invalid JSON and the wrong schema',()=>{
 });
 
 test('R6 payload normalization keeps only supported metadata shapes',()=>{
-  const x=State.normalizePayload({schema:1,savedAt:'2026-09-01T00:00:00.000Z',controls:{'id:x':{kind:'value',value:'1'}},meta:{activeTab:'mortgage',mortgageType:'annuity'}});
+  const x=State.normalizePayload({kind:State.STATE_KIND,schema:State.SCHEMA_VERSION,savedAt:'2026-09-01T00:00:00.000Z',controls:{'id:x':{kind:'value',value:'1'}},meta:{activeTab:'mortgage',mortgageType:'annuity'}});
   assert.equal(x.meta.activeTab,'mortgage');
   assert.equal(x.meta.mortgageType,'annuity');
   assert.equal(x.savedAt,'2026-09-01T00:00:00.000Z');
+});
+
+test('Stage 7 migrates schema 1 saves and preserves explicit zero values',()=>{
+  const x=State.normalizePayload({schema:1,savedAt:'2026-09-01T00:00:00.000Z',controls:{'id:grossIncome':{kind:'value',value:'0'},'id:mortTaxEnabled':{kind:'checked',value:false}},meta:{activeTab:'scenarios',mortgageType:'linear'}});
+  assert.equal(x.schema,2);
+  assert.equal(x.kind,State.STATE_KIND);
+  assert.equal(x.migratedFrom,1);
+  assert.deepEqual(x.controls['id:grossAnnualIncome'],{kind:'value',value:'0'});
+  assert.deepEqual(x.controls['id:mortTaxEnabled'],{kind:'checked',value:false});
+});
+
+test('Stage 7 drops malformed saved entries instead of replaying them',()=>{
+  const x=State.normalizePayload({kind:State.STATE_KIND,schema:2,controls:{'id:valid':{kind:'value',value:'12'},'bad key':{kind:'value',value:'99'},'id:wrong':{kind:'checked',value:'yes'},'id:object':{kind:'value',value:{unsafe:true}}},meta:{activeTab:'unknown',mortgageType:'unknown'}});
+  assert.deepEqual(x.controls,{'id:valid':{kind:'value',value:'12'}});
+  assert.deepEqual(x.meta,{activeTab:null,mortgageType:null});
 });
 
 test('R6 applyEntry restores ordinary values and checkbox state',()=>{

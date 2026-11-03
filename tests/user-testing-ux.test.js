@@ -38,7 +38,8 @@ test('30 percent ruling checkbox estimates taxable income from gross employment 
   const js=read('app-state.js');
   assert.match(js,/Gross annual employment income/);
   assert.match(js,/I use the 30% ruling \/ expat scheme/);
-  assert.match(js,/€78,600 in 2026/);
+  assert.equal(require('../policy-2026.js').VALUES.thirtyPercentRuling.maxTaxFreeAllowance,78600);
+  assert.match(js,/capped at €\$\{RULING_CAP\.toLocaleString\('en-US'\)\} in \$\{Policy2026\.TAX_YEAR\}/);
   assert.match(js,/jaaropgaaf remains authoritative/);
   assert.match(js,/HRA income estimate only, not Box 3 residency treatment/);
 });
@@ -77,9 +78,9 @@ test('scenario assumptions hide fields that are irrelevant to the selected decis
   assert.match(js,/Only assumptions used by the selected comparison are shown/);
 });
 
-test('linear vs annuity result explains why a higher remaining mortgage can still win',()=>{
+test('linear vs annuity result explains why a higher remaining mortgage can still show higher modeled wealth',()=>{
   const js=read('app-state.js');
   assert.match(js,/Net position excluding the home/);
-  assert.match(js,/Why can Annuity win even with a larger mortgage balance\?/);
+  assert.match(js,/Why can Annuity show higher modeled wealth with a larger mortgage balance\?/);
   assert.match(js,/larger investment portfolio can outweigh the extra mortgage debt/);
 });

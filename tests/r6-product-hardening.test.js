@@ -36,8 +36,9 @@ test('R6 browser state module saves locally, restores, and provides a reset path
 });
 
 test('R6 methodology keeps underwriting and tax-filing boundaries visible',()=>{
-  const js=read('app-state.js');
-  assert.match(js,/scenario comparisons, not underwriting or a tax return/i);
-  assert.match(js,/official Nibud\/LTI borrowing capacity is not calculated/i);
-  assert.match(js,/proposed future regime is a legislative scenario/i);
+  const html=read('index.html');
+  assert.match(html,/underwriting decision or a Nibud\/LTI borrowing-capacity calculation/i);
+  assert.match(html,/It is not personalised financial, investment, tax or mortgage advice/i);
+  assert.match(html,/are not law and may change or never take effect/i);
+  assert.match(html,/This planner does not check how much a lender would let you borrow/);
 });

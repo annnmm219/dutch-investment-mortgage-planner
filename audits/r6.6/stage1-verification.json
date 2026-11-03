@@ -1,0 +1,21 @@
+{
+  "stage": "R6.6 Stage 1",
+  "title": "Model contract and dated policy structure",
+  "baselineCommit": "ac8f029788ff8d1fc2baf09fbc89b848a28f7803",
+  "branch": "r6-6-decision-integrity",
+  "verifiedAt": "2026-09-03",
+  "nodeVersion": "v24.19.0",
+  "tests": 154,
+  "passed": 154,
+  "failed": 0,
+  "scenarioReconciliation": {
+    "scenarios": 50,
+    "reconciled": 50,
+    "failures": 0
+  },
+  "r65ReferenceParity": true,
+  "chromiumResponsive": true,
+  "financialFormulaChanges": false,
+  "publicMainChanged": false,
+  "stage2Activated": false
+}
