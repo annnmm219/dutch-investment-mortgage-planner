@@ -618,11 +618,10 @@ function bootBrowser(){
     document.getElementById(button.getAttribute('aria-controls')||'')?.classList.remove('is-open');
     button.focus();
   });
-  document.getElementById('exampleReturnsLink')?.addEventListener('click',()=>{
+  document.getElementById('exampleReturnsLink')?.addEventListener('click',event=>{
+    event.preventDefault();
     document.querySelector('.tab[data-tab="scenarios"]')?.click();
-    const target=document.getElementById('exampleReturnsFields')||document.getElementById('scenarioRate1');
-    target?.focus?.();
-    document.getElementById('scenarioRate1')?.focus();
+    document.getElementById('exampleReturns')?.focus();
   });
   document.addEventListener('dimp-save-status',syncSaveStatus);
   document.addEventListener('input',queueRefresh);
