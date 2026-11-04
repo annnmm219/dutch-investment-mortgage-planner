@@ -56,6 +56,12 @@ test('the example-return link focuses the card label on the Scenarios tab',()=>{
   assert.match(ui,/data-tab="scenarios"/);
   assert.match(ui,/getElementById\('exampleReturns'\)\?\.focus\(\)/);
   assert.doesNotMatch(ui,/scenarioRate1'\)\?\.focus/);
+  const engine=read('scenario-engine.js');
+  assert.match(engine,/if\(x\.querySelector\('#exampleReturns'\)\)return;/);
+  assert.match(engine,/scenario-legacy-hidden/);
+  assert.match(read('scripts/browser-responsiveness-smoke.mjs'),/assertExampleReturnsLink\('click'/);
+  assert.match(read('scripts/browser-responsiveness-smoke.mjs'),/assertExampleReturnsLink\('Enter'/);
+  assert.match(read('scripts/browser-responsiveness-smoke.mjs'),/state\.active!=='exampleReturns'/);
 });
 
 test('approved short notices keep their full text behind named info buttons',()=>{

@@ -144,6 +144,34 @@ async function exerciseHeaderInfo(label){
   await page.keyboard.press('Escape');
 }
 
+async function assertExampleReturnsLink(label,activate){
+  await activate();
+  const state=await page.evaluate(()=>{
+    const shown=el=>{
+      if(!el)return {ok:false,reason:'missing'};
+      const style=getComputedStyle(el),box=el.getBoundingClientRect();
+      return {ok:style.display!=='none'&&box.width>0&&box.height>0,display:style.display,width:box.width,height:box.height};
+    };
+    const labelEl=document.getElementById('exampleReturns');
+    const card=labelEl?.closest('.card');
+    return {
+      tab:document.querySelector('.tab[data-tab="scenarios"]')?.classList.contains('active')===true,
+      active:document.activeElement?.id||'',
+      legacy:card?.classList.contains('scenario-legacy-hidden')===true,
+      card:shown(card),
+      low:shown(document.getElementById('scenarioRate1')),
+      middle:shown(document.getElementById('scenarioRate2')),
+      high:shown(document.getElementById('scenarioRate3'))
+    };
+  });
+  if(!state.tab)throw new Error(`${label}: Scenarios tab is not active`);
+  if(state.active!=='exampleReturns')throw new Error(`${label}: focus is ${JSON.stringify(state.active)}`);
+  if(state.legacy)throw new Error(`${label}: Example returns card is still marked legacy-hidden`);
+  for(const key of ['card','low','middle','high']){
+    if(!state[key].ok)throw new Error(`${label}: ${key} is not visible ${JSON.stringify(state[key])}`);
+  }
+}
+
 async function assertSavedStatus(label){
   await page.waitForFunction(()=>document.getElementById('plannerSaveStatus')?.dataset.saveState==='saved');
   const status=page.locator('#plannerSaveStatus');
@@ -172,6 +200,11 @@ try{
   await exerciseHeaderInfo('mobile');
   await page.setViewportSize({width:1280,height:800});
   const initial=await responsivePing('initial load');
+  await assertExampleReturnsLink('click',async()=>{await page.locator('#exampleReturnsLink').click();});
+  await page.locator('.tab[data-tab="investment"]').click();
+  await page.locator('#exampleReturnsLink').focus();
+  await assertExampleReturnsLink('Enter',async()=>{await page.keyboard.press('Enter');});
+  await page.locator('.tab[data-tab="investment"]').click();
 
   await page.locator('#annualReturn').fill('7');
   await page.locator('#annualReturn').dispatchEvent('input');

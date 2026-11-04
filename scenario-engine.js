@@ -506,7 +506,7 @@ const pct=v=>(Number(v)||0).toLocaleString('nl-NL',{maximumFractionDigits:2})+'%
 const panel=$('tab-scenarios');
 if(!panel||panel.dataset.decisionEngine==='1')return;
 panel.dataset.decisionEngine='1';
-[...panel.querySelectorAll(':scope > .card')].forEach(x=>x.classList.add('scenario-legacy-hidden'));
+[...panel.querySelectorAll(':scope > .card')].forEach(x=>{if(x.querySelector('#exampleReturns'))return;x.classList.add('scenario-legacy-hidden');});
 const firstDetails=panel.querySelector(':scope > details.fold');
 if(firstDetails){const s=firstDetails.querySelector('summary');if(s)s.textContent='Final main-plan results'}
 const divider=panel.querySelector(':scope > .section-divider');
