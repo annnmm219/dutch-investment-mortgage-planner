@@ -134,7 +134,7 @@ test('LICENSE, copyright footer and borrowing notice are present and outside any
   const html=read('index.html');
   const visible=withoutDetails(html);
   assert.match(visible,new RegExp(FOOTER_LINE.replace(/[.*+?^${}()|[\]\\]/g,'\\$&')));
-  assert.match(visible,/Calculation build R6\.6 · released 3 Nov 2026 · 2026 rules, verified 27 Oct 2026/);
+  assert.match(visible,/Calculation build R6\.6 · released 4 Nov 2026 · 2026 rules, verified 27 Oct 2026/);
   assert.doesNotMatch(html,/3 Sep 2026|2026-09-03/);
   assert.equal([...visible.matchAll(new RegExp(BORROWING_NOTICE.replace(/[.*+?^${}()|[\]\\]/g,'\\$&'),'g'))].length,2);
   assert.match(visible,new RegExp(HEADER_NOTICE.replace(/[.*+?^${}()|[\]\\]/g,'\\$&')));

@@ -10,7 +10,7 @@ if(!Policy2026)throw new Error('Policy2026 is required by OutputIntegrity');
 const RELEASE_META=Object.freeze({
   version:'R6.6',
   ruleYear:2026,
-  updated:'2026-11-03',
+  updated:'2026-11-04',
   stateSchema:4,
   releaseName:'Decision Integrity'
 });

@@ -19,11 +19,11 @@ test('Stage 8 publishes one synchronized R6.6 release identity',()=>{
   assert.equal(Gate.MODEL_META.version,'R6.6');
   assert.equal(OI.RELEASE_META.releaseName,'Decision Integrity');
   assert.equal(Gate.MODEL_META.releaseName,'Decision Integrity');
-  assert.equal(OI.RELEASE_META.updated,'2026-11-03');
-  assert.equal(Gate.MODEL_META.updated,'2026-11-03');
+  assert.equal(OI.RELEASE_META.updated,'2026-11-04');
+  assert.equal(Gate.MODEL_META.updated,'2026-11-04');
   assert.equal(Policy.LAST_VERIFIED_AT,'2026-10-27');
   assert.notEqual(OI.RELEASE_META.updated,Policy.LAST_VERIFIED_AT);
-  assert.equal(OI.releaseLabel(),'Calculation build R6.6 · released 3 Nov 2026 · 2026 rules, verified 27 Oct 2026');
+  assert.equal(OI.releaseLabel(),'Calculation build R6.6 · released 4 Nov 2026 · 2026 rules, verified 27 Oct 2026');
   assert.ok(read('index.html').includes(OI.releaseLabel()));
   assert.match(read('release-identity.js'),/calculationSourceSha/);
   assert.match(read('stage10-remediation.js'),/Calculation source commit/);
