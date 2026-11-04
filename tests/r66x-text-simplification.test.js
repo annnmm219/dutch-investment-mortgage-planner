@@ -51,6 +51,7 @@ test('the example-return link focuses the card label on the Scenarios tab',()=>{
   const ui=read('view-density.js');
   assert.match(html,/href="#exampleReturns"[^>]*>Compare with example returns \(Scenarios tab\)<\/a>/);
   assert.match(html,/for="annualReturn">Your yearly return assumption %<\/label>/);
+  assert.match(html,/aria-label="More about your yearly return assumption"/);
   assert.match(html,/Effective annual return before Box 3 tax\./);
   assert.match(ui,/exampleReturnsLink/);
   assert.match(ui,/data-tab="scenarios"/);
