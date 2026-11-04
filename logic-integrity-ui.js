@@ -15,7 +15,7 @@ const MAX_HRA_YEARS=POLICY.ownHome.maximumQualifyingMortgageMonths/12;
 const MODEL_META=Object.freeze({
   version:'R6.6',
   ruleYear:POLICY.taxYear,
-  updated:'2026-11-03',
+  updated:'2026-11-04',
   stateSchema:4,
   releaseName:'Decision Integrity'
 });

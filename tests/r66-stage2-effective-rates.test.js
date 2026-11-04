@@ -104,7 +104,7 @@ test('all executable Stage 2 conversion sites and visible labels use the declare
   assert.doesNotMatch(finance,/savingsReturnPct\)\|\|0\)\/100\/12/);
   assert.doesNotMatch(scenario,/S\.rentGrowthPct\/100\/12/);
   assert.doesNotMatch(scenario,/S\.homeGrowthPct\/100\/12/);
-  assert.match(index,/Expected effective annual return %/);
+  assert.match(index,/Your yearly return assumption %/);
   assert.match(index,/Nominal annual interest rate %/);
   assert.match(scenario,/Effective annual home value growth %/);
   assert.match(scenario,/Effective annual rent growth %/);
