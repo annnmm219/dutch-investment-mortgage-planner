@@ -39,11 +39,29 @@ test('the example-return card does not add banned planning words outside the app
   assert.ok(start>0&&end>start);
   const card=html.slice(start,end).replace(EXAMPLE_NOTE,'');
   const titles=read('app.js').slice(read('app.js').indexOf('function updateScenarios'),read('app.js').indexOf('function updateSchedule'));
-  const banned=[/\bexpected\b/i,/\blikely\b/i,/\btarget\b/i,/\bforecasts?\b/i,/\brealistic\b/i,/\bconservative\b/i,/base case/i,/\boptimistic\b/i,/historical average/i,/\brecommended\b/i,/typical market return/i];
+  const banned=[/\bexpected\b/i,/\blikely\b/i,/\btarget\b/i,/\brealistic\b/i,/\bconservative\b/i,/base case/i,/\boptimistic\b/i,/historical average/i,/\brecommended\b/i,/typical market return/i];
   for(const pattern of banned){
     assert.doesNotMatch(card,pattern,`card contains ${pattern}`);
     assert.doesNotMatch(titles,pattern,`titles contain ${pattern}`);
   }
+  const withNote=html.slice(start,end)+titles;
+  const forecastChecked=withNote.replaceAll('not a forecast','').replaceAll('not forecasts','');
+  assert.doesNotMatch(forecastChecked,/\bforecasts?\b/i);
+});
+
+test('the scenario builder return label is the yearly investment assumption',()=>{
+  assert.match(read('scenario-engine.js'),/for="scenarioReturnNew">Your yearly investment return assumption %</);
+});
+
+test('the investment and scenario return info buttons share one F-22 sentence',()=>{
+  const ui=read('view-density.js');
+  const builder=/id="scenarioReturnPanel"[^>]*>([^<]+)</.exec(ui);
+  assert.ok(builder);
+  assert.match(ui,/annualPanel\.textContent='Effective annual return before Box 3 tax\. '\+builderNote/);
+  assert.match(ui,/const builderNote=document\.getElementById\('scenarioReturnPanel'\)\?\.textContent/);
+  const annualF22=('Effective annual return before Box 3 tax. '+builder[1]).slice('Effective annual return before Box 3 tax. '.length);
+  assert.equal(annualF22,builder[1]);
+  assert.equal(builder[1],'5% is an effective annual planning starting point, not a forecast.');
 });
 
 test('the example-return link focuses the card label on the Scenarios tab',()=>{

@@ -386,7 +386,6 @@ function bootBrowser(){
     display.innerHTML='<label>Investment return</label><div class="r65-inherited-return"><strong data-r65-role="scenario-return-label"></strong><label><input id="scenarioReturnOverrideEnabled" type="checkbox">Use a different return</label></div>';
     grid.insertBefore(display,wrap);
     wrap.classList.add('r65-return-override-field','hidden');
-    const label=wrap.querySelector('label[for="scenarioReturnNew"]');if(label)label.textContent='Custom comparison return %';
     wrap.querySelector('.inline')?.classList.add('r65-copy-hidden');
     if(!near(input.value,global?.value,.0001))$('scenarioReturnOverrideEnabled').checked=true;
     $('scenarioReturnOverrideEnabled').addEventListener('change',()=>{syncScenarioReturn(true);queueRefresh();});
@@ -587,6 +586,9 @@ function bootBrowser(){
     if(scenarioReturn&&!$('scenarioReturnInfo')){
       scenarioReturn.insertAdjacentHTML('afterend','<button type="button" class="info-button" id="scenarioReturnInfo" aria-expanded="false" aria-controls="scenarioReturnPanel" aria-label="More about the planning return">ⓘ</button><span id="scenarioReturnPanel" class="info-panel" role="region" aria-labelledby="scenarioReturnInfo">5% is an effective annual planning starting point, not a forecast.</span>');
     }
+    const builderNote=document.getElementById('scenarioReturnPanel')?.textContent;
+    const annualPanel=document.getElementById('annualReturnPanel');
+    if(annualPanel&&builderNote)annualPanel.textContent='Effective annual return before Box 3 tax. '+builderNote;
     const owner=document.querySelector('label[for="scenarioOwnerCostGrowthNew"]');
     if(owner&&!$('ownerCostInfo')){
       owner.insertAdjacentHTML('afterend','<button type="button" class="info-button" id="ownerCostInfo" aria-expanded="false" aria-controls="ownerCostPanel" aria-label="More about owner-cost growth">ⓘ</button><span id="ownerCostPanel" class="info-panel" role="region" aria-labelledby="ownerCostInfo">VvE, maintenance, owner taxes, insurance and ground lease escalate at the entered effective annual owner-cost growth rate. This is a planning assumption, not a forecast.</span>');
