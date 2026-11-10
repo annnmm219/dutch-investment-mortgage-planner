@@ -198,12 +198,14 @@ async function assertErfpachtAndRulingInputs(){
     scenarioGroundRentBoughtOffNew:'Ground rent bought off?',
     scenarioGroundRentPerpetualNew:"Perpetual and not tied to anyone's lifetime?",
     scenarioGroundRentNotaryNew:'Capitalised ground rent from your notary, €',
-    scenarioNotaryTransferDateNew:'Notary transfer date (levering)'
+    scenarioNotaryTransferDateNew:'Expected notary transfer date (levering)'
   };
   for(const [id,expected] of Object.entries(labels)){
     const actual=await assertControlVisible(id);
     if(actual!==expected)throw new Error(`#${id} label is ${JSON.stringify(actual)}`);
   }
+  await page.locator('#scenarioOwnerItemizedNew').uncheck();
+  await page.waitForFunction(()=>document.getElementById('scenarioOwnerTotalNew')?.disabled!==true);
   await page.locator('.tab[data-tab="mortgage"]').click();
   const masters=await assertControlVisible('under30Masters');
   if(masters!=="Under 30 with a Dutch or equivalent foreign master's")throw new Error(`master's toggle label is ${JSON.stringify(masters)}`);

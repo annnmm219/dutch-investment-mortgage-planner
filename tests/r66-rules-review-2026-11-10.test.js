@@ -14,6 +14,7 @@ const NOTE_2026='Includes 17 × your yearly ground rent in the value test (€55
 const NOTE_2027='Includes 17 × your yearly ground rent in the value test (€615,000 limit for transfers from 1 Jan 2027).';
 const UNDETERMINED='We can\'t tell whether the starter exemption applies, because it depends on the ground rent (erfpacht) details. This estimate uses the standard 2% transfer tax. Your notary can confirm.';
 const NHG_WARNING='Your cost total is lower than the purchase price or appraisal, so the NHG check can\'t run. Enter the full cost total to see the NHG estimate.';
+const ABOVE_LIMIT='Based on 17 × your yearly ground rent, the value is above the starter limit. The exemption may still apply if your notary calculates it differently. Check with your notary.';
 
 function starterPurchase(overrides={}){
   return S10.calculateScenarioPurchase2026({
@@ -42,7 +43,8 @@ test('erfpacht 17x pushes a 2026 transfer over the €555,000 starter ceiling',(
   assert.equal(result.transferTax.starterEligibility.starterLimit,555000);
   assert.equal(result.transferTax.starterEligibility.propertyValue,584000);
   assert.ok(result.transferTax.amount>0);
-  assert.equal(result.transferTax.erfpachtNote,'');
+  assert.equal(result.transferTax.erfpachtNote,ABOVE_LIMIT);
+  assert.ok(result.warnings.includes(ABOVE_LIMIT));
 });
 
 test('unconfirmed perpetual ground rent does not auto-award the starter exemption',()=>{
@@ -63,6 +65,11 @@ test('a notary capitalised amount replaces 17 times the yearly ground rent',()=>
   assert.equal(notary.transferTax.starterEligibility.propertyValue,554000);
   assert.equal(notary.transferTax.amount,0);
   assert.equal(notary.transferTax.erfpachtNote,'');
+  assert.ok(!notary.warnings.includes(ABOVE_LIMIT));
+  const notaryOver=starterPurchase({notaryCapitalisedCanon:40000});
+  assert.equal(notaryOver.transferTax.starterEligibility.eligible,false);
+  assert.equal(notaryOver.transferTax.erfpachtNote,'');
+  assert.ok(!notaryOver.warnings.includes(ABOVE_LIMIT));
   const seventeen=starterPurchase();
   assert.equal(seventeen.transferTax.starterEligibility.propertyValue,584000);
   assert.equal(seventeen.transferTax.starterEligibility.eligible,false);
@@ -76,6 +83,8 @@ test('an optional unencumbered value caps price plus capitalised canon',()=>{
   assert.equal(capped.tested.value,550000);
   assert.equal(capped.eligible,true);
   assert.equal(capped.starterLimit,555000);
+  assert.ok(capped.note.includes(NOTE_2026));
+  assert.ok(capped.note.includes(ABOVE_LIMIT));
   const open=PR.applyStarterWithErfpacht({
     price:540000,appraisal:540000,buyerAge:30,yearlyCanon:2000,perpetual:'yes',acquisitionYear:2026
   });
@@ -120,6 +129,7 @@ test('erfpacht and NHG notes and the new input labels are exact',()=>{
   assert.equal(PR.ERFPACHT_INCLUDED_NOTE_2026,NOTE_2026);
   assert.equal(PR.ERFPACHT_INCLUDED_NOTE_FROM_2027,NOTE_2027);
   assert.equal(PR.ERFPACHT_STARTER_UNDETERMINED_NOTE,UNDETERMINED);
+  assert.equal(PR.ERFPACHT_ABOVE_STARTER_LIMIT_NOTE,ABOVE_LIMIT);
   assert.equal(S10.NHG_COST_STACK_BELOW_REFERENCE_WARNING,NHG_WARNING);
   const engine=fs.readFileSync(path.join(ROOT,'scenario-engine.js'),'utf8');
   const html=fs.readFileSync(path.join(ROOT,'index.html'),'utf8');
@@ -128,7 +138,7 @@ test('erfpacht and NHG notes and the new input labels are exact',()=>{
     'Ground rent bought off?',
     'Perpetual and not tied to anyone\'s lifetime?',
     'Capitalised ground rent from your notary, €',
-    'Notary transfer date (levering)'
+    'Expected notary transfer date (levering)'
   ])assert.ok(engine.includes(`>${label}<`),label);
   assert.match(engine,/>don't know</);
   assert.ok(html.includes('Proposed regime, not law. The Wet werkelijk rendement box 3 (36748) passed the Tweede Kamer (12 Feb 2026).'));
@@ -141,7 +151,9 @@ test('30% ruling keeps the €78,600 cap and applies the 2026 salary threshold',
   assert.equal(Policy.VALUES.thirtyPercentRuling.taxableSalaryThreshold,48013);
   assert.equal(Policy.VALUES.thirtyPercentRuling.taxableSalaryThresholdUnder30Masters,36497);
   assert.equal(State.estimateTaxableIncome2026({grossIncome:48013,use30Ruling:true}),48013);
-  assert.equal(State.estimateTaxableIncome2026({grossIncome:50000,use30Ruling:true}),48014);
+  const taxableAt50000=State.estimateTaxableIncome2026({grossIncome:50000,use30Ruling:true});
+  assert.equal(taxableAt50000,48014);
+  assert.equal(50000-taxableAt50000,1986);
   assert.equal(State.estimateTaxableIncome2026({grossIncome:60000,use30Ruling:true}),48014);
   assert.equal(State.estimateTaxableIncome2026({grossIncome:50000,use30Ruling:true,under30WithMasters:true}),36498);
   assert.equal(State.estimateTaxableIncome2026({grossIncome:36497,use30Ruling:true,under30WithMasters:true}),36497);

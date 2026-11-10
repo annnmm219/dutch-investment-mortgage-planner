@@ -35,7 +35,9 @@ test('30 percent ruling checkbox estimates taxable income from gross employment 
   assert.equal(State.estimateTaxableIncome2026({grossIncome:84000,use30Ruling:false}),84000);
   assert.equal(State.estimateTaxableIncome2026({grossIncome:84000,use30Ruling:true}),58800);
   assert.equal(State.estimateTaxableIncome2026({grossIncome:300000,use30Ruling:true}),221400);
-  assert.equal(State.estimateTaxableIncome2026({grossIncome:50000,use30Ruling:true}),48014);
+  const taxableAt50000=State.estimateTaxableIncome2026({grossIncome:50000,use30Ruling:true});
+  assert.equal(taxableAt50000,48014);
+  assert.equal(50000-taxableAt50000,1986);
   assert.equal(State.estimateTaxableIncome2026({grossIncome:60000,use30Ruling:true}),48014);
   assert.equal(State.estimateTaxableIncome2026({grossIncome:50000,use30Ruling:true,under30WithMasters:true}),36498);
   const js=read('app-state.js');

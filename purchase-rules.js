@@ -168,6 +168,7 @@ const ERFPACHT_CANON_MULTIPLE=17;
 const ERFPACHT_STARTER_UNDETERMINED_NOTE='We can\'t tell whether the starter exemption applies, because it depends on the ground rent (erfpacht) details. This estimate uses the standard 2% transfer tax. Your notary can confirm.';
 const ERFPACHT_INCLUDED_NOTE_2026='Includes 17 × your yearly ground rent in the value test (€555,000 limit in 2026).';
 const ERFPACHT_INCLUDED_NOTE_FROM_2027='Includes 17 × your yearly ground rent in the value test (€615,000 limit for transfers from 1 Jan 2027).';
+const ERFPACHT_ABOVE_STARTER_LIMIT_NOTE='Based on 17 × your yearly ground rent, the value is above the starter limit. The exemption may still apply if your notary calculates it differently. Check with your notary.';
 
 function transferYear({notaryTransferDate,acquisitionYear}={}){
   const text=String(notaryTransferDate||'').trim();
@@ -203,7 +204,10 @@ function applyStarterWithErfpacht(input={}){
   }
   const tested=starterPropertyValue({price,appraisal,canon:erfpacht.canon,unencumberedValue:input.unencumberedValue});
   const eligibility=starterEligibility2026({buyerAge:input.buyerAge,mainResidence:input.mainResidence!==false,exemptionUnused:input.exemptionUnused!==false,propertyValue:tested.value,acquisitionYear:year});
-  const note=eligibility.eligible&&erfpacht.method==='seventeen'?(year>=2027?ERFPACHT_INCLUDED_NOTE_FROM_2027:ERFPACHT_INCLUDED_NOTE_2026):'';
+  const notes=[];
+  if(eligibility.eligible&&erfpacht.method==='seventeen')notes.push(year>=2027?ERFPACHT_INCLUDED_NOTE_FROM_2027:ERFPACHT_INCLUDED_NOTE_2026);
+  if(erfpacht.method==='seventeen'&&tested.uncapped>limit)notes.push(ERFPACHT_ABOVE_STARTER_LIMIT_NOTE);
+  const note=notes.join(' ');
   return{undetermined:false,eligible:eligibility.eligible,transferTaxBase:tested.value,acquisitionYear:year,starterLimit:limit,note,erfpacht,tested,eligibility,method:erfpacht.method};
 }
 
@@ -321,5 +325,5 @@ function calculateScenarioPurchase2026({
   };
 }
 
-return{RULES_2026,starterAcquisitionYear,starterLimitForAcquisitionYear,transferYear,resolveErfpachtCanon,starterPropertyValue,applyStarterWithErfpacht,ERFPACHT_CANON_MULTIPLE,ERFPACHT_STARTER_UNDETERMINED_NOTE,ERFPACHT_INCLUDED_NOTE_2026,ERFPACHT_INCLUDED_NOTE_FROM_2027,transferTax2026,nhg2026,ltv2026,calculatePurchase2026,starterEligibility2026,calculateScenarioPurchase2026};
+return{RULES_2026,starterAcquisitionYear,starterLimitForAcquisitionYear,transferYear,resolveErfpachtCanon,starterPropertyValue,applyStarterWithErfpacht,ERFPACHT_CANON_MULTIPLE,ERFPACHT_STARTER_UNDETERMINED_NOTE,ERFPACHT_INCLUDED_NOTE_2026,ERFPACHT_INCLUDED_NOTE_FROM_2027,ERFPACHT_ABOVE_STARTER_LIMIT_NOTE,transferTax2026,nhg2026,ltv2026,calculatePurchase2026,starterEligibility2026,calculateScenarioPurchase2026};
 });
