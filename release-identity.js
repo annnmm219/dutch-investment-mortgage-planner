@@ -22,7 +22,7 @@ const calculationManifestFiles=Object.freeze([
   'stage10-remediation.js',
   'stage9-1-remediation.js'
 ]);
-const calculationManifestSha='1316e1b7860bbc83d9fab01337ac578a03cc7a0e66333667e4e468c9135e387a';
+const calculationManifestSha='80e8ac626dff8f3c3357f0ea2b8cacd6a9981bf138430ebaeadb88f44571a632';
 return Object.freeze({
   release:'R6.6',
   stage:'Stage 10 remediation',
@@ -30,7 +30,7 @@ return Object.freeze({
   calculationManifestSha,
   calculationSourceSha:calculationManifestSha,
   frozenFromCommit:'43fa347d122beaf34500189a4e4316f3ed7e5569',
-  buildId:'R6.6-1316e1b7860b',
-  frozenAt:'2026-11-10T08:06:15.000Z'
+  buildId:'R6.6-80e8ac626dff',
+  frozenAt:'2026-11-10T08:09:45.000Z'
 });
 });
