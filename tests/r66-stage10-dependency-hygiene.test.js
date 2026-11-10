@@ -34,6 +34,6 @@ test('Final R6.6 release identity is a SHA-256 manifest of the calculation files
   assert.equal(identity.buildId,`R6.6-${digest.slice(0,12)}`);
   assert.equal(identity.frozenFromCommit,'43fa347d122beaf34500189a4e4316f3ed7e5569');
   assert.equal(identity.release,'R6.6');
-  assert.equal(identity.frozenAt,'2026-11-10T08:01:54.000Z');
+  assert.equal(identity.frozenAt,'2026-11-10T08:06:15.000Z');
   assert.doesNotMatch(identity.calculationSourceSha,/^a4377ce/);
 });
