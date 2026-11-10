@@ -65,7 +65,7 @@ function nhg2026Exact({purchasePrice=0,appraisedValue=0,mortgageAmount=0,mode='n
   return{enabled:true,eligible,energy,limit:energy?NHG_ENERGY:NHG_STANDARD,fee:eligible?loan*NHG_FEE:0,feeRate:NHG_FEE,referenceValue,nonEnergyCostStack:stack,totalCostStack,qualifyingEnergyExpenditure:energySpend,nonEnergyLoan,requiredEnergyExpenditure,costStackKnown,eligibleByNonEnergyCost,eligibleByTotalCost,eligibleByNonEnergyLoan,eligibleByTotalLoan,eligibleByEnergySpend,warning};
 }
 function transferTaxPropertyValue({price=0,appraisal=0}={}){
-  // Transfer tax stays on max(purchase price, appraisal). Capitalised ground rent is used only in the starter value test.
+  // Without a known capitalised canon, transfer tax stays on max(purchase price, appraisal). A notary amount or 17× canon uses the same capped starter-test value, and the existing 2% rate applies to that value when the exemption is refused.
   return Math.max(nonNegative(price),nonNegative(appraisal));
 }
 function calculateScenarioPurchase2026(input={}){

@@ -169,6 +169,9 @@ const ERFPACHT_STARTER_UNDETERMINED_NOTE='We can\'t tell whether the starter exe
 const ERFPACHT_INCLUDED_NOTE_2026='Includes 17 × your yearly ground rent in the value test (€555,000 limit in 2026).';
 const ERFPACHT_INCLUDED_NOTE_FROM_2027='Includes 17 × your yearly ground rent in the value test (€615,000 limit for transfers from 1 Jan 2027).';
 const ERFPACHT_ABOVE_STARTER_LIMIT_NOTE='Based on 17 × your yearly ground rent, the value is above the starter limit. The exemption may still apply if your notary calculates it differently. Check with your notary.';
+const ERFPACHT_NOTARY_INCLUDED_NOTE_2026='Includes the capitalised ground rent from your notary in the value test (€555,000 limit in 2026).';
+const ERFPACHT_NOTARY_INCLUDED_NOTE_FROM_2027='Includes the capitalised ground rent from your notary in the value test (€615,000 limit for transfers from 1 Jan 2027).';
+const ERFPACHT_NOTARY_ABOVE_STARTER_LIMIT_NOTE='Based on the capitalised ground rent from your notary, the value is above the starter limit.';
 
 function transferYear({notaryTransferDate,acquisitionYear}={}){
   const text=String(notaryTransferDate||'').trim();
@@ -182,7 +185,8 @@ function enteredNotaryCanon(notaryAmount){
   const text=typeof notaryAmount==='string'?notaryAmount.trim():notaryAmount;
   if(text==='')return null;
   const amount=Number(text);
-  return Number.isFinite(amount)?nonNegative(amount):null;
+  if(!Number.isFinite(amount)||amount<0)return null;
+  return amount;
 }
 
 function resolveErfpachtCanon({yearlyCanon=0,boughtOff=false,perpetual='dont-know',notaryAmount=null}={}){
@@ -217,8 +221,12 @@ function applyStarterWithErfpacht(input={}){
   const notes=[];
   if(eligibility.eligible&&erfpacht.method==='seventeen')notes.push(year>=2027?ERFPACHT_INCLUDED_NOTE_FROM_2027:ERFPACHT_INCLUDED_NOTE_2026);
   if(erfpacht.method==='seventeen'&&tested.uncapped>limit)notes.push(ERFPACHT_ABOVE_STARTER_LIMIT_NOTE);
+  if(eligibility.eligible&&erfpacht.method==='notary')notes.push(year>=2027?ERFPACHT_NOTARY_INCLUDED_NOTE_FROM_2027:ERFPACHT_NOTARY_INCLUDED_NOTE_2026);
+  if(erfpacht.method==='notary'&&tested.value>limit)notes.push(ERFPACHT_NOTARY_ABOVE_STARTER_LIMIT_NOTE);
   const note=notes.join(' ');
-  return{undetermined:false,eligible:eligibility.eligible,transferTaxBase:Math.max(price,appraisal),acquisitionYear:year,starterLimit:limit,note,erfpacht,tested,eligibility,method:erfpacht.method};
+  const propertyBase=Math.max(price,appraisal);
+  const canonKnown=erfpacht.method==='notary'||erfpacht.method==='seventeen';
+  return{undetermined:false,eligible:eligibility.eligible,transferTaxBase:canonKnown?tested.value:propertyBase,acquisitionYear:year,starterLimit:limit,note,erfpacht,tested,eligibility,method:erfpacht.method};
 }
 
 function starterEligibility2026({buyerAge,mainResidence=true,exemptionUnused=true,propertyValue=0,acquisitionYear}={}){
@@ -335,5 +343,5 @@ function calculateScenarioPurchase2026({
   };
 }
 
-return{RULES_2026,starterAcquisitionYear,starterLimitForAcquisitionYear,transferYear,resolveErfpachtCanon,starterPropertyValue,applyStarterWithErfpacht,ERFPACHT_CANON_MULTIPLE,ERFPACHT_STARTER_UNDETERMINED_NOTE,ERFPACHT_INCLUDED_NOTE_2026,ERFPACHT_INCLUDED_NOTE_FROM_2027,ERFPACHT_ABOVE_STARTER_LIMIT_NOTE,transferTax2026,nhg2026,ltv2026,calculatePurchase2026,starterEligibility2026,calculateScenarioPurchase2026};
+return{RULES_2026,starterAcquisitionYear,starterLimitForAcquisitionYear,transferYear,resolveErfpachtCanon,starterPropertyValue,applyStarterWithErfpacht,ERFPACHT_CANON_MULTIPLE,ERFPACHT_STARTER_UNDETERMINED_NOTE,ERFPACHT_INCLUDED_NOTE_2026,ERFPACHT_INCLUDED_NOTE_FROM_2027,ERFPACHT_ABOVE_STARTER_LIMIT_NOTE,ERFPACHT_NOTARY_INCLUDED_NOTE_2026,ERFPACHT_NOTARY_INCLUDED_NOTE_FROM_2027,ERFPACHT_NOTARY_ABOVE_STARTER_LIMIT_NOTE,transferTax2026,nhg2026,ltv2026,calculatePurchase2026,starterEligibility2026,calculateScenarioPurchase2026};
 });
