@@ -159,7 +159,7 @@ test('30% ruling keeps the €78,600 cap and applies the 2026 salary threshold',
   assert.equal(State.estimateTaxableIncome2026({grossIncome:36497,use30Ruling:true,under30WithMasters:true}),36497);
   assert.equal(State.estimateTaxableIncome2026({grossIncome:84000,use30Ruling:true}),58800);
   assert.equal(State.estimateTaxableIncome2026({grossIncome:300000,use30Ruling:true}),221400);
-  assert.equal(Policy.THIRTY_PERCENT_RULING_NOTICE,'In 2026 the ruling applies only if taxable salary after the tax-free allowance is more than €48,013, or more than €36,497 if you are under 30 and have a Dutch or equivalent foreign master\'s. Below the applicable amount, the planner applies no reduction. If a full 30% would take taxable salary to or below that amount, only the part that leaves taxable salary just above the threshold counts. Your jaaropgaaf remains authoritative.');
+  assert.equal(Policy.THIRTY_PERCENT_RULING_NOTICE,'In 2026 the ruling applies only if taxable salary after the tax-free allowance is more than €48,013, or more than €36,497 if you are under 30 and have a Dutch or equivalent foreign master’s. Below the applicable amount, the planner applies no reduction. If a full 30% would take taxable salary to or below that amount, only the part that leaves taxable salary just above the threshold counts. Your jaaropgaaf remains authoritative.');
   assert.equal(Policy.VALUES.futureBox3Proposal.exempt,1800);
   assert.equal(Policy.VALUES.futureBox3Proposal.taxRate,.36);
   assert.equal(Policy.LAST_VERIFIED_AT,'2026-10-27');

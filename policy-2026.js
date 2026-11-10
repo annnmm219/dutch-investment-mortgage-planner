@@ -272,7 +272,7 @@ function validateMetadata(items=ITEMS){
   return{valid:errors.length===0,errors};
 }
 
-const THIRTY_PERCENT_RULING_NOTICE='In 2026 the ruling applies only if taxable salary after the tax-free allowance is more than €48,013, or more than €36,497 if you are under 30 and have a Dutch or equivalent foreign master\'s. Below the applicable amount, the planner applies no reduction. If a full 30% would take taxable salary to or below that amount, only the part that leaves taxable salary just above the threshold counts. Your jaaropgaaf remains authoritative.';
+const THIRTY_PERCENT_RULING_NOTICE='In 2026 the ruling applies only if taxable salary after the tax-free allowance is more than €48,013, or more than €36,497 if you are under 30 and have a Dutch or equivalent foreign master’s. Below the applicable amount, the planner applies no reduction. If a full 30% would take taxable salary to or below that amount, only the part that leaves taxable salary just above the threshold counts. Your jaaropgaaf remains authoritative.';
 
 return{
   TAX_YEAR,
