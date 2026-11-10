@@ -208,7 +208,7 @@ async function assertErfpachtAndRulingInputs(){
   await page.waitForFunction(()=>document.getElementById('scenarioOwnerTotalNew')?.disabled!==true);
   await page.locator('.tab[data-tab="mortgage"]').click();
   const masters=await assertControlVisible('under30Masters');
-  if(masters!=="Under 30 with a Dutch or equivalent foreign master's")throw new Error(`master's toggle label is ${JSON.stringify(masters)}`);
+  if(masters!=="Under 30 with a Dutch or equivalent foreign master’s")throw new Error(`master's toggle label is ${JSON.stringify(masters)}`);
   await page.locator('.tab[data-tab="investment"]').click();
 }
 

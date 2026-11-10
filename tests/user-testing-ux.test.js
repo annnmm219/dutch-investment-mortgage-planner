@@ -44,7 +44,7 @@ test('30 percent ruling checkbox estimates taxable income from gross employment 
   const policy=require('../policy-2026.js');
   assert.match(js,/Gross annual employment income/);
   assert.match(js,/I use the 30% ruling \/ expat scheme/);
-  assert.match(js,/Under 30 with a Dutch or equivalent foreign master's/);
+  assert.match(js,/Under 30 with a Dutch or equivalent foreign master’s/);
   assert.equal(policy.VALUES.thirtyPercentRuling.maxTaxFreeAllowance,78600);
   assert.equal(policy.VALUES.thirtyPercentRuling.taxableSalaryThreshold,48013);
   assert.equal(policy.VALUES.thirtyPercentRuling.taxableSalaryThresholdUnder30Masters,36497);

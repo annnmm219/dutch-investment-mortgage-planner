@@ -158,7 +158,7 @@ function bootBrowser(){
       const visible=document.createElement('input');visible.id='grossAnnualIncome';visible.type='number';visible.min='0';visible.step='1000';visible.value=calcIncome.value||'60000';
       calcIncome.classList.add('hidden');field.insertBefore(visible,calcIncome);
       const toggle=document.createElement('div');toggle.className='toggle ux-income-toggle';toggle.innerHTML='<input id="use30Ruling" type="checkbox"><label for="use30Ruling">I use the 30% ruling / expat scheme</label>';field.appendChild(toggle);
-      const masters=document.createElement('div');masters.className='toggle ux-income-toggle';masters.innerHTML=`<input id="under30Masters" type="checkbox"><label for="under30Masters">Under 30 with a Dutch or equivalent foreign master's</label>`;field.appendChild(masters);
+      const masters=document.createElement('div');masters.className='toggle ux-income-toggle';masters.innerHTML=`<input id="under30Masters" type="checkbox"><label for="under30Masters">Under 30 with a Dutch or equivalent foreign master’s</label>`;field.appendChild(masters);
       const used=document.createElement('p');used.id='taxableIncomeUsed';used.className='inline ux-income-used';field.appendChild(used);
       const help=document.createElement('p');help.id='grossIncomeHelp';help.className='inline';help.textContent=Policy2026.THIRTY_PERCENT_RULING_NOTICE;field.appendChild(help);
     }

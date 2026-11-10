@@ -65,7 +65,7 @@ function nhg2026Exact({purchasePrice=0,appraisedValue=0,mortgageAmount=0,mode='n
   return{enabled:true,eligible,energy,limit:energy?NHG_ENERGY:NHG_STANDARD,fee:eligible?loan*NHG_FEE:0,feeRate:NHG_FEE,referenceValue,nonEnergyCostStack:stack,totalCostStack,qualifyingEnergyExpenditure:energySpend,nonEnergyLoan,requiredEnergyExpenditure,costStackKnown,eligibleByNonEnergyCost,eligibleByTotalCost,eligibleByNonEnergyLoan,eligibleByTotalLoan,eligibleByEnergySpend,warning};
 }
 function transferTaxPropertyValue({price=0,appraisal=0}={}){
-  // H2 can add a notary-confirmed capitalised ground-rent amount here later. Do not derive it from annual erfpacht.
+  // Transfer tax stays on max(purchase price, appraisal). Capitalised ground rent is used only in the starter value test.
   return Math.max(nonNegative(price),nonNegative(appraisal));
 }
 function calculateScenarioPurchase2026(input={}){

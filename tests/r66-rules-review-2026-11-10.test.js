@@ -75,6 +75,25 @@ test('a notary capitalised amount replaces 17 times the yearly ground rent',()=>
   assert.equal(seventeen.transferTax.starterEligibility.eligible,false);
 });
 
+function assertNotaryAmountUsedDespiteBlankCanon(result){
+  assert.equal(result.transferTax.starterEligibility.propertyValue,560000);
+  assert.equal(result.transferTax.starterEligibility.starterLimit,555000);
+  assert.equal(result.transferTax.starterEligibility.eligible,false);
+  assert.equal(result.transferTaxBase,550000);
+  assert.equal(result.transferTax.amount,11000);
+  for(const note of [UNDETERMINED,NOTE_2026,NOTE_2027,ABOVE_LIMIT]){
+    assert.equal(String(result.transferTax.erfpachtNote).includes(note),false,note);
+    assert.equal(result.warnings.includes(note),false,note);
+  }
+}
+
+test('a notary amount is used when the yearly canon is 0, including when the rent is bought off',()=>{
+  const blankCanon=starterPurchase({yearlyCanon:0,notaryCapitalisedCanon:10000,groundRentPerpetual:'dont-know',acquisitionYear:2026});
+  assertNotaryAmountUsedDespiteBlankCanon(blankCanon);
+  const boughtOff=starterPurchase({yearlyCanon:0,notaryCapitalisedCanon:10000,groundRentPerpetual:'dont-know',groundRentBoughtOff:true,acquisitionYear:2026});
+  assertNotaryAmountUsedDespiteBlankCanon(boughtOff);
+});
+
 test('an optional unencumbered value caps price plus capitalised canon',()=>{
   const capped=PR.applyStarterWithErfpacht({
     price:540000,appraisal:540000,buyerAge:30,yearlyCanon:2000,perpetual:'yes',acquisitionYear:2026,unencumberedValue:550000

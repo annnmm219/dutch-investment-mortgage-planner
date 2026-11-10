@@ -177,10 +177,20 @@ function transferYear({notaryTransferDate,acquisitionYear}={}){
   return starterAcquisitionYear(acquisitionYear);
 }
 
+function enteredNotaryCanon(notaryAmount){
+  if(notaryAmount==null)return null;
+  const text=typeof notaryAmount==='string'?notaryAmount.trim():notaryAmount;
+  if(text==='')return null;
+  const amount=Number(text);
+  return Number.isFinite(amount)?nonNegative(amount):null;
+}
+
 function resolveErfpachtCanon({yearlyCanon=0,boughtOff=false,perpetual='dont-know',notaryAmount=null}={}){
-  const yearly=nonNegative(yearlyCanon);
+  const notary=enteredNotaryCanon(notaryAmount);
+  if(notary!=null)return{status:'determined',canon:notary,method:'notary'};
+  const yearlyBlank=yearlyCanon==null||(typeof yearlyCanon==='string'&&yearlyCanon.trim()==='');
+  const yearly=yearlyBlank?0:nonNegative(yearlyCanon);
   if(boughtOff===true||yearly<=0)return{status:'none',canon:0,method:'none'};
-  if(notaryAmount!=null&&notaryAmount!==''&&Number.isFinite(Number(notaryAmount)))return{status:'determined',canon:nonNegative(notaryAmount),method:'notary'};
   if(perpetual==='yes')return{status:'determined',canon:yearly*ERFPACHT_CANON_MULTIPLE,method:'seventeen'};
   return{status:'undetermined',canon:0,method:'undetermined',note:ERFPACHT_STARTER_UNDETERMINED_NOTE};
 }
@@ -208,7 +218,7 @@ function applyStarterWithErfpacht(input={}){
   if(eligibility.eligible&&erfpacht.method==='seventeen')notes.push(year>=2027?ERFPACHT_INCLUDED_NOTE_FROM_2027:ERFPACHT_INCLUDED_NOTE_2026);
   if(erfpacht.method==='seventeen'&&tested.uncapped>limit)notes.push(ERFPACHT_ABOVE_STARTER_LIMIT_NOTE);
   const note=notes.join(' ');
-  return{undetermined:false,eligible:eligibility.eligible,transferTaxBase:tested.value,acquisitionYear:year,starterLimit:limit,note,erfpacht,tested,eligibility,method:erfpacht.method};
+  return{undetermined:false,eligible:eligibility.eligible,transferTaxBase:Math.max(price,appraisal),acquisitionYear:year,starterLimit:limit,note,erfpacht,tested,eligibility,method:erfpacht.method};
 }
 
 function starterEligibility2026({buyerAge,mainResidence=true,exemptionUnused=true,propertyValue=0,acquisitionYear}={}){
