@@ -30,7 +30,9 @@ test('Stage 7 browser contract rejects values outside declared bounds',()=>{
 
 test('Stage 7 optional blank inputs remain distinct from required blanks',()=>{
   assert.equal(II.validateControl(control({id:'scenarioPurchaseAppraisedValueNew',value:''})).valid,true);
+  assert.equal(II.validateControl(control({id:'scenarioGroundRentNotaryNew',value:''})).valid,true);
   assert.equal(II.validateControl(control({id:'custom',value:'',optional:true})).valid,true);
+  assert.match(fs.readFileSync(path.join(__dirname,'..','scenario-engine.js'),'utf8'),/id="scenarioGroundRentNotaryNew"[^>]*data-optional="true"/);
 });
 
 test('invalid main inputs create a canonical unavailable result with blank exports',()=>{
