@@ -164,6 +164,49 @@ function calculatePurchase2026({
 }
 
 
+const ERFPACHT_CANON_MULTIPLE=17;
+const ERFPACHT_STARTER_UNDETERMINED_NOTE='We can\'t tell whether the starter exemption applies, because it depends on the ground rent (erfpacht) details. This estimate uses the standard 2% transfer tax. Your notary can confirm.';
+const ERFPACHT_INCLUDED_NOTE_2026='Includes 17 × your yearly ground rent in the value test (€555,000 limit in 2026).';
+const ERFPACHT_INCLUDED_NOTE_FROM_2027='Includes 17 × your yearly ground rent in the value test (€615,000 limit for transfers from 1 Jan 2027).';
+
+function transferYear({notaryTransferDate,acquisitionYear}={}){
+  const text=String(notaryTransferDate||'').trim();
+  const match=/^(\d{4})-\d{2}-\d{2}$/.exec(text);
+  if(match)return Number(match[1]);
+  return starterAcquisitionYear(acquisitionYear);
+}
+
+function resolveErfpachtCanon({yearlyCanon=0,boughtOff=false,perpetual='dont-know',notaryAmount=null}={}){
+  const yearly=nonNegative(yearlyCanon);
+  if(boughtOff===true||yearly<=0)return{status:'none',canon:0,method:'none'};
+  if(notaryAmount!=null&&notaryAmount!==''&&Number.isFinite(Number(notaryAmount)))return{status:'determined',canon:nonNegative(notaryAmount),method:'notary'};
+  if(perpetual==='yes')return{status:'determined',canon:yearly*ERFPACHT_CANON_MULTIPLE,method:'seventeen'};
+  return{status:'undetermined',canon:0,method:'undetermined',note:ERFPACHT_STARTER_UNDETERMINED_NOTE};
+}
+
+function starterPropertyValue({price=0,appraisal=0,canon=0,unencumberedValue=null}={}){
+  const base=Math.max(nonNegative(price),nonNegative(appraisal));
+  const added=base+nonNegative(canon);
+  const cap=unencumberedValue==null||unencumberedValue===''||!Number.isFinite(Number(unencumberedValue))?null:nonNegative(unencumberedValue);
+  const capped=cap!=null&&cap>0&&added>cap;
+  return{base,uncapped:added,value:capped?cap:added,capped,unencumberedValue:cap};
+}
+
+function applyStarterWithErfpacht(input={}){
+  const price=nonNegative(input.price??input.housePrice);
+  const appraisal=nonNegative(input.appraisal??input.appraisedValue)||price;
+  const erfpacht=resolveErfpachtCanon(input);
+  const year=transferYear(input);
+  const limit=starterLimitForAcquisitionYear(year);
+  if(erfpacht.status==='undetermined'){
+    return{undetermined:true,eligible:false,transferTaxBase:Math.max(price,appraisal),acquisitionYear:year,starterLimit:limit,note:ERFPACHT_STARTER_UNDETERMINED_NOTE,erfpacht,method:'undetermined'};
+  }
+  const tested=starterPropertyValue({price,appraisal,canon:erfpacht.canon,unencumberedValue:input.unencumberedValue});
+  const eligibility=starterEligibility2026({buyerAge:input.buyerAge,mainResidence:input.mainResidence!==false,exemptionUnused:input.exemptionUnused!==false,propertyValue:tested.value,acquisitionYear:year});
+  const note=eligibility.eligible&&erfpacht.method==='seventeen'?(year>=2027?ERFPACHT_INCLUDED_NOTE_FROM_2027:ERFPACHT_INCLUDED_NOTE_2026):'';
+  return{undetermined:false,eligible:eligibility.eligible,transferTaxBase:tested.value,acquisitionYear:year,starterLimit:limit,note,erfpacht,tested,eligibility,method:erfpacht.method};
+}
+
 function starterEligibility2026({buyerAge,mainResidence=true,exemptionUnused=true,propertyValue=0,acquisitionYear}={}){
   const age=Number(buyerAge);
   const value=nonNegative(propertyValue);
@@ -278,5 +321,5 @@ function calculateScenarioPurchase2026({
   };
 }
 
-return{RULES_2026,starterAcquisitionYear,starterLimitForAcquisitionYear,transferTax2026,nhg2026,ltv2026,calculatePurchase2026,starterEligibility2026,calculateScenarioPurchase2026};
+return{RULES_2026,starterAcquisitionYear,starterLimitForAcquisitionYear,transferYear,resolveErfpachtCanon,starterPropertyValue,applyStarterWithErfpacht,ERFPACHT_CANON_MULTIPLE,ERFPACHT_STARTER_UNDETERMINED_NOTE,ERFPACHT_INCLUDED_NOTE_2026,ERFPACHT_INCLUDED_NOTE_FROM_2027,transferTax2026,nhg2026,ltv2026,calculatePurchase2026,starterEligibility2026,calculateScenarioPurchase2026};
 });

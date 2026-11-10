@@ -81,11 +81,18 @@ function applyEntry(el,entry){
 function normalizeDecimalString(value){return String(value??'').trim().replace(/\s+/g,'').replace(/,/g,'.')}
 function parseFlexibleNumber(value){const s=normalizeDecimalString(value);if(!s||s==='-'||s==='.'||s==='-.')return NaN;const n=Number(s);return Number.isFinite(n)?n:NaN}
 function clampFlexibleValue(value,min,max){let n=parseFlexibleNumber(value);if(!Number.isFinite(n))return null;if(Number.isFinite(min))n=Math.max(min,n);if(Number.isFinite(max))n=Math.min(max,n);return n}
-function estimateTaxableIncome2026({grossIncome=0,use30Ruling=false,rulingRate=.30,maxTaxFree=RULING_CAP}={}){
+function estimateTaxableIncome2026({grossIncome=0,use30Ruling=false,under30WithMasters=false,rulingRate=.30,maxTaxFree=RULING_CAP}={}){
   const gross=Math.max(0,Number(grossIncome)||0);
   if(!use30Ruling)return gross;
+  const ruling=Policy2026.VALUES.thirtyPercentRuling;
+  const floor=under30WithMasters?ruling.taxableSalaryThresholdUnder30Masters:ruling.taxableSalaryThreshold;
+  // 2026 only. If gross is at or below the applicable threshold, apply no reduction.
+  if(gross<=floor)return gross;
   const taxFree=Math.min(gross*Math.max(0,Number(rulingRate)||0),Math.max(0,Number(maxTaxFree)||0));
-  return Math.max(0,gross-taxFree);
+  const taxable=gross-taxFree;
+  // If a full 30% would bring taxable salary to or below the threshold, cap the reduction so taxable salary stays just above it: taxable = threshold + EUR 1.
+  if(taxable<=floor)return floor+1;
+  return Math.max(0,taxable);
 }
 function monthlyEquivalentExtra(amount,frequency='monthly'){
   const value=Math.max(0,Number(amount)||0);
@@ -151,8 +158,9 @@ function bootBrowser(){
       const visible=document.createElement('input');visible.id='grossAnnualIncome';visible.type='number';visible.min='0';visible.step='1000';visible.value=calcIncome.value||'60000';
       calcIncome.classList.add('hidden');field.insertBefore(visible,calcIncome);
       const toggle=document.createElement('div');toggle.className='toggle ux-income-toggle';toggle.innerHTML='<input id="use30Ruling" type="checkbox"><label for="use30Ruling">I use the 30% ruling / expat scheme</label>';field.appendChild(toggle);
+      const masters=document.createElement('div');masters.className='toggle ux-income-toggle';masters.innerHTML=`<input id="under30Masters" type="checkbox"><label for="under30Masters">Under 30 with a Dutch or equivalent foreign master's</label>`;field.appendChild(masters);
       const used=document.createElement('p');used.id='taxableIncomeUsed';used.className='inline ux-income-used';field.appendChild(used);
-      const help=document.createElement('p');help.id='grossIncomeHelp';help.className='inline';help.textContent=`With the ruling selected, the planner estimates taxable Box 1 employment income by applying the full 30% tax-free allowance for a full year, capped at €${RULING_CAP.toLocaleString('en-US')} in ${Policy2026.TAX_YEAR}. Your jaaropgaaf remains authoritative. This checkbox affects the HRA income estimate only, not Box 3 residency treatment.`;field.appendChild(help);
+      const help=document.createElement('p');help.id='grossIncomeHelp';help.className='inline';help.textContent=Policy2026.THIRTY_PERCENT_RULING_NOTICE;field.appendChild(help);
     }
     const woz=$('wozImpact');
     if(woz&&!$('mortgageReportHorizon')){
@@ -170,7 +178,7 @@ function bootBrowser(){
     restoring=true;
     try{
       const idKeys=Object.keys(payload.controls).filter(k=>k.startsWith('id:'));
-      const priority=['id:phaseCount','id:startMonth','id:startYear','id:grossAnnualIncome','id:use30Ruling','id:mortgageReportHorizon','id:mortgageReportYear'];
+      const priority=['id:phaseCount','id:startMonth','id:startYear','id:grossAnnualIncome','id:use30Ruling','id:under30Masters','id:mortgageReportHorizon','id:mortgageReportYear'];
       const ordered=[...priority.filter(k=>idKeys.includes(k)),...idKeys.filter(k=>!priority.includes(k))];
       ordered.forEach(key=>{const el=byKey(key);if(el&&applyEntry(el,payload.controls[key]))dispatch(el)});
       const fieldOrder=['years','mortgageFreq','monthlyInvest','mortgageExtra','annualBonus','bonusDest'];
@@ -216,7 +224,7 @@ function bootBrowser(){
 
   function syncIncome(){
     const visible=$('grossAnnualIncome'),use=$('use30Ruling'),calc=$('grossIncome'),used=$('taxableIncomeUsed');if(!visible||!use||!calc)return;
-    const gross=Math.max(0,parseFlexibleNumber(visible.value)||0),taxable=estimateTaxableIncome2026({grossIncome:gross,use30Ruling:use.checked});
+    const gross=Math.max(0,parseFlexibleNumber(visible.value)||0),taxable=estimateTaxableIncome2026({grossIncome:gross,use30Ruling:use.checked,under30WithMasters:$('under30Masters')?.checked===true});
     if(used)used.innerHTML=use.checked?`Estimated taxable Box 1 employment income used for HRA: <strong>${fmt(taxable)}</strong>.`: `Taxable Box 1 employment income used for HRA: <strong>${fmt(taxable)}</strong>.`;
     if(syncingIncome)return;
     const current=parseFlexibleNumber(calc.value);

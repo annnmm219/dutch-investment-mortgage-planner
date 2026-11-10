@@ -124,6 +124,8 @@ const VALUES=deepFreeze({
     rate:.30,
     maxTaxFreeAllowance:78600,
     wntNorm:262000,
+    taxableSalaryThreshold:48013,
+    taxableSalaryThresholdUnder30Masters:36497,
     taxYearScope:'2026-only'
   },
   ownHome:{
@@ -163,7 +165,8 @@ const VALUES=deepFreeze({
     lossThreshold:500,
     startYear:2028,
     status:'proposed',
-    sourceKey:'futureBox3ProposalStatus'
+    sourceKey:'futureBox3ProposalStatus',
+    lastVerifiedAt:'2026-11-10'
   },
   transferTax:{
     mainResidenceRate:.02,
@@ -231,7 +234,9 @@ const ITEMS=deepFreeze([
   item('nhg.feeRate',VALUES.nhg.feeRate,'final','nhg'),
   item('ltv.standardLimit',VALUES.ltv.standardLimit,'final','ltv'),
   item('thirtyPercentRuling.rate',VALUES.thirtyPercentRuling.rate,'final','thirtyPercentRuling','2026-only. Do not apply the 30% rate to years after 2026 without a new label.',{taxYearScope:'2026-only'}),
-  item('thirtyPercentRuling.maxTaxFreeAllowance',VALUES.thirtyPercentRuling.maxTaxFreeAllowance,'final','thirtyPercentRuling','2026-only. Full-year maximum tax-free allowance: 30% of the €262,000 WNT norm (Stcrt. 2025, 27439, art. I, in force 1 Jan 2026). Do not apply 30% or €78,600 to years after 2026 without a new label.',{taxYearScope:'2026-only',additionalSourceTitle:SOURCES.thirtyPercentRulingWntNorm.sourceTitle,additionalSourceUrl:SOURCES.thirtyPercentRulingWntNorm.sourceUrl})
+  item('thirtyPercentRuling.maxTaxFreeAllowance',VALUES.thirtyPercentRuling.maxTaxFreeAllowance,'final','thirtyPercentRuling','2026-only. Full-year maximum tax-free allowance: 30% of the €262,000 WNT norm (Stcrt. 2025, 27439, art. I, in force 1 Jan 2026). Do not apply 30% or €78,600 to years after 2026 without a new label.',{taxYearScope:'2026-only',additionalSourceTitle:SOURCES.thirtyPercentRulingWntNorm.sourceTitle,additionalSourceUrl:SOURCES.thirtyPercentRulingWntNorm.sourceUrl}),
+  item('thirtyPercentRuling.taxableSalaryThreshold',VALUES.thirtyPercentRuling.taxableSalaryThreshold,'final','thirtyPercentRuling','2026-only. Taxable salary after the allowance must be more than this amount.',{taxYearScope:'2026-only'}),
+  item('thirtyPercentRuling.taxableSalaryThresholdUnder30Masters',VALUES.thirtyPercentRuling.taxableSalaryThresholdUnder30Masters,'final','thirtyPercentRuling','2026-only. Lower threshold for someone under 30 with a Dutch or equivalent foreign master\'s.',{taxYearScope:'2026-only'})
 ]);
 
 const ITEM_BY_KEY=deepFreeze(Object.fromEntries(ITEMS.map(entry=>[entry.key,entry])));
@@ -267,8 +272,11 @@ function validateMetadata(items=ITEMS){
   return{valid:errors.length===0,errors};
 }
 
+const THIRTY_PERCENT_RULING_NOTICE='In 2026 the ruling applies only if taxable salary after the tax-free allowance is more than €48,013, or more than €36,497 if you are under 30 and have a Dutch or equivalent foreign master\'s. Below the applicable amount, the planner applies no reduction. If a full 30% would take taxable salary to or below that amount, only the part that leaves taxable salary just above the threshold counts. Your jaaropgaaf remains authoritative.';
+
 return{
   TAX_YEAR,
+  THIRTY_PERCENT_RULING_NOTICE,
   EFFECTIVE_FROM,
   LAST_VERIFIED_AT,
   MAX_POLICY_VERIFIED_AGE_DAYS,
