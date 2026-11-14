@@ -172,6 +172,46 @@ async function assertExampleReturnsLink(label,activate){
   }
 }
 
+async function assertControlVisible(id){
+  const state=await page.evaluate(elementId=>{
+    const el=document.getElementById(elementId);
+    if(!el)return{ok:false,reason:'missing'};
+    let node=el;
+    while(node){
+      if(node.tagName==='DETAILS')node.open=true;
+      node=node.parentElement;
+    }
+    const style=getComputedStyle(el);
+    const box=el.getBoundingClientRect();
+    const label=document.querySelector(`label[for="${elementId}"]`)?.textContent||'';
+    return{ok:style.display!=='none'&&style.visibility!=='hidden'&&box.width>0&&box.height>0,label,display:style.display,width:box.width,height:box.height};
+  },id);
+  if(!state.ok)throw new Error(`#${id} is not visible ${JSON.stringify(state)}`);
+  return state.label;
+}
+
+async function assertErfpachtAndRulingInputs(){
+  await page.locator('.tab[data-tab="scenarios"]').click();
+  await page.locator('#scenarioOwnerItemizedNew').check();
+  const labels={
+    scenarioGroundLeaseNew:'Yearly ground rent (canon), €',
+    scenarioGroundRentBoughtOffNew:'Ground rent bought off?',
+    scenarioGroundRentPerpetualNew:"Perpetual and not tied to anyone's lifetime?",
+    scenarioGroundRentNotaryNew:'Capitalised ground rent from your notary, €',
+    scenarioNotaryTransferDateNew:'Expected notary transfer date (levering)'
+  };
+  for(const [id,expected] of Object.entries(labels)){
+    const actual=await assertControlVisible(id);
+    if(actual!==expected)throw new Error(`#${id} label is ${JSON.stringify(actual)}`);
+  }
+  await page.locator('#scenarioOwnerItemizedNew').uncheck();
+  await page.waitForFunction(()=>document.getElementById('scenarioOwnerTotalNew')?.disabled!==true);
+  await page.locator('.tab[data-tab="mortgage"]').click();
+  const masters=await assertControlVisible('under30Masters');
+  if(masters!=="Under 30 with a Dutch or equivalent foreign master’s")throw new Error(`master's toggle label is ${JSON.stringify(masters)}`);
+  await page.locator('.tab[data-tab="investment"]').click();
+}
+
 async function assertSavedStatus(label){
   await page.waitForFunction(()=>document.getElementById('plannerSaveStatus')?.dataset.saveState==='saved');
   const status=page.locator('#plannerSaveStatus');
@@ -205,6 +245,7 @@ try{
   await page.locator('#exampleReturnsLink').focus();
   await assertExampleReturnsLink('Enter',async()=>{await page.keyboard.press('Enter');});
   await page.locator('.tab[data-tab="investment"]').click();
+  await assertErfpachtAndRulingInputs();
 
   await page.locator('#annualReturn').fill('7');
   await page.locator('#annualReturn').dispatchEvent('input');

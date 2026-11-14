@@ -7,7 +7,7 @@
 
 const OPTIONAL_IDS=new Set([
   'firstJan1Portfolio','firstJan1Savings','firstJan1Debt',
-  'scenarioPurchaseAppraisedValueNew','scenarioBuyWozNew','scenarioDpWozNew'
+  'scenarioPurchaseAppraisedValueNew','scenarioBuyWozNew','scenarioDpWozNew','scenarioGroundRentNotaryNew'
 ]);
 
 function parseFinite(value){

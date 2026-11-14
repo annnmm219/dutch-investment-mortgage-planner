@@ -12,6 +12,7 @@
 if(!FC||!PR||!SC||!OI||!S91)throw new Error('Stage 10 requires FinanceCore, PurchaseRules, ScenarioCore, OutputIntegrity and Stage91Remediation');
 
 const VERSION='R6.6-stage10';
+const NHG_COST_STACK_BELOW_REFERENCE_WARNING='Your cost total is lower than the purchase price or appraisal, so the NHG check can\'t run. Enter the full cost total to see the NHG estimate.';
 const NHG_STANDARD=470000;
 const NHG_ENERGY=498200;
 const NHG_FEE=.004;
@@ -51,15 +52,21 @@ function nhg2026Exact({purchasePrice=0,appraisedValue=0,mortgageAmount=0,mode='n
   const eligibleByTotalCost=costStackKnown&&(energy?totalCostStack<=NHG_ENERGY+TOL:stack<=NHG_STANDARD+TOL);
   const eligibleByNonEnergyLoan=nonEnergyLoan<=NHG_STANDARD+TOL,eligibleByTotalLoan=loan<=(energy?NHG_ENERGY:NHG_STANDARD)+TOL;
   const requiredEnergyExpenditure=energy?Math.max(0,loan-NHG_STANDARD):0,eligibleByEnergySpend=!energy||energySpend+TOL>=requiredEnergyExpenditure;
-  const eligible=costStackKnown&&eligibleByNonEnergyCost&&eligibleByTotalCost&&eligibleByNonEnergyLoan&&eligibleByTotalLoan&&eligibleByEnergySpend;
+  const costStackBelowReference=costStackKnown&&referenceValue>0&&stack+TOL<referenceValue;
+  const eligible=costStackKnown&&!costStackBelowReference&&eligibleByNonEnergyCost&&eligibleByTotalCost&&eligibleByNonEnergyLoan&&eligibleByTotalLoan&&eligibleByEnergySpend;
   let warning='';
   if(!costStackKnown)warning='Enter the official NHG non-energy cost stack (items a–g) before NHG eligibility can be assessed.';
+  else if(costStackBelowReference)warning=NHG_COST_STACK_BELOW_REFERENCE_WARNING;
   else if(!eligibleByNonEnergyCost)warning=`NHG is unavailable because the non-energy cost stack is €${Math.round(stack).toLocaleString('nl-NL')}, above the 2026 €470,000 limit. Energy measures cannot raise this a–g limit.`;
   else if(!eligibleByTotalCost)warning=`NHG is unavailable because the total cost stack including qualifying energy measures exceeds €${NHG_ENERGY.toLocaleString('nl-NL')}.`;
   else if(!eligibleByNonEnergyLoan)warning=`NHG is unavailable because the non-energy part of the loan exceeds €${NHG_STANDARD.toLocaleString('nl-NL')}.`;
   else if(!eligibleByTotalLoan)warning=`The mortgage exceeds the ${energy?'energy-enhanced ':''}2026 NHG loan limit of €${(energy?NHG_ENERGY:NHG_STANDARD).toLocaleString('nl-NL')}.`;
   else if(!eligibleByEnergySpend)warning=`At least €${Math.ceil(requiredEnergyExpenditure).toLocaleString('nl-NL')} of the mortgage above €470,000 must be fully allocated to qualifying energy measures.`;
   return{enabled:true,eligible,energy,limit:energy?NHG_ENERGY:NHG_STANDARD,fee:eligible?loan*NHG_FEE:0,feeRate:NHG_FEE,referenceValue,nonEnergyCostStack:stack,totalCostStack,qualifyingEnergyExpenditure:energySpend,nonEnergyLoan,requiredEnergyExpenditure,costStackKnown,eligibleByNonEnergyCost,eligibleByTotalCost,eligibleByNonEnergyLoan,eligibleByTotalLoan,eligibleByEnergySpend,warning};
+}
+function transferTaxPropertyValue({price=0,appraisal=0}={}){
+  // Without a known capitalised canon, transfer tax stays on max(purchase price, appraisal). A notary amount or 17× canon uses the same capped starter-test value, and the existing 2% rate applies to that value when the exemption is refused.
+  return Math.max(nonNegative(price),nonNegative(appraisal));
 }
 function calculateScenarioPurchase2026(input={}){
   const purchaseType=normalizePurchaseType(input.purchaseType)||'existing-home';
@@ -68,10 +75,17 @@ function calculateScenarioPurchase2026(input={}){
   if(price<=0)errors.push({code:'property-price-required',message:'Enter a property price greater than zero.'});
   if(down>price+TOL)errors.push({code:'buyer-cash-exceeds-price',message:`Buyer cash toward the purchase price exceeds the property price by ${(down-price).toFixed(2)}.`});
   const appraisalGap=Math.max(0,price-appraisal);if(down+TOL<appraisalGap)errors.push({code:'appraisal-gap-unfunded',message:`The purchase price is €${Math.round(appraisalGap).toLocaleString('nl-NL')} above the appraised value. Fund at least that appraisal gap explicitly with buyer cash.`});
-  const transferTaxBase=Math.max(price,appraisal),requested=['main','starter','other-home','other-real-estate','manual'].includes(input.transferTaxMode)?input.transferTaxMode:'main';let effective=requested,starterEligibility=null;
-  if(requested==='starter'){starterEligibility=PR.starterEligibility2026({buyerAge:input.buyerAge,mainResidence:input.starterMainResidence!==false,exemptionUnused:input.starterExemptionUnused!==false,propertyValue:transferTaxBase,acquisitionYear:input.acquisitionYear});if(!starterEligibility.eligible)effective=starterEligibility.residenceEligible?'main':'other-home';}
-  const transferTax=PR.transferTax2026({propertyValue:transferTaxBase,mode:effective,manualAmount:input.manualTransferTax,acquisitionYear:input.acquisitionYear});transferTax.requestedMode=requested;transferTax.effectiveMode=effective;transferTax.starterEligibility=starterEligibility;
-  if(requested==='starter'&&!starterEligibility?.eligible)transferTax.warning=`Starter exemption not applied: ${starterEligibility.reasons.join('; ')}. ${effective==='other-home'?'The 8% residential non-main-residence rate is used.':'The 2% main-residence rate is used.'}`;
+  const requested=['main','starter','other-home','other-real-estate','manual'].includes(input.transferTaxMode)?input.transferTaxMode:'main';let effective=requested,starterEligibility=null,transferTaxBase=transferTaxPropertyValue({price,appraisal}),erfpachtNote='';
+  if(requested==='starter'){
+    const starter=PR.applyStarterWithErfpacht({price,appraisal,buyerAge:input.buyerAge,mainResidence:input.starterMainResidence!==false,exemptionUnused:input.starterExemptionUnused!==false,yearlyCanon:input.yearlyCanon,boughtOff:input.groundRentBoughtOff===true,perpetual:input.groundRentPerpetual||'dont-know',notaryAmount:input.notaryCapitalisedCanon,unencumberedValue:input.unencumberedValue,notaryTransferDate:input.notaryTransferDate,acquisitionYear:input.acquisitionYear});
+    transferTaxBase=starter.transferTaxBase;erfpachtNote=starter.note||'';
+    starterEligibility=starter.undetermined?{eligible:false,undetermined:true,acquisitionYear:starter.acquisitionYear,starterLimit:starter.starterLimit,propertyValue:transferTaxBase,note:starter.note,reasons:[starter.note]}:starter.eligibility;
+    if(starter.undetermined)effective='main';
+    else if(!starter.eligible)effective=starter.eligibility?.residenceEligible?'main':'other-home';
+  }
+  const transferTax=PR.transferTax2026({propertyValue:transferTaxBase,mode:effective,manualAmount:input.manualTransferTax,acquisitionYear:requested==='starter'? (starterEligibility?.acquisitionYear||input.acquisitionYear):input.acquisitionYear});transferTax.requestedMode=requested;transferTax.effectiveMode=effective;transferTax.starterEligibility=starterEligibility;transferTax.erfpachtNote=erfpachtNote;
+  if(requested==='starter'&&starterEligibility?.undetermined)transferTax.warning=erfpachtNote;
+  else if(requested==='starter'&&!starterEligibility?.eligible)transferTax.warning=`Starter exemption not applied: ${starterEligibility.reasons.join('; ')}. ${effective==='other-home'?'The 8% residential non-main-residence rate is used.':'The 2% main-residence rate is used.'}`;
   const baseMortgage=Math.max(0,price-Math.min(price,down)),mortgageProceeds=baseMortgage+energySpend,supportedEnergyAboveAppraisal=input.nhgMode==='energy'?Math.min(energySpend,appraisal*.06):0,supportedLtvLoan=appraisal+supportedEnergyAboveAppraisal;
   if(mortgageProceeds>supportedLtvLoan+TOL)errors.push({code:'mortgage-above-supported-ltv',message:`The planned mortgage is €${Math.round(mortgageProceeds-supportedLtvLoan).toLocaleString('nl-NL')} above the supported appraisal-based financing limit. Increase buyer cash or reduce the mortgage.`});
   const nhg=nhg2026Exact({purchasePrice:price,appraisedValue:appraisal,mortgageAmount:mortgageProceeds,mode:input.nhgMode,qualifyingEnergyExpenditure:energySpend,nonEnergyCostStack:input.nhgNonEnergyCostStack});
@@ -80,7 +94,7 @@ function calculateScenarioPurchase2026(input={}){
   if(fundingShortfall>TOL)errors.push({code:'purchase-cash-shortfall',message:`Starting savings are ${fundingShortfall.toFixed(2)} below the complete cash-at-closing requirement.`});
   if(Math.abs(identityDifference)>TOL)errors.push({code:'sources-uses-mismatch',message:`Purchase sources and uses differ by ${Math.abs(identityDifference).toFixed(2)}.`});
   const ltv=PR.ltv2026({mortgageAmount:mortgageProceeds,appraisedValue:appraisal});ltv.supportedEnergyAboveAppraisal=supportedEnergyAboveAppraisal;ltv.supportedLoanLimit=supportedLtvLoan;ltv.overSupportedLimit=mortgageProceeds>supportedLtvLoan+TOL;
-  const warnings=[transferTax.warning,nhg.warning,ltv.overStandardLimit&&!ltv.overSupportedLimit?'Mortgage exceeds 100% of appraisal only through the entered qualifying energy-finance allowance.':ltv.warning].filter(Boolean);
+  const warnings=[...new Set([transferTax.warning,transferTax.erfpachtNote,nhg.warning,ltv.overStandardLimit&&!ltv.overSupportedLimit?'Mortgage exceeds 100% of appraisal only through the entered qualifying energy-finance allowance.':ltv.warning].filter(Boolean))];
   return{source:'scenario-local-2026-rules-stage10',purchaseType,valid:errors.length===0,propertyPrice:price,appraisedValue:appraisal,availableSavings:cash,baseCosts:base,transferTaxBase,transferTax,nhg,nhgFee,nhgNonEnergyCostStack:nhg.nonEnergyCostStack,qualifyingEnergyExpenditure:energySpend,transactionCosts:totalCosts,totalCosts,buyerCashTowardPrice:down,buyerCashForCosts,totalBuyerCash,mortgageProceeds,totalUses,totalSources,identityDifference,remainingSavings,fundingShortfall,shortfall:fundingShortfall,funded:fundingShortfall<=TOL,appraisalGap,minimumBuyerCashForAppraisalGap:appraisalGap,ltv,warnings,errors};
 }
 function unsupportedStandaloneNhg(prior,input={}){
@@ -98,7 +112,7 @@ function annualGroundLeaseByYear(config={},months=0){
 }
 function purchaseFundingForCall(config={},callIndex=0){
   if(!isPurchase(config.mode))return null;const d=config.mode==='buy-rent'?config.buyRent:config.downpayment,down=config.mode==='buy-rent'?d?.downPayment:(callIndex===0?d?.downA:d?.downB);
-  return calculateScenarioPurchase2026({purchaseType:config.purchaseRules?.purchaseType,housePrice:d?.price,downPayment:down,availableSavings:d?.cash??config.box3?.savings,baseCosts:d?.purchaseCosts,transferTaxMode:config.purchaseRules?.transferTaxMode,manualTransferTax:config.purchaseRules?.manualTransferTax,appraisedValue:config.purchaseRules?.appraisedValue,nhgMode:config.purchaseRules?.nhgMode,buyerAge:config.purchaseRules?.buyerAge,starterMainResidence:config.purchaseRules?.starterMainResidence,starterExemptionUnused:config.purchaseRules?.starterExemptionUnused,qualifyingEnergyExpenditure:config.purchaseRules?.qualifyingEnergyExpenditure,nhgNonEnergyCostStack:config.purchaseRules?.nhgNonEnergyCostStack,acquisitionYear:config.startYear});
+  return calculateScenarioPurchase2026({purchaseType:config.purchaseRules?.purchaseType,housePrice:d?.price,downPayment:down,availableSavings:d?.cash??config.box3?.savings,baseCosts:d?.purchaseCosts,transferTaxMode:config.purchaseRules?.transferTaxMode,manualTransferTax:config.purchaseRules?.manualTransferTax,appraisedValue:config.purchaseRules?.appraisedValue,nhgMode:config.purchaseRules?.nhgMode,buyerAge:config.purchaseRules?.buyerAge,starterMainResidence:config.purchaseRules?.starterMainResidence,starterExemptionUnused:config.purchaseRules?.starterExemptionUnused,qualifyingEnergyExpenditure:config.purchaseRules?.qualifyingEnergyExpenditure,nhgNonEnergyCostStack:config.purchaseRules?.nhgNonEnergyCostStack,acquisitionYear:config.startYear,yearlyCanon:config.groundLeaseAnnual,groundRentBoughtOff:config.purchaseRules?.groundRentBoughtOff===true,groundRentPerpetual:config.purchaseRules?.groundRentPerpetual||'dont-know',notaryCapitalisedCanon:config.purchaseRules?.notaryCapitalisedCanon,unencumberedValue:config.purchaseRules?.unencumberedValue,notaryTransferDate:config.purchaseRules?.notaryTransferDate});
 }
 function additionalDeductibleCostsByYear(config={},months=0,mortgageCallIndex=0){
   const out=annualGroundLeaseByYear(config,months),existing=config.tax?.additionalDeductibleOwnHomeCosts,years=Object.keys(out);
@@ -117,8 +131,8 @@ function propertyIncomeSchedule(config={},months=0){
   return{monthly,rentalByYear,ownUseByYear};
 }
 function isPropertyInvestmentCall(config={},callIndex=0){if(!isPurchase(config.mode)||inferredPropertyUse(config.purchaseRules)!=='non-main')return false;return config.mode==='buy-rent'?callIndex===0:(config.mode==='downpayment'&&(callIndex===0||callIndex===1));}
-function releaseIdentity(identity=root?.__DIMP_RELEASE_IDENTITY){const sha=String(identity?.calculationSourceSha||'').trim().toLowerCase(),valid=/^[0-9a-f]{40}$/.test(sha);return{valid,calculationSourceSha:valid?sha:null,buildId:String(identity?.buildId||'').trim()||null,status:valid?'frozen':'unfrozen'};}
-function releaseIdentityRows(identity=root?.__DIMP_RELEASE_IDENTITY){const id=releaseIdentity(identity);return[['Model','Calculation source commit',id.calculationSourceSha||'UNFROZEN'],['Model','Build identity',id.buildId||'UNFROZEN']];}
+function releaseIdentity(identity=root?.__DIMP_RELEASE_IDENTITY){const sha=String(identity?.calculationManifestSha||identity?.calculationSourceSha||'').trim().toLowerCase(),valid=/^[0-9a-f]{40}$|^[0-9a-f]{64}$/.test(sha);const out={valid,calculationSourceSha:valid?sha:null,buildId:String(identity?.buildId||'').trim()||null,status:valid?'frozen':'unfrozen'};if(valid&&sha.length===64)out.calculationManifestSha=sha;if(identity&&Object.prototype.hasOwnProperty.call(identity,'frozenFromCommit'))out.frozenFromCommit=String(identity.frozenFromCommit||'').trim()||null;return out;}
+function releaseIdentityRows(identity=root?.__DIMP_RELEASE_IDENTITY){const id=releaseIdentity(identity);const rows=[['Model','Calculation source commit',id.calculationSourceSha||'UNFROZEN'],['Model','Build identity',id.buildId||'UNFROZEN']];if(id.calculationManifestSha)rows.push(['Model','Calculation manifest',id.calculationManifestSha]);if(id.frozenFromCommit)rows.push(['Model','Frozen from commit',id.frozenFromCommit]);return rows;}
 
 let activeRun=null,activeInvestment=null;
 function invalidScenario(reason,mode=''){
@@ -204,5 +218,5 @@ function browserBoot(){
   const identity=releaseIdentity();document.documentElement.dataset.calculationSourceSha=identity.calculationSourceSha||'unfrozen';let marker=$('stage10ReleaseIdentity');if(!marker){marker=document.createElement('div');marker.id='stage10ReleaseIdentity';marker.className='foot';const footer=$('modelVersion');footer?.insertAdjacentElement('beforebegin',marker);}if(marker)marker.textContent=identity.valid?`Calculation source: ${identity.calculationSourceSha}`:'Calculation source identity not frozen — do not treat this build as final release evidence.';
 }
 installPatches();if(typeof document!=='undefined'){if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',browserBoot,{once:true});else browserBoot();}
-return{VERSION,NHG_STANDARD,NHG_ENERGY,NHG_FEE,OWN_USE_RATE_2026,normalizePropertyUse,inferredPropertyUse,isNonMain,propertyTransferTaxAlignment,nhg2026Exact,calculateScenarioPurchase2026,unsupportedStandaloneNhg,ownerCostMode,annualGroundLeaseByYear,purchaseFundingForCall,additionalDeductibleCostsByYear,propertyIncomeSchedule,isPropertyInvestmentCall,releaseIdentity,releaseIdentityRows,validateStage10Config,installPatches,browserBoot};
+return{VERSION,NHG_STANDARD,NHG_ENERGY,NHG_FEE,OWN_USE_RATE_2026,NHG_COST_STACK_BELOW_REFERENCE_WARNING,normalizePropertyUse,inferredPropertyUse,isNonMain,propertyTransferTaxAlignment,transferTaxPropertyValue,nhg2026Exact,calculateScenarioPurchase2026,unsupportedStandaloneNhg,ownerCostMode,annualGroundLeaseByYear,purchaseFundingForCall,additionalDeductibleCostsByYear,propertyIncomeSchedule,isPropertyInvestmentCall,releaseIdentity,releaseIdentityRows,validateStage10Config,installPatches,browserBoot};
 });

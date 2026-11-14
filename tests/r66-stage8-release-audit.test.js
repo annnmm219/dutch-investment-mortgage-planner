@@ -88,7 +88,7 @@ test('Stage 8 keeps future Box 3 explicitly proposed and aligned with the passed
   close(gain.tax,2952);
   close(loss.lossCarry,500);
   assert.match(Policy.SOURCES.futureBox3ProposalStatus.sourceUrl,/eerstekamer\.nl/);
-  assert.match(read('app.js'),/Proposed regime, not law \(status as of 27 Oct 2026\)\./);
+  assert.match(read('app.js'),/Proposed regime, not law \(status as of 10 Nov 2026\)\./);
 });
 
 test('Stage 8 release evidence retains all five deterministic comparison modes',()=>{

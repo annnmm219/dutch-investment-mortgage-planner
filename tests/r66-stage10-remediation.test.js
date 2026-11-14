@@ -163,6 +163,33 @@ test('F-11 R6.6 blocks new-build purchase scenarios instead of applying existing
 });
 
 
+test('H1 a lower NHG cost stack than purchase or appraisal is not eligible and charges no fee',()=>{
+  const contradictory=S10.calculateScenarioPurchase2026({
+    purchaseType:'existing-home',housePrice:600000,appraisedValue:600000,downPayment:200000,availableSavings:250000,
+    baseCosts:0,transferTaxMode:'main',nhgMode:'standard',nhgNonEnergyCostStack:400000
+  });
+  assert.equal(contradictory.nhg.eligible,false);
+  assert.equal(contradictory.nhg.fee,0);
+  assert.equal(contradictory.nhgFee,0);
+  assert.equal(contradictory.nhg.referenceValue,600000);
+  assert.ok(contradictory.warnings.includes(S10.NHG_COST_STACK_BELOW_REFERENCE_WARNING));
+  assert.equal(contradictory.nhg.warning,S10.NHG_COST_STACK_BELOW_REFERENCE_WARNING);
+  const matching=S10.nhg2026Exact({purchasePrice:400000,appraisedValue:400000,mortgageAmount:300000,mode:'standard',nonEnergyCostStack:400000});
+  assert.equal(matching.eligible,true);
+  assert.equal(matching.fee,1200);
+  assert.equal(matching.warning,'');
+  const equalReference=S10.nhg2026Exact({purchasePrice:450000,appraisedValue:400000,mortgageAmount:300000,mode:'standard',nonEnergyCostStack:400000});
+  assert.equal(equalReference.referenceValue,400000);
+  assert.equal(equalReference.eligible,true);
+  assert.equal(equalReference.fee,1200);
+});
+
+test('H1 NHG cost-stack warning uses the same purchase-warning display as other purchase warnings',()=>{
+  const ui=require('node:fs').readFileSync(require('node:path').join(__dirname,'..','scenario-engine.js'),'utf8');
+  assert.match(ui,/warnings\.join\('<br>'\)/);
+  assert.match(ui,/id="scenarioPurchaseRuleStatusNew"|scenarioPurchaseRuleStatusNew/);
+});
+
 test('F-03 standalone NHG cannot regain eligibility through hidden exact-stack input',()=>{
   const prior=input=>({input,nhg:{enabled:false,eligible:false,fee:0},nhgFee:0});
   const x=S10.unsupportedStandaloneNhg(prior,{nhgMode:'standard',nhgNonEnergyCostStack:400000});

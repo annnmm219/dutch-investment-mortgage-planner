@@ -27,7 +27,7 @@ const BORROWING_NOTICE='This planner does not check how much a lender would let 
 const HEADER_NOTICE='Planning estimates only, not financial, tax or mortgage advice. Your financial inputs are calculated and saved locally in your browser.';
 const HEADER_DETAILS='Rules simplified, as of 27 Oct 2026. Your inputs are stored in this browser\'s localStorage and are not sent to us or to any third party. Our web host sees standard request logs (e.g. IP address). "Start fresh" deletes everything this planner saved in this browser.';
 const RESULT_NOTICE='Estimate based on your assumptions and simplified 2026 rules. Not a recommendation or a tax calculation.';
-const FUTURE_WARNING='Proposed regime, not law. The Wet werkelijk rendement box 3 passed the Tweede Kamer (Feb 2026). The Eerste Kamer has not voted, and a pending amendment (novelle) would lower the tax-free result to €1,000 and tax shares and bonds only when sold. This scenario taxes yearly growth and may not match the final law. Figures as of 27 Oct 2026.';
+const FUTURE_WARNING='Proposed regime, not law. The Wet werkelijk rendement box 3 (36748) passed the Tweede Kamer (12 Feb 2026). The Eerste Kamer has not voted. The novelle (37053, filed 3 Nov 2026) is still before the Tweede Kamer and is not law. As filed it would tax shares and bonds only when sold and start on 1 January 2029, so current rules would also apply in 2028. The earlier plan to cut the tax-free result to €1,000 has been withdrawn (€1,800 remains in the Tweede Kamer text). This scenario taxes yearly growth and may not match the final law. Figures as of 10 Nov 2026.';
 
 function withoutDetails(html){
   let out='',i=0,depth=0;

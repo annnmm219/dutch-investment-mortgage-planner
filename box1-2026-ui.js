@@ -151,7 +151,7 @@ function ensureInterface(){
   const visibleIncomeLabel=document.querySelector('label[for="grossAnnualIncome"]');
   if(visibleIncomeLabel)visibleIncomeLabel.textContent='Gross annual employment income';
   const grossHelp=$('grossIncomeHelp');
-  if(grossHelp)grossHelp.textContent='The planner converts this to an estimated Box 1 employment-income amount, including the selected 30% ruling assumption. Your jaaropgaaf or tax return remains authoritative.';
+  if(grossHelp)grossHelp.textContent=Policy2026.THIRTY_PERCENT_RULING_NOTICE;
 
   const woz=$('wozImpact');
   if(woz&&!$('box1ScopeNotice')){

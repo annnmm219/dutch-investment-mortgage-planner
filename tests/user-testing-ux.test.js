@@ -35,13 +35,22 @@ test('30 percent ruling checkbox estimates taxable income from gross employment 
   assert.equal(State.estimateTaxableIncome2026({grossIncome:84000,use30Ruling:false}),84000);
   assert.equal(State.estimateTaxableIncome2026({grossIncome:84000,use30Ruling:true}),58800);
   assert.equal(State.estimateTaxableIncome2026({grossIncome:300000,use30Ruling:true}),221400);
+  const taxableAt50000=State.estimateTaxableIncome2026({grossIncome:50000,use30Ruling:true});
+  assert.equal(taxableAt50000,48014);
+  assert.equal(50000-taxableAt50000,1986);
+  assert.equal(State.estimateTaxableIncome2026({grossIncome:60000,use30Ruling:true}),48014);
+  assert.equal(State.estimateTaxableIncome2026({grossIncome:50000,use30Ruling:true,under30WithMasters:true}),36498);
   const js=read('app-state.js');
+  const policy=require('../policy-2026.js');
   assert.match(js,/Gross annual employment income/);
   assert.match(js,/I use the 30% ruling \/ expat scheme/);
-  assert.equal(require('../policy-2026.js').VALUES.thirtyPercentRuling.maxTaxFreeAllowance,78600);
-  assert.match(js,/capped at €\$\{RULING_CAP\.toLocaleString\('en-US'\)\} in \$\{Policy2026\.TAX_YEAR\}/);
-  assert.match(js,/jaaropgaaf remains authoritative/);
-  assert.match(js,/HRA income estimate only, not Box 3 residency treatment/);
+  assert.match(js,/Under 30 with a Dutch or equivalent foreign master’s/);
+  assert.equal(policy.VALUES.thirtyPercentRuling.maxTaxFreeAllowance,78600);
+  assert.equal(policy.VALUES.thirtyPercentRuling.taxableSalaryThreshold,48013);
+  assert.equal(policy.VALUES.thirtyPercentRuling.taxableSalaryThresholdUnder30Masters,36497);
+  assert.match(js,/Policy2026\.THIRTY_PERCENT_RULING_NOTICE/);
+  assert.match(policy.THIRTY_PERCENT_RULING_NOTICE,/Your jaaropgaaf remains authoritative\./);
+  assert.match(read('box1-2026-ui.js'),/Policy2026\.THIRTY_PERCENT_RULING_NOTICE/);
 });
 
 test('automatic deduction mode freezes the displayed rate field',()=>{

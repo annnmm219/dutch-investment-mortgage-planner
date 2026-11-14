@@ -6,9 +6,9 @@ The project is designed for **scenario planning**. It is not mortgage underwriti
 
 ## Release status
 
-Live on main, and on the public site: **R6.5**.
+Live on main, and on the public site: **R6.6** (released 4 Nov 2026).
 
-R6.6 Decision Integrity is in draft review. R6.7 is also in draft review. The public site stays on R6.5 until a release is explicitly authorized for merge.
+R6.7 is also in draft review.
 
 R6.6 completes the controlled decision-integrity review across inputs, calculations, comparison economics, tax boundaries, displayed outputs, exports, browser state and primary-source facts. This branch still has five scenario types. The sixth scenario exists only on the R6.7 draft.
 
@@ -258,8 +258,8 @@ The test suite covers mortgage identities, HRA allocation, EWF/Hillen, HRA expir
 - R6.4 Public-beta calculation gates: complete
 - R6.4.1 Output integrity and 50-scenario reconciliation: complete
 - R6.4.2 Browser responsiveness hotfix: complete
-- **R6.5 Interface simplification: complete** (live / main; public site)
-- **R6.6 Decision integrity: in draft review.** The public site stays on R6.5.
+- **R6.5 Interface simplification: complete**
+- **R6.6 Decision integrity: live on main and the public site** (released 4 Nov 2026).
 - R6.7 is in draft review and is not part of this branch. This page still describes five scenario types.
 
 ## Run locally
