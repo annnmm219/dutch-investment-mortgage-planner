@@ -284,8 +284,11 @@ try{
   await page.locator('.tab[data-tab="mortgage"]').click();
   await page.locator('#mortgageMode').selectOption('purchase');
   await page.locator('#housePrice').fill('580000');
+  await page.locator('#housePrice').dispatchEvent('change');
+  await page.locator('#purchaseCostDetails').evaluate(el=>{el.open=true;});
   await page.locator('#purchaseTransferTaxMode').selectOption('starter');
   await page.locator('#purchaseNotaryTransferDate').fill('2026-06-15');
+  await page.locator('#purchaseNotaryTransferDate').dispatchEvent('input');
   await page.locator('#purchaseNotaryTransferDate').dispatchEvent('change');
   await page.waitForFunction(()=>Number(document.getElementById('purchaseTransferTax')?.value)>=11600);
   const beforeTax=await page.locator('#purchaseTransferTax').inputValue();
