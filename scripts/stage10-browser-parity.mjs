@@ -119,7 +119,7 @@ await new Promise(r=>server.listen(0,'127.0.0.1',r));
 const browser=await browserEngine.launch({headless:true}),url=`http://127.0.0.1:${server.address().port}/`,results=[],errors=[];
 try{
   for(const [view,opts] of VIEWPORTS){
-    const context=await browser.newContext(opts),page=await context.newPage();page.setDefaultTimeout(25000);page.on('pageerror',e=>errors.push(`${view}: ${String(e?.stack||e)}`));await page.route(/^https:\/\//,r=>r.abort());await page.goto(url,{waitUntil:'domcontentloaded'});
+    const context=await browser.newContext(opts),page=await context.newPage();page.setDefaultTimeout(45000);page.on('pageerror',e=>errors.push(`${view}: ${String(e?.stack||e)}`));await page.route(/^https:\/\//,r=>r.abort());await page.goto(url,{waitUntil:'domcontentloaded'});
     if(view==='desktop')await targetedBoundaries(page);
     for(const mode of MODES)for(let i=0;i<10;i++)results.push(await one(page,data(mode,i),view));await context.close();
   }

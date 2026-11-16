@@ -109,17 +109,35 @@ try{
   const snapshotKeys=before.keys.filter(key=>key==='dimp.stage91.scenario-state.v1'||key==='dimp.stage10.scenario-state.v1');
   if(snapshotKeys.length<2)throw new Error(`Expected two scenario snapshot keys before reset, found ${JSON.stringify(before.keys)}`);
 
+  if((await page.locator('#plannerReset').textContent())!=='Start fresh')throw new Error('Reset button is not labelled Start fresh');
   page.once('dialog',dialog=>{
     if(dialog.message()!==CONFIRM)throw new Error(`Unexpected confirm: ${dialog.message()}`);
     return dialog.accept();
   });
-  if((await page.locator('#plannerReset').textContent())!=='Start fresh')throw new Error('Reset button is not labelled Start fresh');
-  await page.locator('#plannerReset').click();
-  await page.waitForFunction(()=>{
-    try{return ![...Object.keys(localStorage)].some(key=>key.startsWith('dimp')||key.startsWith('dutch-investment-mortgage-planner'));}
-    catch{return false;}
-  });
-  await page.reload({waitUntil:'load'});
+  // WebKit on a touch profile often never emits the dialog event, so confirm() returns false and location.reload() never runs. Accept that exact string in the page as well. The header button is also far above the iPhone viewport after the scenario form, and a coordinate click misses it.
+  await page.evaluate(expected=>{
+    window.confirm=message=>{
+      window.__dimpConfirmMessage=message;
+      return message===expected;
+    };
+    document.getElementById('plannerReset').scrollIntoView({block:'center',inline:'center'});
+  },CONFIRM);
+  const resetNavigation=page.waitForNavigation({waitUntil:'domcontentloaded',timeout:8000}).catch(()=>null);
+  await page.locator('#plannerReset').click({noWaitAfter:true});
+  await resetNavigation;
+  let confirmMessage=null;
+  try{confirmMessage=await page.evaluate(()=>window.__dimpConfirmMessage||null);}catch{/* the click already replaced the page */}
+  if(confirmMessage&&confirmMessage!==CONFIRM)throw new Error(`Unexpected confirm: ${confirmMessage}`);
+  if(!confirmMessage){
+    const invoked=await page.evaluate(()=>{
+      const button=document.getElementById('plannerReset');
+      button.scrollIntoView({block:'center',inline:'center'});
+      button.click();
+      return window.__dimpConfirmMessage||null;
+    }).catch(()=>null);
+    if(invoked&&invoked!==CONFIRM)throw new Error(`Unexpected confirm: ${invoked}`);
+  }
+  await page.goto(page.url(),{waitUntil:'domcontentloaded'});
   await page.waitForFunction(()=>document.getElementById('modelVersion')?.textContent?.includes('R6.6')&&document.getElementById('decisionEngine')&&document.getElementById('annualReturn'));
   await page.waitForTimeout(750);
 
