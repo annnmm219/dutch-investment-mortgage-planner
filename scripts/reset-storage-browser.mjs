@@ -114,10 +114,11 @@ try{
     return dialog.accept();
   });
   if((await page.locator('#plannerReset').textContent())!=='Start fresh')throw new Error('Reset button is not labelled Start fresh');
-  await Promise.all([
-    page.waitForNavigation({waitUntil:'load'}),
-    page.locator('#plannerReset').click()
-  ]);
+  await page.locator('#plannerReset').click();
+  await page.waitForFunction(()=>{
+    try{return ![...Object.keys(localStorage)].some(key=>key.startsWith('dimp')||key.startsWith('dutch-investment-mortgage-planner'));}
+    catch{return false;}
+  });
   await page.reload({waitUntil:'load'});
   await page.waitForFunction(()=>document.getElementById('modelVersion')?.textContent?.includes('R6.6')&&document.getElementById('decisionEngine')&&document.getElementById('annualReturn'));
   await page.waitForTimeout(750);
