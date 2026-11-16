@@ -75,7 +75,7 @@ test('every dated policy item has tax year, status, official source and verifica
   assert.deepEqual(validation,{valid:true,errors:[]});
   assert.equal(Policy.TAX_YEAR,2026);
   assert.equal(Policy.EFFECTIVE_FROM,'2026-01-01');
-  assert.equal(Policy.LAST_VERIFIED_AT,'2026-10-27');
+  assert.equal(Policy.LAST_VERIFIED_AT,'2026-11-14');
   Policy.ITEMS.forEach(item=>{
     assert.equal(item.taxYear,2026);
     assert.match(item.sourceUrl,/^https:\/\//);
@@ -135,12 +135,12 @@ test('policy UI applies central defaults without creating a second calculation e
   assert.equal(nodes.currentDebtNotional.value,'2.7');
   assert.equal(nodes.currentDebtThreshold.value,'3800');
   assert.equal(nodes.manualDeduction.value,'37.56');
-  assert.equal(nodes.futureStart.value,'2028');
+  assert.equal(nodes.futureStart.value,'2029');
   assert.equal(nodes.futureTaxRate.value,'36');
   assert.equal(nodes.futureExempt.value,'1800');
   assert.equal(nodes.futureLossThreshold.value,'500');
   assert.equal(attributes['data-policy-year'],'2026');
-  assert.equal(attributes['data-policy-verified-at'],'2026-10-27');
+  assert.equal(attributes['data-policy-verified-at'],'2026-11-14');
 });
 
 test('Stage 1 documentation and policy modules are present on the staged branch',()=>{

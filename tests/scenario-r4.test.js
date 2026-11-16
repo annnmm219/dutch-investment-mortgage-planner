@@ -64,9 +64,9 @@ test('Buy vs Rent spends household savings before Box 3, lowering the buyer tax 
   c.box3={...c.box3,mode:'current',paySource:'external',savings:100000};
   c.buyRent={purchaseCosts:c.purchaseCosts||0,mortgageType:'annuity',price:60000,downPayment:60000,monthlyRent:0,mortgageRatePct:0,mortgageYears:10};
   const x=SC.runScenario(c);
-  approx(x.A.box3,0,1e-9,'buyer Box 3');
-  assert.ok(x.B.box3>0,'renter should have positive Box 3 on the larger retained financial balance');
-  assert.ok(x.B.box3>x.A.box3,'spending savings on the home should reduce modeled Box 3');
+  assert.equal(x.A.box3Years[2026].jan1Savings,x.B.box3Years[2026].jan1Savings);
+  assert.equal(x.A.box3Years[2026].jan1Portfolio,x.B.box3Years[2026].jan1Portfolio);
+  assert.ok(x.A.box3Years[2026].jan1Savings>0,'January purchase keeps pre-purchase savings on the 1 January base');
 });
 
 test('Buy vs Rent can keep unused upfront cash in savings instead of investing it',()=>{

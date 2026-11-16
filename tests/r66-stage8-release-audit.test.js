@@ -21,12 +21,12 @@ test('Stage 8 publishes one synchronized R6.6 release identity',()=>{
   assert.equal(Gate.MODEL_META.releaseName,'Decision Integrity');
   assert.equal(OI.RELEASE_META.updated,'2026-11-04');
   assert.equal(Gate.MODEL_META.updated,'2026-11-04');
-  assert.equal(Policy.LAST_VERIFIED_AT,'2026-10-27');
+  assert.equal(Policy.LAST_VERIFIED_AT,'2026-11-14');
   assert.notEqual(OI.RELEASE_META.updated,Policy.LAST_VERIFIED_AT);
-  assert.equal(OI.releaseLabel(),'Calculation build R6.6 · released 4 Nov 2026 · 2026 rules, verified 27 Oct 2026');
+  assert.equal(OI.releaseLabel(),'Calculation build R6.6 · released 4 Nov 2026 · patched 14 Nov 2026 · 2026 rules verified 14 Nov 2026');
   assert.ok(read('index.html').includes(OI.releaseLabel()));
   assert.match(read('release-identity.js'),/calculationSourceSha/);
-  assert.match(read('stage10-remediation.js'),/Calculation source commit/);
+  assert.match(read('stage10-remediation.js'),/Calculation manifest \(SHA-256 of 12 files; not a Git commit\)/);
 });
 
 test('Stage 8 retains the verified final and provisional 2026 policy classifications',()=>{
@@ -88,7 +88,7 @@ test('Stage 8 keeps future Box 3 explicitly proposed and aligned with the passed
   close(gain.tax,2952);
   close(loss.lossCarry,500);
   assert.match(Policy.SOURCES.futureBox3ProposalStatus.sourceUrl,/eerstekamer\.nl/);
-  assert.match(read('app.js'),/Proposed regime, not law \(status as of 10 Nov 2026\)\./);
+  assert.match(read('app.js'),/Proposed regime, not law \(status as of 14 Nov 2026\)\./);
 });
 
 test('Stage 8 release evidence retains all five deterministic comparison modes',()=>{

@@ -3,7 +3,9 @@ import path from 'node:path';
 import {readFile,stat} from 'node:fs/promises';
 import {fileURLToPath} from 'node:url';
 import assert from 'node:assert/strict';
-import {chromium} from 'playwright';
+import {chromium, webkit, devices} from 'playwright';
+const browserEngine=process.env.DIMP_BROWSER==='webkit'?webkit:chromium;
+const deviceProfile=process.env.DIMP_DEVICE&&devices[process.env.DIMP_DEVICE]?devices[process.env.DIMP_DEVICE]:null;
 
 const ROOT=path.resolve(path.dirname(fileURLToPath(import.meta.url)),'..');
 const TYPES={'.html':'text/html; charset=utf-8','.js':'text/javascript; charset=utf-8','.css':'text/css; charset=utf-8','.json':'application/json'};
@@ -179,7 +181,7 @@ async function runCase(page,d,viewportName){
 }
 
 await new Promise(resolve=>server.listen(0,'127.0.0.1',resolve));
-const url=`http://127.0.0.1:${server.address().port}/`,browser=await chromium.launch({headless:true}),results=[],errors=[];
+const url=`http://127.0.0.1:${server.address().port}/`,browser=await browserEngine.launch({headless:true}),results=[],errors=[];
 try{
   for(const vp of VIEWPORTS){
     const context=await browser.newContext(vp.options),page=await context.newPage();page.setDefaultTimeout(20000);page.on('pageerror',error=>errors.push(`${vp.name}: ${String(error?.stack||error)}`));await page.route(/^https:\/\//,route=>route.abort());await page.goto(url,{waitUntil:'domcontentloaded'});

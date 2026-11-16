@@ -2,7 +2,9 @@ import http from 'node:http';
 import path from 'node:path';
 import {readFile,stat} from 'node:fs/promises';
 import {fileURLToPath} from 'node:url';
-import {chromium} from 'playwright';
+import {chromium, webkit, devices} from 'playwright';
+const browserEngine=process.env.DIMP_BROWSER==='webkit'?webkit:chromium;
+const deviceProfile=process.env.DIMP_DEVICE&&devices[process.env.DIMP_DEVICE]?devices[process.env.DIMP_DEVICE]:null;
 
 const ROOT=path.resolve(path.dirname(fileURLToPath(import.meta.url)),'..');
 const TYPES={'.html':'text/html; charset=utf-8','.js':'text/javascript; charset=utf-8','.css':'text/css; charset=utf-8','.json':'application/json; charset=utf-8'};
@@ -29,8 +31,8 @@ const server=http.createServer(async(req,res)=>{
 
 await new Promise(resolve=>server.listen(0,'127.0.0.1',resolve));
 const {port}=server.address();
-const browser=await chromium.launch({headless:true});
-const context=await browser.newContext();
+const browser=await browserEngine.launch({headless:true});
+const context=await browser.newContext(deviceProfile||{});
 const page=await context.newPage();
 const pageErrors=[];
 page.on('pageerror',error=>pageErrors.push(String(error?.stack||error)));

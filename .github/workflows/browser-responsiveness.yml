@@ -36,3 +36,36 @@ jobs:
           path: browser-test.log
           if-no-files-found: error
           retention-days: 14
+
+  webkit-iphone-smoke:
+    runs-on: ubuntu-latest
+    timeout-minutes: 60
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v5
+      - name: Use Node.js 24
+        uses: actions/setup-node@v5
+        with:
+          node-version: 24
+      - name: Install pinned dependencies
+        run: npm ci
+      - name: Audit test dependencies
+        run: npm audit --audit-level=high
+      - name: Install WebKit
+        run: npx playwright install --with-deps webkit
+      - name: Verify browser contracts on an iPhone-sized WebKit proxy
+        env:
+          DIMP_BROWSER: webkit
+          DIMP_DEVICE: iPhone 13
+        shell: bash
+        run: |
+          set -o pipefail
+          npm run test:e2e 2>&1 | tee browser-test.log
+      - name: Retain browser transcript
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: webkit-iphone-smoke-${{ github.sha }}
+          path: browser-test.log
+          if-no-files-found: error
+          retention-days: 14

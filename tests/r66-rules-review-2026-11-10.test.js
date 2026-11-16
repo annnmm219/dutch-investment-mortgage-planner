@@ -212,9 +212,9 @@ test('erfpacht and NHG notes and the new input labels are exact',()=>{
     'Expected notary transfer date (levering)'
   ])assert.ok(engine.includes(`>${label}<`),label);
   assert.match(engine,/>don't know</);
-  assert.ok(html.includes('Proposed regime, not law. The Wet werkelijk rendement box 3 (36748) passed the Tweede Kamer (12 Feb 2026).'));
-  assert.ok(html.includes('Figures as of 10 Nov 2026.'));
-  assert.ok(html.includes('Rules for 2027 and later are not yet included'));
+  assert.ok(html.includes('Proposed regime, not law. The Wet werkelijk rendement box 3 (36748) passed the Tweede Kamer on 12 Feb 2026.'));
+  assert.ok(html.includes('Figures as of 14 Nov 2026.'));
+  assert.ok(html.includes('For 2027, only two confirmed changes are included'));
 });
 
 test('30% ruling keeps the €78,600 cap and applies the 2026 salary threshold',()=>{
@@ -233,5 +233,5 @@ test('30% ruling keeps the €78,600 cap and applies the 2026 salary threshold',
   assert.equal(Policy.THIRTY_PERCENT_RULING_NOTICE,'In 2026 the ruling applies only if taxable salary after the tax-free allowance is more than €48,013, or more than €36,497 if you are under 30 and have a Dutch or equivalent foreign master’s. Below the applicable amount, the planner applies no reduction. If a full 30% would take taxable salary to or below that amount, only the part that leaves taxable salary just above the threshold counts. Your jaaropgaaf remains authoritative.');
   assert.equal(Policy.VALUES.futureBox3Proposal.exempt,1800);
   assert.equal(Policy.VALUES.futureBox3Proposal.taxRate,.36);
-  assert.equal(Policy.LAST_VERIFIED_AT,'2026-10-27');
+  assert.equal(Policy.LAST_VERIFIED_AT,'2026-11-14');
 });

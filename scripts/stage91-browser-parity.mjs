@@ -3,7 +3,9 @@ import path from 'node:path';
 import assert from 'node:assert/strict';
 import {readFile,stat} from 'node:fs/promises';
 import {fileURLToPath} from 'node:url';
-import {chromium} from 'playwright';
+import {chromium, webkit, devices} from 'playwright';
+const browserEngine=process.env.DIMP_BROWSER==='webkit'?webkit:chromium;
+const deviceProfile=process.env.DIMP_DEVICE&&devices[process.env.DIMP_DEVICE]?devices[process.env.DIMP_DEVICE]:null;
 
 const ROOT=path.resolve(path.dirname(fileURLToPath(import.meta.url)),'..');
 const TYPES={'.html':'text/html; charset=utf-8','.js':'text/javascript; charset=utf-8','.css':'text/css; charset=utf-8','.json':'application/json'};
@@ -56,5 +58,5 @@ async function one(page,d,view){
   await set(page,'startPortfolio',d.portfolio+54321);const after=await snap(page);assert.deepEqual(after.cfg,direct.cfg,`${label}: Fresh read hidden planner state`);assert.deepEqual(after.canonical,direct.canonical,`${label}: Fresh result changed from hidden planner edit`);return{view,mode:d.mode,id:d.id};
 }
 
-await new Promise(r=>server.listen(0,'127.0.0.1',r));const browser=await chromium.launch({headless:true}),url=`http://127.0.0.1:${server.address().port}/`,results=[],errors=[];
+await new Promise(r=>server.listen(0,'127.0.0.1',r));const browser=await browserEngine.launch({headless:true}),url=`http://127.0.0.1:${server.address().port}/`,results=[],errors=[];
 try{for(const [view,opts] of VIEWPORTS){const context=await browser.newContext(opts),page=await context.newPage();page.setDefaultTimeout(20000);page.on('pageerror',e=>errors.push(`${view}: ${String(e?.stack||e)}`));await page.route(/^https:\/\//,r=>r.abort());await page.goto(url,{waitUntil:'domcontentloaded'});for(const mode of MODES)for(let i=0;i<10;i++)results.push(await one(page,data(mode,i),view));await context.close();}assert.equal(errors.length,0,`Browser page errors:\n${errors.join('\n\n')}`);assert.equal(results.filter(x=>x.view==='desktop').length,50);assert.equal(results.filter(x=>x.view==='mobile').length,50);console.log(JSON.stringify({stage:'R6.6 Stage 9.1 genuine browser parity',datasetsPerViewport:50,desktopExactPairs:50,mobileExactPairs:50,modes:Object.fromEntries(MODES.map(m=>[m,10])),saveReload:true,explicitRefresh:true,freshIsolation:true,browserErrors:0},null,2));console.log('Stage 9.1 browser parity passed.');}finally{await browser.close();await new Promise(r=>server.close(r));}

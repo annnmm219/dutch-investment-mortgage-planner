@@ -15,7 +15,7 @@ function safeDefaults(){
     bonusMonth:12,
     box3Mode:'current',box3PaySource:'savings',box3Debt:0,box3DebtInterest:2.70,box3DebtMonthlyRepayment:0,box3DebtRepaymentSource:'external',box3DebtFallbackDestination:'invest',
     currentTaxRate:36,currentAllowance:59357,currentNotional:6,currentSavingsNotional:1.28,currentDebtNotional:2.70,currentDebtThreshold:3800,
-    futureStart:2028,futureTaxRate:36,futureExempt:1800,futureLossThreshold:500,jan1Assumption:false,jan1SnapshotEntered:false,
+    futureStart:2029,futureTaxRate:36,futureExempt:1800,futureLossThreshold:500,jan1Assumption:false,jan1SnapshotEntered:false,
     deductionMode:'auto',hraRemainingMonths:300,defaultHraMonths:300,qualifyingShare:100,hillenOverrideEnabled:false,hillenOverridePct:71.867,unusedMortgageDestination:'invest',mortgageReportHorizon:'investment',
     transferTaxMode:'main',appraisedValue:350000,housePrice:350000,nhgMode:'none',upfrontCashTreatment:'invest',scenarioMortgageMethod:'selected',scenarioMode:'buy-rent',scenarioWoz:null,scenarioReturnOverrideEnabled:false,
     sensitivityLow:2,sensitivityHigh:10,sensitivityStep:2,vveMonthly:250,maintenanceAnnual:1500,ownerTaxesAnnual:0,insuranceAnnual:0,groundLeaseAnnual:0
@@ -99,7 +99,7 @@ test('local advanced and methodology folds replace the global density banner',()
 test('browser save is compact and clearly distinguishes restored data from examples',()=>{
   const source=read('view-density.js');
   assert.equal(UI.HEADER_TRUST_LINE,'Planning estimates only, not financial, tax or mortgage advice. Your financial inputs are calculated and saved locally in your browser.');
-  assert.equal(UI.HEADER_TRUST_DETAILS,'Rules simplified, as of 27 Oct 2026. Your inputs are stored in this browser\'s localStorage and are not sent to us or to any third party. Our web host sees standard request logs (e.g. IP address). "Start fresh" deletes everything this planner saved in this browser.');
+  assert.equal(UI.HEADER_TRUST_DETAILS,'Rules simplified, as of 14 Nov 2026. Your inputs are stored only in this browser (localStorage). They are not sent to us or to anyone else. This site is hosted on GitHub Pages. GitHub records the IP address of every visitor for security. See the GitHub Privacy Statement. "Start fresh" deletes everything this planner saved in this browser.');
   assert.match(source,/Start fresh/);
   assert.match(source,/Previous plan restored/);
   assert.match(source,/Saved in this browser/);

@@ -256,7 +256,8 @@ function simulateInvestmentFlows({
   initialPortfolio=0,flows=[],annualReturnPct=0,startYear=2026,startMonth=1,box3Mode='none',taxPartners=1,paySource='portfolio',
   currentTaxRate=POLICY.box3.taxRate,currentAllowance=POLICY.box3.allowancePerPerson,currentNotional=POLICY.box3.investmentDeemedRate,currentSavingsNotional=POLICY.box3.savingsDeemedRate,currentDebtNotional=POLICY.box3.debtDeemedRate,currentDebtThreshold=POLICY.box3.debtThresholdPerPerson,
   firstJan1Portfolio=0,box3Savings=0,box3Debt=0,firstJan1Savings=null,firstJan1Debt=null,savingsReturnPct=0,debtInterestPct=0,
-  savingsFlows=[],box3DebtMonthlyRepayment=0,debtRepayments=[],debtRepaymentSource='external',box3DebtFallbackDestination='invest',futureStart=POLICY.futureBox3Proposal.startYear,futureTaxRate=POLICY.futureBox3Proposal.taxRate,futureExempt=POLICY.futureBox3Proposal.exempt,futureLossThreshold=POLICY.futureBox3Proposal.lossThreshold
+  savingsFlows=[],box3DebtMonthlyRepayment=0,debtRepayments=[],debtRepaymentSource='external',box3DebtFallbackDestination='invest',futureStart=POLICY.futureBox3Proposal.startYear,futureTaxRate=POLICY.futureBox3Proposal.taxRate,futureExempt=POLICY.futureBox3Proposal.exempt,futureLossThreshold=POLICY.futureBox3Proposal.lossThreshold,
+  openingAssessment=false
 }={}){
   const monthlyReturn=effectiveAnnualPctToMonthly(annualReturnPct),
     monthlySavingsRate=effectiveAnnualPctToMonthly(savingsReturnPct),
@@ -310,7 +311,7 @@ function simulateInvestmentFlows({
     const nextMonth=month===12?1:month+1,nextYear=month===12?year+1:year,endOfCalendarYear=nextYear!==year,finalMonth=i===monthlyFlows.length-1;
     if(endOfCalendarYear||finalMonth){
       const regime=regimeForYear({mode:box3Mode,year,futureStart});
-      const firstYear=year===Number(startYear),firstPartial=firstYear&&Number(startMonth)>1;
+      const firstYear=year===Number(startYear),firstPartial=firstYear&&(Number(startMonth)>1||openingAssessment===true);
       const jan1Portfolio=firstPartial?nonNegative(firstJan1Portfolio):nonNegative(yearStartPortfolio);
       const jan1Savings=firstPartial&&firstJan1Savings!=null?nonNegative(firstJan1Savings):nonNegative(yearStartSavings);
       const jan1Debt=firstPartial&&firstJan1Debt!=null?nonNegative(firstJan1Debt):nonNegative(yearStartDebt);
@@ -462,7 +463,7 @@ function simulatePlan(config={}){
       const nextMonth=month===12?1:month+1,nextYear=month===12?year+1:year,endOfCalendarYear=nextYear!==year,finalMonth=global===totalMonths;
       if(endOfCalendarYear||finalMonth){
         const regime=regimeForYear({mode:config.box3Mode,year,futureStart:config.futureStart});b.regime=regime;
-        const firstYear=year===startYear,firstPartial=firstYear&&startMonth>1;
+        const firstYear=year===startYear,firstPartial=firstYear&&(startMonth>1||config.openingAssessment===true);
         const jan1Portfolio=firstPartial?nonNegative(config.firstJan1Portfolio):Math.max(0,b.startPortfolio||0);
         const jan1Savings=firstPartial&&config.firstJan1Savings!=null?nonNegative(config.firstJan1Savings):Math.max(0,b.startSavings||0);
         const jan1Debt=firstPartial&&config.firstJan1Debt!=null?nonNegative(config.firstJan1Debt):Math.max(0,b.startDebt||0);

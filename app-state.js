@@ -81,8 +81,11 @@ function applyEntry(el,entry){
 function normalizeDecimalString(value){return String(value??'').trim().replace(/\s+/g,'').replace(/,/g,'.')}
 function parseFlexibleNumber(value){const s=normalizeDecimalString(value);if(!s||s==='-'||s==='.'||s==='-.')return NaN;const n=Number(s);return Number.isFinite(n)?n:NaN}
 function clampFlexibleValue(value,min,max){let n=parseFlexibleNumber(value);if(!Number.isFinite(n))return null;if(Number.isFinite(min))n=Math.max(min,n);if(Number.isFinite(max))n=Math.min(max,n);return n}
-function estimateTaxableIncome2026({grossIncome=0,use30Ruling=false,under30WithMasters=false,rulingRate=.30,maxTaxFree=RULING_CAP}={}){
+const RULING_2027_LINE='30% ruling: we can only convert your pay for 2026. For 2027 and later, the rate is 27% for most people and the salary limits are not published yet. Please enter your taxable pay from your payslip.';
+const RULING_LATER_YEARS_LINE='After 2026, this plan keeps your taxable pay the same each year. It does not show your ruling ending or changing to 27%.';
+function estimateTaxableIncome2026({grossIncome=0,use30Ruling=false,under30WithMasters=false,rulingRate=.30,maxTaxFree=RULING_CAP,startYear=2026}={}){
   const gross=Math.max(0,Number(grossIncome)||0);
+  if(use30Ruling&&Number(startYear)>=2027)return{available:false,taxable:null,line:RULING_2027_LINE};
   if(!use30Ruling)return gross;
   const ruling=Policy2026.VALUES.thirtyPercentRuling;
   const floor=under30WithMasters?ruling.taxableSalaryThresholdUnder30Masters:ruling.taxableSalaryThreshold;
@@ -93,6 +96,10 @@ function estimateTaxableIncome2026({grossIncome=0,use30Ruling=false,under30WithM
   // If a full 30% would bring taxable salary to or below the threshold, cap the reduction so taxable salary stays just above it: taxable = threshold + EUR 1.
   if(taxable<=floor)return floor+1;
   return Math.max(0,taxable);
+}
+function manualDeductionPercent(rawManual){
+  const parsed=parseFlexibleNumber(rawManual);
+  return Number.isFinite(parsed)?parsed:Policy2026.VALUES.box1.ownHomeDeductionMaxRate*100;
 }
 function monthlyEquivalentExtra(amount,frequency='monthly'){
   const value=Math.max(0,Number(amount)||0);
@@ -140,7 +147,7 @@ function bootBrowser(){
   const modelBody=modelDetails?.querySelector('.fold-body');
   if(modelBody&&!$('r6Methodology')){
     const privacy=document.createElement('div');privacy.id='r6DataHandling';privacy.className='callout r6-methodology';
-    privacy.innerHTML=`<strong>Data handling.</strong> There is no account and no planner server. Your inputs are stored only in this browser's localStorage so they survive a refresh, and they are never uploaded. "Start fresh" deletes everything this planner saved in this browser and restores the example values. You can also clear site data in your browser. All code, including the chart library, is served from this site. No third-party requests, analytics or tracking cookies. Our web host keeps standard request logs (e.g. IP address).`;
+    privacy.innerHTML=`<strong>Data handling.</strong> There is no account and no planner server. Your inputs are stored only in this browser's localStorage so they survive a refresh, and they are never uploaded. "Start fresh" deletes everything this planner saved in this browser and restores the example values. You can also clear site data in your browser. All code, including the chart library, is served from this site. No third-party requests, analytics or tracking cookies. This site is hosted on GitHub Pages. When you visit, GitHub records your IP address for security, as GitHub's documentation says. GitHub handles this under its own privacy statement: https://docs.github.com/en/site-policy/privacy-policies/github-general-privacy-statement`;
     modelBody.appendChild(privacy);
   }
 
@@ -224,7 +231,12 @@ function bootBrowser(){
 
   function syncIncome(){
     const visible=$('grossAnnualIncome'),use=$('use30Ruling'),calc=$('grossIncome'),used=$('taxableIncomeUsed');if(!visible||!use||!calc)return;
-    const gross=Math.max(0,parseFlexibleNumber(visible.value)||0),taxable=estimateTaxableIncome2026({grossIncome:gross,use30Ruling:use.checked,under30WithMasters:$('under30Masters')?.checked===true});
+    const startYear=Math.round(parseFlexibleNumber($('startYear')?.value)||2026),laterYear=startYear>=2027;
+    if(laterYear){use.checked=false;use.disabled=true;}else use.disabled=false;
+    const gross=Math.max(0,parseFlexibleNumber(visible.value)||0),taxable=estimateTaxableIncome2026({grossIncome:gross,use30Ruling:use.checked,under30WithMasters:$('under30Masters')?.checked===true,startYear});
+    let later=$('rulingLaterYearsNote');if(!later&&used){later=document.createElement('p');later.id='rulingLaterYearsNote';later.className='inline';used.insertAdjacentElement('afterend',later);}if(later)later.textContent=RULING_LATER_YEARS_LINE;
+    if(taxable&&typeof taxable==='object'&&taxable.available===false){if(used)used.textContent=taxable.line;calc.dataset.rulingUnavailable='1';return;}
+    delete calc.dataset.rulingUnavailable;
     if(used)used.innerHTML=use.checked?`Estimated taxable Box 1 employment income used for HRA: <strong>${fmt(taxable)}</strong>.`: `Taxable Box 1 employment income used for HRA: <strong>${fmt(taxable)}</strong>.`;
     if(syncingIncome)return;
     const current=parseFlexibleNumber(calc.value);
@@ -262,11 +274,17 @@ function bootBrowser(){
     return out;
   }
   function scheduleDate(startYear,startMonth,index){const d=new Date(Date.UTC(startYear,startMonth-1+index,1));return{year:d.getUTCFullYear(),month:d.getUTCMonth()+1,label:`${MONTHS[d.getUTCMonth()]} ${d.getUTCFullYear()}`}}
+  function mortgagePropertyIsNonMain(){
+    const mode=$('purchaseTransferTaxMode')?.value||'';
+    if(mode==='other-home'||mode==='other-real-estate')return true;
+    if(mode==='starter'&&$('purchaseStarterMainResidence')&&$('purchaseStarterMainResidence').checked===false)return true;
+    return false;
+  }
   function mortgageReport(){
     if(!FC)return null;
     const setup=mortgageSetup(),startYear=Math.round(parseFlexibleNumber($('startYear')?.value)||2026),startMonth=Math.max(1,Math.min(12,Math.round(parseFlexibleNumber($('startMonth')?.value)||1))),investmentMonths=Math.round(investmentPlanMonths()),termMonths=Math.max(1,Math.round(setup.years*12)),mode=$('mortgageReportHorizon')?.value||'investment',specificYear=Math.round(parseFlexibleNumber($('mortgageReportYear')?.value)||startYear);
     const months=mortgageReportingMonths({mode,startYear,startMonth,investmentMonths,mortgageTermMonths:termMonths,specificYear});
-    const extra=phaseExtraSeries(months,startYear,startMonth),manualRate=parseFlexibleNumber($('manualDeduction')?.value),deductionRate=FC.appliedOwnHomeDeductionRate({mode:$('deductionMode')?.value||'auto',manualRatePct:manualRate||window.Policy2026.VALUES.box1.ownHomeDeductionMaxRate*100,grossIncome:parseFlexibleNumber($('grossIncome')?.value)||0}),tax={enabled:$('mortTaxEnabled')?.checked!==false,deductionRate,wozValue:Math.max(0,parseFlexibleNumber($('wozValue')?.value)||0)};
+    const extra=phaseExtraSeries(months,startYear,startMonth),deductionRate=FC.appliedOwnHomeDeductionRate({mode:$('deductionMode')?.value||'auto',manualRatePct:manualDeductionPercent($('manualDeduction')?.value),grossIncome:parseFlexibleNumber($('grossIncome')?.value)||0}),nonMain=mortgagePropertyIsNonMain(),tax={enabled:nonMain?false:$('mortTaxEnabled')?.checked!==false,deductionRate:nonMain?0:deductionRate,wozValue:nonMain?0:Math.max(0,parseFlexibleNumber($('wozValue')?.value)||0),box1Withheld:false};
     const type=document.querySelector('.compare-card.active[data-mort-type]')?.dataset.mortType==='linear'?'linear':'annuity';
     return{setup,startYear,startMonth,months,mode,specificYear,extra,tax,type,selected:FC.mortgageSchedule({balance:setup.balance,annualRatePct:setup.ratePct,termYears:setup.years,type,months,extraMonthly:extra,startYear,startMonth,tax}),linear:FC.mortgageSchedule({balance:setup.balance,annualRatePct:setup.ratePct,termYears:setup.years,type:'linear',months,extraMonthly:extra,startYear,startMonth,tax}),annuity:FC.mortgageSchedule({balance:setup.balance,annualRatePct:setup.ratePct,termYears:setup.years,type:'annuity',months,extraMonthly:extra,startYear,startMonth,tax})};
   }
@@ -287,7 +305,10 @@ function bootBrowser(){
     let box=$('mortgageSummaryPeriod');if(!box&&$('mortgageHorizonControls')){box=document.createElement('div');box.id='mortgageSummaryPeriod';box.className='callout ux-period';$('mortgageHorizonControls').insertAdjacentElement('afterend',box);}
     const modeLabel=r.mode==='mortgage'?'end of mortgage term':r.mode==='year'?`through ${r.specificYear}`:'end of investment plan';
     if(box)box.innerHTML=`<strong>Mortgage summary: ${period} (${modeLabel}).</strong><br><span>This selector changes the Mortgage tab totals and payment schedule only. Your Investment phases and Scenario comparison horizons stay independent.</span>`;
-    $('mGrossInterest').textContent=fmt(r.selected.totalInterest);$('mTaxBenefit').textContent=fmtSigned(r.selected.totalTaxBenefit);$('mNetInterest').textContent=fmt(r.selected.totalInterest-r.selected.totalTaxBenefit);
+    $('mGrossInterest').textContent=fmt(r.selected.totalInterest);$('mTaxBenefit').textContent=mortgagePropertyIsNonMain()?'€0':fmtSigned(r.selected.totalTaxBenefit);$('mNetInterest').textContent=fmt(r.selected.totalInterest-(mortgagePropertyIsNonMain()?0:r.selected.totalTaxBenefit));
+    let nonMainLine=$('mortgageNonMainRelief');if(!nonMainLine&&$('mTaxBenefit')){nonMainLine=document.createElement('p');nonMainLine.id='mortgageNonMainRelief';nonMainLine.className='inline';$('mTaxBenefit').closest('.summary-item')?.appendChild(nonMainLine);}if(nonMainLine)nonMainLine.textContent=mortgagePropertyIsNonMain()?'Mortgage-interest deduction: €0. This is not your main home, so there is no deduction in Box 1. The home and this mortgage count in Box 3 (wealth tax) instead.':'';
+    const withheld=r.selected?.annualTaxBuckets&&Object.values(r.selected.annualTaxBuckets).some(bucket=>bucket.withheld);
+    let credit=$('box1CreditDisclosure');if(!credit&&$('mTaxBenefit')){credit=document.createElement('p');credit.id='box1CreditDisclosure';credit.className='inline';$('mTaxBenefit').closest('.summary')?.insertAdjacentElement('afterend',credit);}if(credit)credit.textContent=withheld?'Your income after the mortgage deduction is low, so tax credits may cancel much of the tax benefit. We can\'t estimate this reliably. Enter your own deduction rate, or check with a tax adviser.':($('deductionMode')?.value!=='manual'&&!mortgagePropertyIsNonMain()?'Tax credits (heffingskortingen) are not included. With an income between about €30,000 and €78,000, your real tax benefit is usually higher than shown: about 6.4% of your deductions more. Example: €10,000 of deductions can give about €640 more.':'');if(withheld&&$('mTaxBenefit'))$('mTaxBenefit').textContent='unavailable';
     const gross=$('mGrossInterest')?.closest('.summary-item'),tax=$('mTaxBenefit')?.closest('.summary-item'),net=$('mNetInterest')?.closest('.summary-item'),pay=$('mPayoff')?.closest('.summary-item');
     if(gross?.querySelector('.s'))gross.querySelector('.s').textContent=period;if(tax?.querySelector('.s'))tax.querySelector('.s').textContent=`${period} · annual HRA/EWF/Hillen`;if(net?.querySelector('.s'))net.querySelector('.s').textContent=period;
     if(r.selected.payoffMonthIndex!=null){const p=scheduleDate(r.startYear,r.startMonth,r.selected.payoffMonthIndex);if(pay?.querySelector('.k'))pay.querySelector('.k').textContent='Mortgage payoff';$('mPayoff').textContent=p.label;$('mPayoffSub').textContent='including selected extra repayments';}
@@ -295,6 +316,17 @@ function bootBrowser(){
     renderMortgageSchedule(r.selected.rows);renderMortgageCompare(r);
   }
 
+  const BOX1_CREDIT_LINE='Tax credits (heffingskortingen) are not included. With an income between about €30,000 and €78,000, your real tax benefit is usually higher than shown: about 6.4% of your deductions more. Example: €10,000 of deductions can give about €640 more.';
+  function placeCreditDisclosure(){
+    const verdict=$('scenarioVerdictNew');
+    if(verdict&&!$('scenarioBox1CreditDisclosure')){const line=document.createElement('p');line.id='scenarioBox1CreditDisclosure';line.className='inline';verdict.insertAdjacentElement('afterend',line);}
+    const scenarioLine=$('scenarioBox1CreditDisclosure');
+    if(scenarioLine){const treatment=$('scenarioTaxTreatmentFresh')?.value||'auto';scenarioLine.textContent=treatment==='manual'||treatment==='none'?'':BOX1_CREDIT_LINE;}
+    const next=$('nextEuroBreakEven');
+    if(next&&!$('nextEuroBox1CreditDisclosure')){const line=document.createElement('p');line.id='nextEuroBox1CreditDisclosure';line.className='inline';next.closest('.summary-item')?.appendChild(line);}
+    const nextLine=$('nextEuroBox1CreditDisclosure');
+    if(nextLine){const hra=$('nextEuroHraTreatment')?.value||'planner';nextLine.textContent=hra==='off'?'':BOX1_CREDIT_LINE;}
+  }
   function reframeNextEuro(){const card=$('nextEuroCard'),engine=$('decisionEngine'),mode=$('comparisonType')?.value;if(!card||!engine)return;const result=$('scenarioVerdictNew')?.closest('.card');if(result&&card.previousElementSibling!==result)result.insertAdjacentElement('afterend',card);card.classList.toggle('hidden',mode!=='mortgage-invest');const label=card.querySelector('.section-label'),note=card.querySelector('.section-note');if(label)label.textContent='Extra cash: invest or repay?';if(note)note.textContent='If you have money left each month, this compares putting the same amount into investments versus making an extra mortgage repayment. The break-even return is the annual investment return needed for both choices to end with the same modeled wealth.';[['nextEuroAmount','Extra money available each month'],['nextEuroYears','Compare for, years'],['nextEuroReturn','Expected investment return %']].forEach(([id,text])=>{const l=document.querySelector(`label[for="${id}"]`);if(l)l.textContent=text;});const items=card.querySelectorAll('.summary-item .k');if(items[0])items[0].textContent='Investment return needed to tie';if(items[1])items[1].textContent='Ends higher in this model at your return';if(items[2])items[2].textContent='Difference after selected period';}
   function scenarioAssumptions(){const mode=$('comparisonType')?.value;if(!mode)return;const relevance={'scenarioMortgageMethodNew':['buy-rent','downpayment','mortgage-invest','sell-rent'],'scenarioUpfrontCashTreatmentNew':['buy-rent','downpayment'],'scenarioHomeGrowthNew':['buy-rent','downpayment','sell-rent'],'scenarioRentGrowthNew':['buy-rent','sell-rent'],'scenarioSellingCostNew':['buy-rent','downpayment','sell-rent'],'scenarioVveNew':['buy-rent','downpayment','mortgage-invest','linear-annuity','sell-rent'],'scenarioMaintenanceNew':['buy-rent','downpayment','mortgage-invest','linear-annuity','sell-rent'],'scenarioOwnerTaxesNew':['buy-rent','downpayment','mortgage-invest','linear-annuity','sell-rent'],'scenarioInsuranceNew':['buy-rent','downpayment','mortgage-invest','linear-annuity','sell-rent'],'scenarioGroundLeaseNew':['buy-rent','downpayment','mortgage-invest','linear-annuity','sell-rent']};Object.entries(relevance).forEach(([id,modes])=>$(id)?.closest('.field')?.classList.toggle('hidden',!modes.includes(mode)));const shared=$('scenarioMonthlyBudgetNew')?.closest('.card'),head=shared?.querySelector('.section-head .section-note');if(head){head.textContent='';head.classList.add('r65-copy-hidden');}const builder=document.querySelector('#decisionEngine .scenario-builder .section-note');if(builder){builder.textContent='';builder.classList.add('r65-copy-hidden');}}
   function reframeComparableWealth(){const mode=$('comparisonType')?.value,resultA=$('strategyAResultNew'),resultB=$('strategyBResultNew');if(!resultA||!resultB)return;if(mode==='linear-annuity'||mode==='mortgage-invest'){[resultA,resultB].forEach(card=>{const lab=card.querySelector('.strategy-label-new');if(lab)lab.textContent='Net position excluding the home*';});const resultCard=resultA.closest('.card'),sectionNote=resultCard?.querySelector('.section-head .section-note');if(sectionNote)sectionNote.textContent='For this decision, the home is the same on both sides and is excluded. Net position = investments + savings − Box 3 debt − remaining mortgage.';let expl=$('uxPositionExplanation');if(!expl&&$('scenarioVerdictNew')){expl=document.createElement('div');expl.id='uxPositionExplanation';expl.className='callout ux-position-note';$('scenarioVerdictNew').insertAdjacentElement('afterend',expl);}if(expl){expl.classList.remove('hidden');expl.innerHTML=mode==='linear-annuity'?'<strong>Why can Annuity show higher modeled wealth with a larger mortgage balance?</strong><br><span>An annuity mortgage usually has a lower monthly payment early on. The model invests that payment difference. Under the entered assumptions, a larger investment portfolio can outweigh the extra mortgage debt.</span>':'<strong>How this comparison works:</strong><br><span>The same extra monthly amount either reduces mortgage principal or is invested. Modeled wealth is investments + savings − other debt − remaining mortgage, with the common home value excluded.</span>';}}else{const expl=$('uxPositionExplanation');if(expl)expl.classList.add('hidden');}}
@@ -303,7 +335,7 @@ function bootBrowser(){
   function refreshUx(){
     if(uxRefreshing)return;
     uxRefreshing=true;
-    try{simplifyHousehold();simplifyPhasesToMonthly();explainIncomeAndDeduction();scenarioAssumptions();reframeNextEuro();reframeComparableWealth();updateMortgageReporting();}
+    try{simplifyHousehold();simplifyPhasesToMonthly();explainIncomeAndDeduction();scenarioAssumptions();reframeNextEuro();reframeComparableWealth();updateMortgageReporting();placeCreditDisclosure();}
     finally{uxRefreshing=false;}
   }
 
@@ -338,7 +370,7 @@ function bootBrowser(){
   observeUxTargets();
 }
 
-return{STORAGE_KEY,PLANNER_STORAGE_KEY_PATTERN,clearPlannerStorage,STATE_KIND,SCHEMA_VERSION,controlKey,isPersistable,captureControls,validControlKey,normalizeControls,migrateV1,normalizePayload,applyEntry,normalizeDecimalString,parseFlexibleNumber,clampFlexibleValue,estimateTaxableIncome2026,monthlyEquivalentExtra,mortgageReportingMonths,bootBrowser};
+return{STORAGE_KEY,PLANNER_STORAGE_KEY_PATTERN,clearPlannerStorage,STATE_KIND,SCHEMA_VERSION,controlKey,isPersistable,captureControls,validControlKey,normalizeControls,migrateV1,normalizePayload,applyEntry,normalizeDecimalString,parseFlexibleNumber,clampFlexibleValue,estimateTaxableIncome2026,manualDeductionPercent,RULING_2027_LINE,RULING_LATER_YEARS_LINE,monthlyEquivalentExtra,mortgageReportingMonths,bootBrowser};
 });
 
 if(typeof window!=='undefined'&&window.document)window.PlannerState.bootBrowser();

@@ -25,9 +25,9 @@ NOT FINANCIAL ADVICE. The software produces simplified planning estimates. It is
 const FOOTER_LINE='© 2026 An Tu. All rights reserved. Provided as is, without warranty. Planning estimates only, not financial, tax or mortgage advice.';
 const BORROWING_NOTICE='This planner does not check how much a lender would let you borrow. It does not apply Nibud income limits (LTI) or a lender\'s own assessment. For your maximum mortgage, ask a lender or an AFM-licensed mortgage adviser.';
 const HEADER_NOTICE='Planning estimates only, not financial, tax or mortgage advice. Your financial inputs are calculated and saved locally in your browser.';
-const HEADER_DETAILS='Rules simplified, as of 27 Oct 2026. Your inputs are stored in this browser\'s localStorage and are not sent to us or to any third party. Our web host sees standard request logs (e.g. IP address). "Start fresh" deletes everything this planner saved in this browser.';
+const HEADER_DETAILS='Rules simplified, as of 14 Nov 2026. Your inputs are stored only in this browser (localStorage). They are not sent to us or to anyone else. This site is hosted on GitHub Pages. GitHub records the IP address of every visitor for security. See the GitHub Privacy Statement. "Start fresh" deletes everything this planner saved in this browser.';
 const RESULT_NOTICE='Estimate based on your assumptions and simplified 2026 rules. Not a recommendation or a tax calculation.';
-const FUTURE_WARNING='Proposed regime, not law. The Wet werkelijk rendement box 3 (36748) passed the Tweede Kamer (12 Feb 2026). The Eerste Kamer has not voted. The novelle (37053, filed 3 Nov 2026) is still before the Tweede Kamer and is not law. As filed it would tax shares and bonds only when sold and start on 1 January 2029, so current rules would also apply in 2028. The earlier plan to cut the tax-free result to €1,000 has been withdrawn (€1,800 remains in the Tweede Kamer text). This scenario taxes yearly growth and may not match the final law. Figures as of 10 Nov 2026.';
+const FUTURE_WARNING='Proposed regime, not law. The Wet werkelijk rendement box 3 (36748) passed the Tweede Kamer on 12 Feb 2026. The Tweede Kamer also passed the novelle (37053) on 12 Nov 2026. The Eerste Kamer has not voted on either. As passed by the Tweede Kamer, the new rules would tax shares and bonds only when sold and would start on 1 January 2029, so current rules would also apply in 2028. The tax-free result in the Tweede Kamer text is €1,800 per person. The earlier plan to cut it to €1,000 was withdrawn. A change in the Belastingplan 2027, also passed by the Tweede Kamer, would set the rate at 35.5%, with 38.5% on yearly income above €60,000. That is not law either. This scenario taxes yearly growth and may not match the final law. Figures as of 14 Nov 2026.';
 
 function withoutDetails(html){
   let out='',i=0,depth=0;
@@ -134,7 +134,7 @@ test('LICENSE, copyright footer and borrowing notice are present and outside any
   const html=read('index.html');
   const visible=withoutDetails(html);
   assert.match(visible,new RegExp(FOOTER_LINE.replace(/[.*+?^${}()|[\]\\]/g,'\\$&')));
-  assert.match(visible,/Calculation build R6\.6 · released 4 Nov 2026 · 2026 rules, verified 27 Oct 2026/);
+  assert.match(visible,/Calculation build R6\.6 · released 4 Nov 2026 · patched 14 Nov 2026 · 2026 rules verified 14 Nov 2026/);
   assert.doesNotMatch(html,/3 Sep 2026|2026-09-03/);
   assert.equal([...visible.matchAll(new RegExp(BORROWING_NOTICE.replace(/[.*+?^${}()|[\]\\]/g,'\\$&'),'g'))].length,2);
   assert.match(visible,new RegExp(HEADER_NOTICE.replace(/[.*+?^${}()|[\]\\]/g,'\\$&')));
@@ -195,7 +195,7 @@ test('approved not-advice, proposed-regime and source label copy is exact',()=>{
   assert.match(read('view-density.js'),/Example values/);
   assert.match(read('view-density.js'),/Previous plan restored/);
   assert.doesNotMatch(read('view-density.js'),/aria-label','Saved'/);
-  assert.match(state,/<strong>Data handling\.<\/strong> There is no account and no planner server\. Your inputs are stored only in this browser's localStorage so they survive a refresh, and they are never uploaded\. "Start fresh" deletes everything this planner saved in this browser and restores the example values\. You can also clear site data in your browser\. All code, including the chart library, is served from this site\. No third-party requests, analytics or tracking cookies\. Our web host keeps standard request logs \(e\.g\. IP address\)\./);
+  assert.match(state,/This site is hosted on GitHub Pages\. When you visit, GitHub records your IP address for security, as GitHub's documentation says\./);
   assert.match(read('view-density.js'),/reset\.textContent='Start fresh'/);
   assert.match(state,/Start fresh\? This deletes everything this planner saved in this browser and restores the example values\./);
 });
@@ -250,17 +250,17 @@ test('Box 3 provisional rates, Hillen planning series and proposed regime defaul
   assert.equal(Policy.VALUES.box3.debtDeemedRate,.027);
   assert.equal(Policy.VALUES.futureBox3Proposal.taxRate,.36);
   assert.equal(Policy.VALUES.futureBox3Proposal.exempt,1800);
-  assert.equal(Policy.VALUES.futureBox3Proposal.alternativeExempt,1000);
+  assert.equal(Policy.VALUES.futureBox3Proposal.alternativeExempt,undefined);
   assert.equal(Policy.VALUES.futureBox3Proposal.lossThreshold,500);
-  assert.equal(Policy.VALUES.futureBox3Proposal.startYear,2028);
+  assert.equal(Policy.VALUES.futureBox3Proposal.startYear,2029);
   assert.equal(Policy.VALUES.futureBox3Proposal.status,'proposed');
   assert.equal(FC.appliedOwnHomeDeductionRate({grossIncome:60000}),Policy.VALUES.box1.ownHomeDeductionMaxRate);
   assert.equal(String(FC.appliedOwnHomeDeductionRate({grossIncome:30000})*100),'35.75');
   const state=read('app-state.js');
   assert.match(state,/if\(auto&&FC\)\{const income=parseFlexibleNumber\(\$\('grossIncome'\)\?\.value\)\|\|0;manual\.value=String\(FC\.appliedOwnHomeDeductionRate\(\{mode:'auto',grossIncome:income\}\)\*100\);\}/);
-  assert.match(state,/manualRate\|\|window\.Policy2026\.VALUES\.box1\.ownHomeDeductionMaxRate\*100/);
-  assert.match(read('index.html'),/id="futureExemptAltPreset"/);
-  assert.match(read('policy-ui.js'),/futureExemptAltPreset',`Use \$\{euro\(VALUES\.futureBox3Proposal\.alternativeExempt\)\} alternative`/);
+  assert.match(state,/manualDeductionPercent\(\$\('manualDeduction'\)\?\.value\)/);
+  assert.doesNotMatch(read('index.html'),/id="futureExemptAltPreset"/);
+  assert.match(read('policy-ui.js'),/futureExemptAltPreset'\)\?\.remove/);
   assert.doesNotMatch(read('index.html'),/value="59357"|value="1800"|€59,357|€118,714|6\.00%/);
   assert.doesNotMatch(read('view-density.js'),/59357|1\.28|2\.70|3800|1800/);
   assert.doesNotMatch(read('stage9-1-remediation.js'),/59357|\.0128|\.027|3800|1800/);

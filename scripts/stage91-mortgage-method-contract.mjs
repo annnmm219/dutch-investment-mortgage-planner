@@ -3,14 +3,16 @@ import path from 'node:path';
 import assert from 'node:assert/strict';
 import {readFile,stat} from 'node:fs/promises';
 import {fileURLToPath} from 'node:url';
-import {chromium} from 'playwright';
+import {chromium, webkit, devices} from 'playwright';
+const browserEngine=process.env.DIMP_BROWSER==='webkit'?webkit:chromium;
+const deviceProfile=process.env.DIMP_DEVICE&&devices[process.env.DIMP_DEVICE]?devices[process.env.DIMP_DEVICE]:null;
 
 const ROOT=path.resolve(path.dirname(fileURLToPath(import.meta.url)),'..');
 const TYPES={'.html':'text/html; charset=utf-8','.js':'text/javascript; charset=utf-8','.css':'text/css; charset=utf-8'};
 const D={startYear:2026,startMonth:1,horizon:4,ret:3.05,portfolio:31500,monthly:250,savings:225000,debt:0,partners:1,pay:'portfolio',fallback:'savings',saveRate:1.75,debtRate:3.55,debtPay:0,debtSource:'savings',mort:{balance:195000,rate:2.78,years:25,type:'linear'},income:66500,woz:352000,hra:21,qual:80,owner:345,ownerGrowth:1.75,homeGrowth:1.8,rentGrowth:2.15,sellCost:1.75,extra:290};
 const server=http.createServer(async(req,res)=>{try{const p=decodeURIComponent(new URL(req.url,'http://127.0.0.1').pathname),rel=p==='/'?'index.html':p.replace(/^\/+/,''),file=path.resolve(ROOT,rel);if(!file.startsWith(ROOT+path.sep))throw 0;const s=await stat(file);if(!s.isFile())throw 0;res.writeHead(200,{'content-type':TYPES[path.extname(file)]||'application/octet-stream','cache-control':'no-store'});res.end(await readFile(file));}catch{res.writeHead(404);res.end('Not found');}});
 await new Promise(r=>server.listen(0,'127.0.0.1',r));
-const browser=await chromium.launch({headless:true}),page=await browser.newPage({viewport:{width:1280,height:900}}),errors=[];
+const browser=await browserEngine.launch({headless:true}),page=await browser.newPage({viewport:{width:1280,height:900}}),errors=[];
 page.on('pageerror',e=>errors.push(String(e?.stack||e)));await page.route(/^https:\/\//,r=>r.abort());page.setDefaultTimeout(15000);
 const settle=()=>page.evaluate(()=>new Promise(r=>requestAnimationFrame(()=>requestAnimationFrame(r))));
 async function activate(id){await page.waitForFunction(x=>!!document.getElementById(x),id);await page.evaluate(x=>{const el=document.getElementById(x),panel=el.closest('.panel');if(panel&&!panel.classList.contains('active'))document.querySelector(`.tab[data-tab="${panel.id.slice(4)}"]`)?.click();for(let n=el.parentElement;n;n=n.parentElement)if(n.tagName==='DETAILS')n.open=true;},id);}

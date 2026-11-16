@@ -13,7 +13,7 @@ function deepFreeze(value){
 
 const TAX_YEAR=2026;
 const EFFECTIVE_FROM='2026-01-01';
-const LAST_VERIFIED_AT='2026-10-27';
+const LAST_VERIFIED_AT='2026-11-14';
 const MAX_POLICY_VERIFIED_AGE_DAYS=365;
 
 const SOURCES=deepFreeze({
@@ -89,6 +89,12 @@ const SOURCES=deepFreeze({
     authority:'Nationale Hypotheek Garantie',
     lastVerifiedAt:LAST_VERIFIED_AT
   },
+  nhg2027:{
+    sourceTitle:'NHG-grens in 2027 naar € 500.000',
+    sourceUrl:'https://www.nhg.nl/nhg-actueel/nhg-grens-in-2027-naar-500000-euro',
+    authority:'Nationale Hypotheek Garantie',
+    lastVerifiedAt:'2026-11-14'
+  },
   ltv:{
     sourceTitle:'Hoeveel kan ik maximaal lenen voor mijn koopwoning?',
     sourceUrl:'https://www.rijksoverheid.nl/vraag-en-antwoord/huis-kopen/maximaal-bedrag-lenen-koopwoning',
@@ -161,12 +167,11 @@ const VALUES=deepFreeze({
   futureBox3Proposal:{
     taxRate:.36,
     exempt:1800,
-    alternativeExempt:1000,
     lossThreshold:500,
-    startYear:2028,
+    startYear:2029,
     status:'proposed',
     sourceKey:'futureBox3ProposalStatus',
-    lastVerifiedAt:'2026-11-10'
+    lastVerifiedAt:'2026-11-14'
   },
   transferTax:{
     mainResidenceRate:.02,
@@ -180,7 +185,11 @@ const VALUES=deepFreeze({
   nhg:{
     standardLimit:470000,
     energyLimit:498200,
-    feeRate:.004
+    feeRate:.004,
+    offerYears:{
+      2026:{standardLimit:470000,energyLimit:498200,feeRate:.004,status:'final'},
+      2027:{standardLimit:500000,energyLimit:530000,feeRate:.004,status:'final'}
+    }
   },
   ltv:{
     standardLimit:1
@@ -232,6 +241,9 @@ const ITEMS=deepFreeze([
   item('nhg.standardLimit',VALUES.nhg.standardLimit,'final','nhg'),
   item('nhg.energyLimit',VALUES.nhg.energyLimit,'final','nhg'),
   item('nhg.feeRate',VALUES.nhg.feeRate,'final','nhg'),
+  item('nhg.offerYears.2027.standardLimit',VALUES.nhg.offerYears[2027].standardLimit,'final','nhg2027','Binding offers from 1 Jan 2027.',{additionalSourceTitle:'Voorwaarden & Normen NHG 2027',additionalSourceUrl:'https://www.nhg.nl/media/niyjzin0/vn-nhg-2027.pdf'}),
+  item('nhg.offerYears.2027.energyLimit',VALUES.nhg.offerYears[2027].energyLimit,'final','nhg2027','Binding offers from 1 Jan 2027 with energy-saving measures.',{additionalSourceTitle:'Voorwaarden & Normen NHG 2027',additionalSourceUrl:'https://www.nhg.nl/media/niyjzin0/vn-nhg-2027.pdf'}),
+  item('nhg.offerYears.2027.feeRate',VALUES.nhg.offerYears[2027].feeRate,'final','nhg2027'),
   item('ltv.standardLimit',VALUES.ltv.standardLimit,'final','ltv'),
   item('thirtyPercentRuling.rate',VALUES.thirtyPercentRuling.rate,'final','thirtyPercentRuling','2026-only. Do not apply the 30% rate to years after 2026 without a new label.',{taxYearScope:'2026-only'}),
   item('thirtyPercentRuling.maxTaxFreeAllowance',VALUES.thirtyPercentRuling.maxTaxFreeAllowance,'final','thirtyPercentRuling','2026-only. Full-year maximum tax-free allowance: 30% of the €262,000 WNT norm (Stcrt. 2025, 27439, art. I, in force 1 Jan 2026). Do not apply 30% or €78,600 to years after 2026 without a new label.',{taxYearScope:'2026-only',additionalSourceTitle:SOURCES.thirtyPercentRulingWntNorm.sourceTitle,additionalSourceUrl:SOURCES.thirtyPercentRulingWntNorm.sourceUrl}),
