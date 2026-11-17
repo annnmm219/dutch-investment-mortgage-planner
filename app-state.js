@@ -108,6 +108,11 @@ function rulingPayState({startYear=2026,use30Ruling=false,grossIncome=0,under30W
   const taxable=estimateTaxableIncome2026({grossIncome,use30Ruling:ruling&&year<2027,under30WithMasters,startYear:year});
   return{available:true,taxable,line:'',inputLabel:'Gross annual Box 1 income',showLater:Boolean(ruling)};
 }
+function rulingResultGate({startYear=2026,use30Ruling=false,storedTaxable=null,confirmed=false}={}){
+  const year=Math.round(Number(startYear)||2026);
+  if(use30Ruling&&year>=2027&&confirmed!==true)return{available:false,taxable:null,figure:'unavailable'};
+  return{available:true,taxable:storedTaxable,figure:null};
+}
 function manualDeductionPercent(rawManual){
   const parsed=parseFlexibleNumber(rawManual);
   return Number.isFinite(parsed)?parsed:Policy2026.VALUES.box1.ownHomeDeductionMaxRate*100;
@@ -243,9 +248,9 @@ function bootBrowser(){
   function syncIncome(){
     const visible=$('grossAnnualIncome'),use=$('use30Ruling'),calc=$('grossIncome'),used=$('taxableIncomeUsed');if(!visible||!use||!calc)return;
     const startYear=Math.round(parseFlexibleNumber($('startYear')?.value)||2026);
+    if(!use.checked)delete use.dataset.rulingRequested;
     if(use.checked)use.dataset.rulingRequested='1';
-    const rulingWanted=use.checked||use.dataset.rulingRequested==='1';
-    use.disabled=startYear>=2027;
+    const rulingWanted=use.checked===true;
     const confirmed=calc.dataset.userTaxable==='1'&&String(calc.value).trim()!=='';
     const state=rulingPayState({startYear,use30Ruling:rulingWanted,grossIncome:Math.max(0,parseFlexibleNumber(visible.value)||0),under30WithMasters:$('under30Masters')?.checked===true,taxablePay:confirmed?calc.value:null,confirmed});
     const incomeLabel=document.querySelector('label[for="grossAnnualIncome"]');if(incomeLabel)incomeLabel.textContent=state.inputLabel;
@@ -301,7 +306,8 @@ function bootBrowser(){
     if(!FC)return null;
     const setup=mortgageSetup(),startYear=Math.round(parseFlexibleNumber($('startYear')?.value)||2026),startMonth=Math.max(1,Math.min(12,Math.round(parseFlexibleNumber($('startMonth')?.value)||1))),investmentMonths=Math.round(investmentPlanMonths()),termMonths=Math.max(1,Math.round(setup.years*12)),mode=$('mortgageReportHorizon')?.value||'investment',specificYear=Math.round(parseFlexibleNumber($('mortgageReportYear')?.value)||startYear);
     const months=mortgageReportingMonths({mode,startYear,startMonth,investmentMonths,mortgageTermMonths:termMonths,specificYear});
-    const extra=phaseExtraSeries(months,startYear,startMonth),deductionRate=FC.appliedOwnHomeDeductionRate({mode:$('deductionMode')?.value||'auto',manualRatePct:manualDeductionPercent($('manualDeduction')?.value),grossIncome:parseFlexibleNumber($('grossIncome')?.value)||0}),nonMain=mortgagePropertyIsNonMain(),tax={enabled:nonMain?false:$('mortTaxEnabled')?.checked!==false,deductionRate:nonMain?0:deductionRate,wozValue:nonMain?0:Math.max(0,parseFlexibleNumber($('wozValue')?.value)||0),box1Withheld:false};
+    const rulingBlocked=$('grossIncome')?.dataset.rulingUnavailable==='1';
+    const extra=phaseExtraSeries(months,startYear,startMonth),deductionRate=FC.appliedOwnHomeDeductionRate({mode:$('deductionMode')?.value||'auto',manualRatePct:manualDeductionPercent($('manualDeduction')?.value),grossIncome:rulingBlocked?0:parseFlexibleNumber($('grossIncome')?.value)||0}),nonMain=mortgagePropertyIsNonMain(),tax={enabled:nonMain||rulingBlocked?false:$('mortTaxEnabled')?.checked!==false,deductionRate:nonMain||rulingBlocked?0:deductionRate,wozValue:nonMain?0:Math.max(0,parseFlexibleNumber($('wozValue')?.value)||0),box1Withheld:false};
     const type=document.querySelector('.compare-card.active[data-mort-type]')?.dataset.mortType==='linear'?'linear':'annuity';
     return{setup,startYear,startMonth,months,mode,specificYear,extra,tax,type,selected:FC.mortgageSchedule({balance:setup.balance,annualRatePct:setup.ratePct,termYears:setup.years,type,months,extraMonthly:extra,startYear,startMonth,tax}),linear:FC.mortgageSchedule({balance:setup.balance,annualRatePct:setup.ratePct,termYears:setup.years,type:'linear',months,extraMonthly:extra,startYear,startMonth,tax}),annuity:FC.mortgageSchedule({balance:setup.balance,annualRatePct:setup.ratePct,termYears:setup.years,type:'annuity',months,extraMonthly:extra,startYear,startMonth,tax})};
   }
@@ -322,7 +328,7 @@ function bootBrowser(){
     let box=$('mortgageSummaryPeriod');if(!box&&$('mortgageHorizonControls')){box=document.createElement('div');box.id='mortgageSummaryPeriod';box.className='callout ux-period';$('mortgageHorizonControls').insertAdjacentElement('afterend',box);}
     const modeLabel=r.mode==='mortgage'?'end of mortgage term':r.mode==='year'?`through ${r.specificYear}`:'end of investment plan';
     if(box)box.innerHTML=`<strong>Mortgage summary: ${period} (${modeLabel}).</strong><br><span>This selector changes the Mortgage tab totals and payment schedule only. Your Investment phases and Scenario comparison horizons stay independent.</span>`;
-    $('mGrossInterest').textContent=fmt(r.selected.totalInterest);$('mTaxBenefit').textContent=mortgagePropertyIsNonMain()?'€0':fmtSigned(r.selected.totalTaxBenefit);$('mNetInterest').textContent=fmt(r.selected.totalInterest-(mortgagePropertyIsNonMain()?0:r.selected.totalTaxBenefit));
+    $('mGrossInterest').textContent=fmt(r.selected.totalInterest);$('mTaxBenefit').textContent=$('grossIncome')?.dataset.rulingUnavailable==='1'?'unavailable':mortgagePropertyIsNonMain()?'€0':fmtSigned(r.selected.totalTaxBenefit);$('mNetInterest').textContent=fmt(r.selected.totalInterest-($('grossIncome')?.dataset.rulingUnavailable==='1'||mortgagePropertyIsNonMain()?0:r.selected.totalTaxBenefit));
     let nonMainLine=$('mortgageNonMainRelief');if(!nonMainLine&&$('mTaxBenefit')){nonMainLine=document.createElement('p');nonMainLine.id='mortgageNonMainRelief';nonMainLine.className='inline';$('mTaxBenefit').closest('.summary-item')?.appendChild(nonMainLine);}if(nonMainLine)nonMainLine.textContent=mortgagePropertyIsNonMain()?'Mortgage-interest deduction: €0. This is not your main home, so there is no deduction in Box 1. The home and this mortgage count in Box 3 (wealth tax) instead.':'';
     const withheld=r.selected?.annualTaxBuckets&&Object.values(r.selected.annualTaxBuckets).some(bucket=>bucket.withheld);
     let credit=$('box1CreditDisclosure');if(!credit&&$('mTaxBenefit')){credit=document.createElement('p');credit.id='box1CreditDisclosure';credit.className='inline';$('mTaxBenefit').closest('.summary')?.insertAdjacentElement('afterend',credit);}if(credit)credit.textContent=withheld?'Your income after the mortgage deduction is low, so tax credits may cancel much of the tax benefit. We can\'t estimate this reliably. Enter your own deduction rate, or check with a tax adviser.':($('deductionMode')?.value!=='manual'&&!mortgagePropertyIsNonMain()?'Tax credits (heffingskortingen) are not included. With an income between about €30,000 and €78,000, your real tax benefit is usually higher than shown: about 6.4% of your deductions more. Example: €10,000 of deductions can give about €640 more.':'');if(withheld&&$('mTaxBenefit'))$('mTaxBenefit').textContent='unavailable';
@@ -338,7 +344,7 @@ function bootBrowser(){
     const verdict=$('scenarioVerdictNew');
     if(verdict&&!$('scenarioBox1CreditDisclosure')){const line=document.createElement('p');line.id='scenarioBox1CreditDisclosure';line.className='inline';verdict.insertAdjacentElement('afterend',line);}
     const scenarioLine=$('scenarioBox1CreditDisclosure');
-    if(scenarioLine){const treatment=$('scenarioTaxTreatmentFresh')?.value||'auto';scenarioLine.textContent=treatment==='manual'||treatment==='none'?'':BOX1_CREDIT_LINE;}
+    if(scenarioLine){const treatment=$('scenarioTaxTreatmentFresh')?.value||'auto';const nonMain=$('scenarioPropertyUseNew')?.value==='non-main';const hide=nonMain||treatment==='manual'||treatment==='none';scenarioLine.textContent=hide?'':BOX1_CREDIT_LINE;scenarioLine.classList.toggle('hidden',hide);}
     const next=$('nextEuroBreakEven');
     if(next&&!$('nextEuroBox1CreditDisclosure')){const line=document.createElement('p');line.id='nextEuroBox1CreditDisclosure';line.className='inline';next.closest('.summary-item')?.appendChild(line);}
     const nextLine=$('nextEuroBox1CreditDisclosure');
@@ -387,7 +393,7 @@ function bootBrowser(){
   observeUxTargets();
 }
 
-return{STORAGE_KEY,PLANNER_STORAGE_KEY_PATTERN,clearPlannerStorage,STATE_KIND,SCHEMA_VERSION,controlKey,isPersistable,captureControls,validControlKey,normalizeControls,migrateV1,normalizePayload,applyEntry,normalizeDecimalString,parseFlexibleNumber,clampFlexibleValue,estimateTaxableIncome2026,rulingPayState,manualDeductionPercent,RULING_2027_LINE,RULING_LATER_YEARS_LINE,monthlyEquivalentExtra,mortgageReportingMonths,bootBrowser};
+return{STORAGE_KEY,PLANNER_STORAGE_KEY_PATTERN,clearPlannerStorage,STATE_KIND,SCHEMA_VERSION,controlKey,isPersistable,captureControls,validControlKey,normalizeControls,migrateV1,normalizePayload,applyEntry,normalizeDecimalString,parseFlexibleNumber,clampFlexibleValue,estimateTaxableIncome2026,rulingPayState,rulingResultGate,manualDeductionPercent,RULING_2027_LINE,RULING_LATER_YEARS_LINE,monthlyEquivalentExtra,mortgageReportingMonths,bootBrowser};
 });
 
 if(typeof window!=='undefined'&&window.document)window.PlannerState.bootBrowser();

@@ -706,8 +706,9 @@ function scenarioBox3(){
 }
 
 function plannerTaxConfig(){
-  const hra=hraContext(),mode=$('deductionMode')?.value||'auto',income=Math.max(0,num('grossIncome',0));
-  return{enabled:$('mortTaxEnabled')?.checked!==false,calculationMode:mode==='manual'?'manual-rate':'box1-2026',deductionRate:FC.appliedOwnHomeDeductionRate({mode,manualRatePct:num('manualDeduction',DEDUCTION_CAP_PCT),grossIncome:income}),box1IncomeBeforeOwnHome:income,wozValue:Math.max(0,num('wozValue',0)),hraRemainingMonths:hra.hraRemainingMonths,qualifyingInterestFraction:hra.qualifyingInterestFraction};
+  const blocked=$('grossIncome')?.dataset.rulingUnavailable==='1';
+  const hra=hraContext(),mode=$('deductionMode')?.value||'auto',income=blocked?0:Math.max(0,num('grossIncome',0));
+  return{enabled:blocked?false:$('mortTaxEnabled')?.checked!==false,calculationMode:mode==='manual'?'manual-rate':'box1-2026',deductionRate:blocked?0:FC.appliedOwnHomeDeductionRate({mode,manualRatePct:num('manualDeduction',DEDUCTION_CAP_PCT),grossIncome:income}),box1IncomeBeforeOwnHome:income,wozValue:Math.max(0,num('wozValue',0)),hraRemainingMonths:hra.hraRemainingMonths,qualifyingInterestFraction:hra.qualifyingInterestFraction};
 }
 
 function plannerSnapshot(){return{startYear:clamp(num('startYear',2026),2020,2100),startMonth:clamp(num('startMonth',1),1,12),investmentReturnPct:clamp(num('annualReturn',5),-30,30),startPortfolio:Math.max(0,num('startPortfolio',0)),mortgageType:document.querySelector('.compare-card.active[data-mort-type]')?.dataset.mortType||'annuity',mortgage:mainMortgage(),tax:plannerTaxConfig(),box3:plannerBox3()}}

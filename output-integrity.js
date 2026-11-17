@@ -59,6 +59,12 @@ function formatPercent(value){
   return number===null?'Unavailable':number.toLocaleString('nl-NL',{maximumFractionDigits:2})+'%';
 }
 
+function releaseStampStatus({patched=null,releaseBuild=false}={}){
+  if(releaseBuild&&(patched==null||patched===''))return{ok:false,reason:'A release build needs a patch date. Run npm run stamp-release -- YYYY-MM-DD before merging.'};
+  if(patched!=null&&patched!==''&&!/^\d{4}-\d{2}-\d{2}$/.test(String(patched)))return{ok:false,reason:'Patch date must be YYYY-MM-DD.'};
+  return{ok:true,patched:patched||null};
+}
+
 function shortDate(iso){
   const date=String(iso||'').split('-');
   const months=['','Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
@@ -647,6 +653,7 @@ return{
   formatExportNumber,
   formatPercent,
   releaseLabel,
+  releaseStampStatus,
   canonicalPlanResult,
   unavailablePlanResult,
   withoutBox3,

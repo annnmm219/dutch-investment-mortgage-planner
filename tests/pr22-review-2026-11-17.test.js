@@ -101,7 +101,7 @@ test('B4 a July start, 2028, fixed-term and rent with 300 own-use days are out o
 
   const stage10=read('stage10-remediation.js');
   assert.match(stage10,/scenarioPropertyUsePatternNew/);
-  assert.match(stage10,/Let long-term to one tenant \(with rent protection\)/);
+  assert.match(stage10,/Let to one tenant for all of 2026, with rent protection/);
   assert.match(stage10,/LEEGWAARDE_LINE|leegwaarderatio/);
   assert.match(read('scenario-engine.js'),/relatedPartyRent/);
 });

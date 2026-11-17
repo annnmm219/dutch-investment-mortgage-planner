@@ -69,7 +69,7 @@ test('a release build with a null patch date fails the stamp check',()=>{
   assert.equal(OI.releaseStampStatus({patched:'2026-11-17',releaseBuild:true}).ok,true);
   assert.equal(OI.releaseStampStatus({patched:null,releaseBuild:false}).ok,true);
   const pkg=require('../package.json');
-  assert.match(pkg.scripts['stamp-release']||'','stamp-release');
+  assert.match(pkg.scripts['stamp-release']||'',/stamp-release/);
 });
 
 test('Mortgage-tab NHG uses the binding-offer date table',()=>{

@@ -119,7 +119,8 @@ function sync(){
     groundRentBoughtOff:document.getElementById('purchaseGroundRentBoughtOff')?.value==='yes',
     groundRentPerpetual:document.getElementById('purchaseGroundRentPerpetual')?.value||'dont-know',
     notaryCapitalisedCanon:notaryCanon,
-    notaryTransferDate:transferDate
+    notaryTransferDate:transferDate,
+    bindingOfferDate:document.getElementById('purchaseBindingOfferDate')?.value||''
   });
 
   const buying=document.getElementById('purchaseBuyingWith')?.value||'alone';

@@ -168,6 +168,9 @@ function browserTaxContext(){
   if(document.getElementById('hillenOverrideEnabled')?.checked){
     eligibility.hillenRelief=clamp(browserNumber('hillenOverridePct',POLICY.hillen.relief2026*100)/100,0,1);
   }
+  if(typeof document!=='undefined'&&document.getElementById('grossIncome')?.dataset?.rulingUnavailable==='1'){
+    return{calculationMode:'box1-2026',box1IncomeBeforeOwnHome:0,box1Profile:PROFILE,...eligibility,hasBox1LossCarry:false,hasOtherRateAdjustedDeductions:false,hasComplexFiscalPartnerAllocation:false,hasTransitionalDebt:false,rulingUnavailable:true};
+  }
   if(mode==='manual')return{calculationMode:'manual-rate',...eligibility};
   return{
     calculationMode:'box1-2026',

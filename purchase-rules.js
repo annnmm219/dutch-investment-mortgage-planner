@@ -58,31 +58,35 @@ function transferTax2026({propertyValue=0,mode='main',manualAmount=0,acquisition
   return{amount:value*RULES_2026.mainResidenceTransferTaxRate,rate:RULES_2026.mainResidenceTransferTaxRate,mode:'main',propertyValue:value,starterEligible:null};
 }
 
-function nhg2026({purchasePrice=0,appraisedValue=0,mortgageAmount=0,mode='none'}={}){
+function nhg2026({purchasePrice=0,appraisedValue=0,mortgageAmount=0,mode='none',offerDate,bindingOfferDate}={}){
   const purchase=nonNegative(purchasePrice);
   const appraisal=nonNegative(appraisedValue)||purchase;
   const loan=nonNegative(mortgageAmount);
   if(mode==='none')return{enabled:false,eligible:false,limit:0,fee:0,referenceValue:Math.min(...[purchase,appraisal].filter(x=>x>0)),warning:''};
-
+  const offer=String(offerDate||bindingOfferDate||'');
+  const offerYear=offer>='2027-01-01'?2027:2026;
+  const table=POLICY.nhg.offerYears&&POLICY.nhg.offerYears[offerYear];
   const energy=mode==='energy';
-  const limit=energy?RULES_2026.nhgEnergyLimit:RULES_2026.nhgLimit;
+  const limit=table?(energy?table.energyLimit:table.standardLimit):(energy?RULES_2026.nhgEnergyLimit:RULES_2026.nhgLimit);
+  const feeRate=table?table.feeRate:RULES_2026.nhgFeeRate;
   const values=[purchase,appraisal].filter(x=>x>0);
   const referenceValue=values.length?Math.min(...values):0;
   const eligibleByValue=referenceValue>0&&referenceValue<=limit;
   const eligibleByLoan=loan<=limit;
   const eligible=eligibleByValue&&eligibleByLoan;
   let warning='';
-  if(!eligibleByValue)warning=`The lower of purchase price and appraised value exceeds the ${energy?'energy-enhanced ':''}2026 NHG planning limit of €${limit.toLocaleString('nl-NL')}.`;
-  else if(!eligibleByLoan)warning=`The mortgage exceeds the ${energy?'energy-enhanced ':''}2026 NHG planning limit of €${limit.toLocaleString('nl-NL')}.`;
-  else if(energy&&loan>RULES_2026.nhgLimit)warning=`NHG above €${RULES_2026.nhgLimit.toLocaleString('en-US')} is only available for qualifying energy-saving measures; the amount above the normal limit must be used for those measures.`;
+  if(!eligibleByValue)warning=`The lower of purchase price and appraised value exceeds the ${energy?'energy-enhanced ':''}${offerYear} NHG planning limit of €${limit.toLocaleString('nl-NL')}.`;
+  else if(!eligibleByLoan)warning=`The mortgage exceeds the ${energy?'energy-enhanced ':''}${offerYear} NHG planning limit of €${limit.toLocaleString('nl-NL')}.`;
+  else if(energy&&loan>(table?table.standardLimit:RULES_2026.nhgLimit))warning=`NHG above €${(table?table.standardLimit:RULES_2026.nhgLimit).toLocaleString('en-US')} is only available for qualifying energy-saving measures; the amount above the normal limit must be used for those measures.`;
 
   return{
     enabled:true,
     eligible,
     energy,
+    offerYear,
     limit,
-    fee:eligible?loan*RULES_2026.nhgFeeRate:0,
-    feeRate:RULES_2026.nhgFeeRate,
+    fee:eligible?loan*feeRate:0,
+    feeRate,
     referenceValue,
     eligibleByValue,
     eligibleByLoan,
@@ -125,7 +129,8 @@ function calculatePurchase2026({
   notaryCapitalisedCanon,
   notaryAmount,
   unencumberedValue,
-  notaryTransferDate
+  notaryTransferDate,
+  bindingOfferDate
 }={}){
   const price=nonNegative(housePrice);
   const savings=nonNegative(ownSavings);
@@ -144,12 +149,12 @@ function calculatePurchase2026({
   let nhgFee=0;
   let loan=0;
   let totalCosts=0;
-  let nhg=nhg2026({purchasePrice:price,appraisedValue:appraisal,mortgageAmount:0,mode:nhgMode});
+  let nhg=nhg2026({purchasePrice:price,appraisedValue:appraisal,mortgageAmount:0,mode:nhgMode,bindingOfferDate});
   for(let i=0;i<12;i++){
     totalCosts=base+transfer.amount+nhgFee;
     const savingsAfterCosts=Math.max(0,savings-totalCosts);
     loan=Math.max(0,price-savingsAfterCosts);
-    nhg=nhg2026({purchasePrice:price,appraisedValue:appraisal,mortgageAmount:loan,mode:nhgMode});
+    nhg=nhg2026({purchasePrice:price,appraisedValue:appraisal,mortgageAmount:loan,mode:nhgMode,bindingOfferDate});
     const nextFee=nhg.fee;
     if(Math.abs(nextFee-nhgFee)<.01){nhgFee=nextFee;break;}
     nhgFee=nextFee;
@@ -158,7 +163,7 @@ function calculatePurchase2026({
   const savingsAfterCosts=Math.max(0,savings-totalCosts);
   const shortfall=Math.max(0,totalCosts-savings);
   loan=Math.max(0,price-savingsAfterCosts);
-  nhg=nhg2026({purchasePrice:price,appraisedValue:appraisal,mortgageAmount:loan,mode:nhgMode});
+  nhg=nhg2026({purchasePrice:price,appraisedValue:appraisal,mortgageAmount:loan,mode:nhgMode,bindingOfferDate});
   nhgFee=nhg.fee;
   totalCosts=base+transfer.amount+nhgFee;
   const ltv=ltv2026({mortgageAmount:loan,appraisedValue:appraisal});
@@ -444,7 +449,7 @@ function mortgageTabTransfer(input={}){
   }
   const acquired=taxableAcquisitionValue({price:input.housePrice,appraisal:input.appraisedValue,yearlyCanon:input.yearlyCanon,boughtOff:input.groundRentBoughtOff===true,perpetual:input.groundRentPerpetual||'dont-know',notaryAmount:input.notaryCapitalisedCanon,notaryTransferDate:input.notaryTransferDate,acquisitionYear:input.acquisitionYear});
   if(buying==='one'){
-    const joint=jointAcquisitionTax({propertyValue:acquired.transferTaxBase,buyers:input.buyers,notaryTransferDate:input.notaryTransferDate,acquisitionYear:acquired.acquisitionYear,undetermined:acquired.undetermined&&mode==='starter'});
+    const joint=jointAcquisitionTax({propertyValue:acquired.transferTaxBase,buyers:input.buyers,notaryTransferDate:input.notaryTransferDate,acquisitionYear:acquired.acquisitionYear,undetermined:acquired.undetermined&&(mode==='starter'||mode==='main')});
     if(!joint.available)return{automatic:false,manual:true,amount:null,label:JOINT_MANUAL_LABEL,line:joint.line,intro:joint.intro};
     return{automatic:true,manual:false,amount:joint.amount,label:'Transfer tax',line:`${joint.intro} ${joint.line}${joint.proposalNote?` ${joint.proposalNote}`:''}`,note:joint.note,proposalNote:joint.proposalNote,joint};
   }

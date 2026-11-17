@@ -67,12 +67,12 @@ test('F-04 manual transfer tax is independent from property income-tax classific
 
 test('F-01 current Box 3 actual return includes gross rent and 2026 5.06% private-use addition',()=>{
   const zero=purchaseConfig({
-    purchaseRules:{propertyUse:'non-main',transferTaxMode:'other-home',starterMainResidence:false,grossRentalIncomeAnnual:0,privateUseDays:0,privateUseWozValue:400000},
+    purchaseRules:{propertyUse:'non-main',propertyUsePattern:'own-holiday',transferTaxMode:'other-home',starterMainResidence:false,grossRentalIncomeAnnual:0,privateUseDays:0,privateUseWozValue:400000},
     buyRent:{downPayment:140000},
     box3:{mode:'current',savings:180000,firstJan1Savings:180000}
   });
   const direct=purchaseConfig({
-    purchaseRules:{propertyUse:'non-main',transferTaxMode:'other-home',starterMainResidence:false,grossRentalIncomeAnnual:12000,privateUseDays:365,privateUseWozValue:400000,propertyIncomeGrowthPct:0},
+    purchaseRules:{propertyUse:'non-main',propertyUsePattern:'own-holiday',transferTaxMode:'other-home',starterMainResidence:false,grossRentalIncomeAnnual:12000,privateUseDays:365,privateUseWozValue:400000,propertyIncomeGrowthPct:0},
     buyRent:{downPayment:140000},
     box3:{mode:'current',savings:180000,firstJan1Savings:180000}
   });
@@ -147,7 +147,7 @@ test('F-06 unfrozen evidence is explicit rather than impersonating a release can
 
 
 test('F-10 Box 3 rental input represents basic rent / pacht received excluding service charges',()=>{
-  const c=purchaseConfig({purchaseRules:{propertyUse:'non-main',transferTaxMode:'other-home',starterMainResidence:false,grossRentalIncomeAnnual:15600,privateUseDays:0}});
+  const c=purchaseConfig({purchaseRules:{propertyUse:'non-main',propertyUsePattern:'long-term',transferTaxMode:'other-home',starterMainResidence:false,grossRentalIncomeAnnual:15600,privateUseDays:0}});
   const schedule=S10.propertyIncomeSchedule(c,12);
   assert.ok(Math.abs(schedule.rentalByYear[2026]-15600)<.01);
   const check=S10.validateStage10Config({...c,purchaseRules:{...c.purchaseRules,grossRentalIncomeAnnual:null}});
