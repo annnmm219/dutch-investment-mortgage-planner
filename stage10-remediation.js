@@ -136,7 +136,7 @@ function unsupportedStandaloneNhg(prior,input={}){
   if(mode==='none')return prior(input);
   const base=prior({...input,nhgMode:'none'}),energy=mode==='energy';
   const picked=nhgTableForOfferDate(input.bindingOfferDate||input.offerDate||''),table=picked.table,limit=energy?table.energy:table.standard;
-  return{...base,nhg:{enabled:true,eligible:false,energy,offerYear:table.year,limit,fee:0,warning:`Standalone Mortgage-tab NHG is intentionally unavailable in R6.6, even if hidden cost-stack inputs are supplied. This offer date uses the ${table.year} ${energy?'energy-enhanced ':''}limit of €${limit.toLocaleString('nl-NL')}. Use the Scenario purchase-rule section for the exact existing-home NHG check.`},nhgFee:0};
+  return{...base,nhg:{enabled:true,eligible:false,energy,offerYear:table.year,limit,fee:0,warning:`Standalone Mortgage-tab NHG is intentionally unavailable in R6.6, even if hidden cost-stack inputs are supplied. ${picked.fallback?NHG_FALLBACK_LINE:NHG_LIMITS_LINE} Use the Scenario purchase-rule section for the exact existing-home NHG check.`},nhgFee:0};
 }
 function ownerCostMode(config={}){return config.ownerCostMode?(config.ownerCostMode==='itemized'?'itemized':'total'):(config.ownerCostTotalMonthly==null?'itemized':'total');}
 function annualGroundLeaseByYear(config={},months=0){
