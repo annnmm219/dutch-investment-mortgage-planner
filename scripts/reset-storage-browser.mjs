@@ -137,7 +137,10 @@ try{
     }).catch(()=>null);
     if(invoked&&invoked!==CONFIRM)throw new Error(`Unexpected confirm: ${invoked}`);
   }
-  await page.goto(page.url(),{waitUntil:'domcontentloaded'});
+  await page.goto(page.url(),{waitUntil:'domcontentloaded'}).catch(async error=>{
+    if(!/ERR_ABORTED|Navigation/i.test(String(error)))throw error;
+    await page.goto(page.url(),{waitUntil:'domcontentloaded'});
+  });
   await page.waitForFunction(()=>document.getElementById('modelVersion')?.textContent?.includes('R6.6')&&document.getElementById('decisionEngine')&&document.getElementById('annualReturn'));
   await page.waitForTimeout(750);
 
