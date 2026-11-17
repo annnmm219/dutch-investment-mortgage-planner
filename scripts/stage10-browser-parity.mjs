@@ -92,7 +92,8 @@ async function one(page,d,view){
     if(d.nhg!=='none')assert.equal(imported.cfg.purchaseRules.nhgNonEnergyCostStack,d.nhgStack,`${label}: NHG a-g stack missing`);
     if(d.propertyUse==='non-main'){
       assert.equal(imported.cfg.purchaseRules.grossRentalIncomeAnnual,d.rentalIncome,`${label}: rental income missing`);
-      assert.equal(imported.cfg.purchaseRules.privateUseDays,d.privateUseDays,`${label}: private-use days missing`);
+      assert.equal(imported.cfg.purchaseRules.propertyUsePattern,'own-holiday',`${label}: second-home pattern missing`);
+      assert.equal(imported.cfg.purchaseRules.daysLet,365-d.privateUseDays,`${label}: days let missing`);
       const propertyLedger=imported.ledgers.find(x=>x?.nonMainPropertyBox3)||imported.ledgers[0],propertyBuckets=Object.values(propertyLedger?.yearBuckets||{});
       assert.ok(propertyBuckets.some(x=>(x?.propertyRentalIncome||0)>0),`${label}: rental income absent from property ledger`);
       assert.ok(propertyBuckets.some(x=>(x?.propertyOwnUseAddition||0)>0),`${label}: own-use addition absent from property ledger`);
