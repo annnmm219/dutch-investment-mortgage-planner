@@ -49,8 +49,7 @@ function applyPolicyDefaults(documentRef){
   const allowance=VALUES.box3.allowancePerPerson;
   setText(documentRef,'currentAllowanceHelp',`${euro(allowance)} per person; ${euro(allowance*2)} for two fiscal partners.`);
   setText(documentRef,'currentNotionalHelp',`2026 investments and other assets: ${(VALUES.box3.investmentDeemedRate*100).toFixed(2)}%.`);
-  setText(documentRef,'futureExemptDefaultLabel',euro(VALUES.futureBox3Proposal.exempt));
-  setText(documentRef,'futureExemptAltPreset',`Use ${euro(VALUES.futureBox3Proposal.alternativeExempt)} alternative`);
+  setText(documentRef,'futureExemptDefaultLabel','Default: €1,800 per person, as in the bill passed by the Tweede Kamer. Not law. You can change it.');
   documentRef.documentElement?.setAttribute('data-policy-year',String(Policy2026.TAX_YEAR));
   documentRef.documentElement?.setAttribute('data-policy-verified-at',Policy2026.LAST_VERIFIED_AT);
   return{applied,missing};
@@ -59,16 +58,7 @@ function applyPolicyDefaults(documentRef){
 function bootBrowser(){
   if(typeof document==='undefined')return;
   applyPolicyDefaults(document);
-  const alt=document.getElementById('futureExemptAltPreset');
-  const field=document.getElementById('futureExempt');
-  if(alt&&field&&alt.dataset.bound!=='1'){
-    alt.dataset.bound='1';
-    alt.addEventListener('click',()=>{
-      field.value=String(VALUES.futureBox3Proposal.alternativeExempt);
-      field.dispatchEvent(new Event('input',{bubbles:true}));
-      field.dispatchEvent(new Event('change',{bubbles:true}));
-    });
-  }
+  document.getElementById('futureExemptAltPreset')?.remove();
 }
 
 return{applyPolicyDefaults,bootBrowser};

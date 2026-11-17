@@ -44,7 +44,10 @@ test('R6.6 is the single final output release identity',()=>{
   assert.equal(OI.RELEASE_META.version,'R6.6');
   assert.equal(OI.RELEASE_META.ruleYear,2026);
   assert.equal(OI.RELEASE_META.updated,'2026-11-04');
-  assert.equal(OI.releaseLabel(),'Calculation build R6.6 · released 4 Nov 2026 · 2026 rules, verified 27 Oct 2026');
+  const derived=OI.releaseLabel(OI.RELEASE_META);
+  assert.equal(OI.releaseLabel(),derived);
+  assert.equal(derived.includes('not yet deployed'),OI.RELEASE_META.patched==null);
+  assert.match(derived,/^Calculation build R6\.6 · released 4 Nov 2026 · patched (?:not yet deployed|\d{1,2} [A-Z][a-z]{2} \d{4}) · 2026 rules verified 14 Nov 2026$/);
 });
 
 test('money formatting never converts null or undefined into €0',()=>{

@@ -124,7 +124,17 @@ function scenarioPurchaseFunding(S,d,buyerCashTowardPrice){
     buyerAge:S.purchaseRules.buyerAge,
     starterMainResidence:S.purchaseRules.starterMainResidence,
     starterExemptionUnused:S.purchaseRules.starterExemptionUnused,
-    acquisitionYear:S.startYear
+    acquisitionYear:S.startYear,
+    yearlyCanon:S.groundLeaseAnnual,
+    groundRentBoughtOff:S.purchaseRules.groundRentBoughtOff===true,
+    groundRentPerpetual:S.purchaseRules.groundRentPerpetual,
+    notaryCapitalisedCanon:S.purchaseRules.notaryCapitalisedCanon,
+    notaryTransferDate:S.purchaseRules.notaryTransferDate,
+    propertyUse:S.purchaseRules.propertyUse,
+    bindingOfferDate:S.purchaseRules.bindingOfferDate,
+    qualifyingEnergyExpenditure:S.purchaseRules.qualifyingEnergyExpenditure,
+    nhgNonEnergyCostStack:S.purchaseRules.nhgNonEnergyCostStack,
+    purchaseType:S.purchaseRules.purchaseType
   });
 }
 
@@ -172,7 +182,8 @@ function result(name,v={}){
     externalDebtRepayment:Number(v.externalDebtRepayment)||0,
     box3DebtInterest:Number(v.box3DebtInterest)||0,
     short:Number(v.short)||0,
-    label:v.label||'Final comparable wealth'
+    label:v.label||'Final comparable wealth',
+    box3Years:v.yearBuckets||null
   };
 }
 
@@ -224,7 +235,31 @@ function normalize(config={}){
     nhgMode:['none','standard','energy'].includes(rawPurchaseRules.nhgMode)?rawPurchaseRules.nhgMode:'none',
     buyerAge:Number.isFinite(Number(rawPurchaseRules.buyerAge))?Number(rawPurchaseRules.buyerAge):35,
     starterMainResidence:rawPurchaseRules.starterMainResidence!==false,
-    starterExemptionUnused:rawPurchaseRules.starterExemptionUnused!==false
+    starterExemptionUnused:rawPurchaseRules.starterExemptionUnused!==false,
+    propertyUse:rawPurchaseRules.propertyUse==='non-main'?'non-main':rawPurchaseRules.propertyUse==='main-residence'?'main-residence':null,
+    purchaseType:rawPurchaseRules.purchaseType==='new-build'?'new-build':'existing-home',
+    groundRentBoughtOff:rawPurchaseRules.groundRentBoughtOff===true,
+    groundRentPerpetual:rawPurchaseRules.groundRentPerpetual||'dont-know',
+    notaryCapitalisedCanon:rawPurchaseRules.notaryCapitalisedCanon,
+    notaryTransferDate:rawPurchaseRules.notaryTransferDate||'',
+    bindingOfferDate:rawPurchaseRules.bindingOfferDate||'',
+    qualifyingEnergyExpenditure:nonNegative(rawPurchaseRules.qualifyingEnergyExpenditure),
+    nhgNonEnergyCostStack:rawPurchaseRules.nhgNonEnergyCostStack,
+    yearlyCanon:rawPurchaseRules.yearlyCanon,
+    grossRentalIncomeAnnual:rawPurchaseRules.grossRentalIncomeAnnual,
+    privateUseDays:rawPurchaseRules.privateUseDays,
+    privateUseWozValue:rawPurchaseRules.privateUseWozValue,
+    propertyUsePattern:rawPurchaseRules.propertyUsePattern||null,
+    daysLet:rawPurchaseRules.daysLet,
+    buildingDays:rawPurchaseRules.buildingDays,
+    fixedTermLease:rawPurchaseRules.fixedTermLease===true,
+    relatedPartyRent:rawPurchaseRules.relatedPartyRent===true,
+    partOfBuilding:rawPurchaseRules.partOfBuilding===true,
+    buyingWith:['alone','one','three'].includes(rawPurchaseRules.buyingWith)?rawPurchaseRules.buyingWith:'alone',
+    jointManual:rawPurchaseRules.jointManual===true,
+    ownedAllCalendarYear:rawPurchaseRules.ownedAllCalendarYear,
+    boughtDuringYear:rawPurchaseRules.boughtDuringYear===true,
+    soldDuringYear:rawPurchaseRules.soldDuringYear===true
   };
   return{
     mode:config.mode||'buy-rent',
@@ -301,9 +336,13 @@ function mortgage(S,balance,ratePct,years,type,extraMonthly=0,taxOverride={}){
   });
 }
 
-function investment(S,{initialPortfolio=S.startPortfolio,flows=[],startingSavings=S.box3.savings,startingDebt=S.box3.debt,firstJan1Savings=S.box3.firstJan1Savings,firstJan1Debt=S.box3.firstJan1Debt}={}){
+function investment(S,{initialPortfolio=S.startPortfolio,flows=[],startingSavings=S.box3.savings,startingDebt=S.box3.debt,firstJan1Savings=S.box3.firstJan1Savings,firstJan1Debt=S.box3.firstJan1Debt,openingAssessment=false,prePortfolio=null,preSavings=null,preDebt=null}={}){
+  const jan1Portfolio=openingAssessment?(S.box3.firstJan1PortfolioSpecified?S.box3.firstJan1Portfolio:nonNegative(prePortfolio==null?S.startPortfolio:prePortfolio)):S.box3.firstJan1Portfolio;
+  const jan1Savings=openingAssessment?(S.box3.firstJan1Savings!=null?S.box3.firstJan1Savings:nonNegative(preSavings==null?S.box3.savings:preSavings)):firstJan1Savings;
+  const jan1Debt=openingAssessment?(S.box3.firstJan1Debt!=null?S.box3.firstJan1Debt:nonNegative(preDebt==null?S.box3.debt:preDebt)):firstJan1Debt;
   const x=FC.simulateInvestmentFlows({
     initialPortfolio:nonNegative(initialPortfolio),
+    openingAssessment:openingAssessment===true,
     flows,
     annualReturnPct:S.investmentReturnPct,
     startYear:S.startYear,
@@ -317,11 +356,11 @@ function investment(S,{initialPortfolio=S.startPortfolio,flows=[],startingSaving
     currentSavingsNotional:S.box3.currentSavingsNotional,
     currentDebtNotional:S.box3.currentDebtNotional,
     currentDebtThreshold:S.box3.currentDebtThreshold,
-    firstJan1Portfolio:S.box3.firstJan1Portfolio,
+    firstJan1Portfolio:jan1Portfolio,
     box3Savings:nonNegative(startingSavings),
     box3Debt:nonNegative(startingDebt),
-    firstJan1Savings,
-    firstJan1Debt,
+    firstJan1Savings:jan1Savings,
+    firstJan1Debt:jan1Debt,
     savingsReturnPct:S.box3.savingsReturnPct,
     debtInterestPct:S.box3.debtInterestPct,
     box3DebtMonthlyRepayment:S.box3.debtMonthlyRepayment,
@@ -342,7 +381,8 @@ function investment(S,{initialPortfolio=S.startPortfolio,flows=[],startingSaving
     unsettledTax:x.unsettledTaxEstimate,
     externalTax:x.externalTax,
     externalDebtRepayment:x.externalDebtRepayment,
-    debtInterest:x.totalDebtInterest
+    debtInterest:x.totalDebtInterest,
+    yearBuckets:x.yearBuckets
   };
 }
 
@@ -396,7 +436,8 @@ function financialResult(ledger){
     externalTax:ledger.externalTax,
     externalDebtRepayment:ledger.externalDebtRepayment,
     box3DebtInterest:ledger.debtInterest,
-    externalCashFlowFutureValue:ledger.externalCashFlowFutureValue
+    externalCashFlowFutureValue:ledger.externalCashFlowFutureValue,
+    yearBuckets:ledger.yearBuckets
   };
 }
 
@@ -420,8 +461,8 @@ function runScenario(config={}){
     cashB=rentSeries(S,d.monthlyRent);
     const buyerCash=allocateRemainingCash(S,funding.remainingSavings),renterCash=allocateRemainingCash(S,d.cash);
     const eq=FC.equalizeCashFlows(cashA,cashB);
-    const ia=investment(S,{initialPortfolio:S.startPortfolio+buyerCash.portfolioAdd,startingSavings:buyerCash.startingSavings,flows:eq.a});
-    const ib=investment(S,{initialPortfolio:S.startPortfolio+renterCash.portfolioAdd,startingSavings:renterCash.startingSavings,flows:eq.b});
+    const ia=investment(S,{initialPortfolio:S.startPortfolio+buyerCash.portfolioAdd,startingSavings:buyerCash.startingSavings,flows:eq.a,openingAssessment:true,prePortfolio:S.startPortfolio,preSavings:d.cash,preDebt:S.box3.debt});
+    const ib=investment(S,{initialPortfolio:S.startPortfolio+renterCash.portfolioAdd,startingSavings:renterCash.startingSavings,flows:eq.b,openingAssessment:true,prePortfolio:S.startPortfolio,preSavings:d.cash,preDebt:S.box3.debt});
     const home=futureHomeValue(S,price),selling=home*S.sellingCostPct/100,equity=home-m.balance-selling;
     A=result('Buy home',{net:ia.wealth+equity,...financialResult(ia),equity,mortgage:m.balance,interest:m.totalInterest,mortTax:m.totalTaxBenefit,owner:owner.total,
       vve:owner.vve,maintenance:owner.maintenance,ownerTaxes:owner.ownerTaxes,insurance:owner.insurance,groundLease:owner.groundLease,purchase:funding.transactionCosts,purchasePrice:price,buyerCash:funding.totalBuyerCash,mortgageProceeds:funding.mortgageProceeds,fundingDifference:funding.identityDifference,selling});
@@ -442,8 +483,8 @@ function runScenario(config={}){
     cashA=ma.rows.map((r,i)=>r.cash+owner.monthly[i]);cashB=mb.rows.map((r,i)=>r.cash+owner.monthly[i]);
     const remainingA=allocateRemainingCash(S,fundingA.remainingSavings),remainingB=allocateRemainingCash(S,fundingB.remainingSavings);
     const eq=FC.equalizeCashFlows(cashA,cashB);
-    const ia=investment(S,{initialPortfolio:S.startPortfolio+remainingA.portfolioAdd,startingSavings:remainingA.startingSavings,flows:eq.a});
-    const ib=investment(S,{initialPortfolio:S.startPortfolio+remainingB.portfolioAdd,startingSavings:remainingB.startingSavings,flows:eq.b});
+    const ia=investment(S,{initialPortfolio:S.startPortfolio+remainingA.portfolioAdd,startingSavings:remainingA.startingSavings,flows:eq.a,openingAssessment:true,prePortfolio:S.startPortfolio,preSavings:d.cash,preDebt:S.box3.debt});
+    const ib=investment(S,{initialPortfolio:S.startPortfolio+remainingB.portfolioAdd,startingSavings:remainingB.startingSavings,flows:eq.b,openingAssessment:true,prePortfolio:S.startPortfolio,preSavings:d.cash,preDebt:S.box3.debt});
     const home=futureHomeValue(S,price),selling=home*S.sellingCostPct/100,equityA=home-ma.balance-selling,equityB=home-mb.balance-selling;
     A=result('Larger down payment',{net:ia.wealth+equityA,...financialResult(ia),equity:equityA,mortgage:ma.balance,interest:ma.totalInterest,mortTax:ma.totalTaxBenefit,owner:owner.total,
       vve:owner.vve,maintenance:owner.maintenance,ownerTaxes:owner.ownerTaxes,insurance:owner.insurance,groundLease:owner.groundLease,purchase:fundingA.transactionCosts,purchasePrice:price,buyerCash:fundingA.totalBuyerCash,mortgageProceeds:fundingA.mortgageProceeds,fundingDifference:fundingA.identityDifference,selling});
@@ -478,7 +519,7 @@ function runScenario(config={}){
     const sellingNow=d.homeValue*S.sellingCostPct/100,proceeds=d.homeValue-m.balance-sellingNow;
     if(proceeds<-.005)return invalidComparison(`Comparison unavailable: selling proceeds are ${Math.abs(proceeds).toFixed(2)} below the mortgage plus selling costs. Add a funded source for that shortfall before comparing.`,['Keep home','Sell now + rent/invest'],cashA,cashB);
     const eq=FC.equalizeCashFlows(cashA,cashB);
-    const ia=investment(S,{flows:eq.a}),ib=investment(S,{initialPortfolio:S.startPortfolio+Math.max(0,proceeds),flows:eq.b});
+    const ia=investment(S,{flows:eq.a}),ib=investment(S,{initialPortfolio:S.startPortfolio+Math.max(0,proceeds),flows:eq.b,openingAssessment:true,prePortfolio:S.startPortfolio,preSavings:S.box3.savings,preDebt:S.box3.debt});
     const futureHome=futureHomeValue(S,d.homeValue),sellingFuture=futureHome*S.sellingCostPct/100,equity=futureHome-keep.balance-sellingFuture;
     A=result('Keep home',{net:ia.wealth+equity,...financialResult(ia),equity,mortgage:keep.balance,interest:keep.totalInterest,mortTax:keep.totalTaxBenefit,owner:owner.total,
       vve:owner.vve,maintenance:owner.maintenance,ownerTaxes:owner.ownerTaxes,insurance:owner.insurance,groundLease:owner.groundLease,selling:sellingFuture});
@@ -529,6 +570,9 @@ engine.innerHTML=`
         <div class="field"><label for="scenarioTransferTaxModeNew">Transfer-tax treatment</label><select id="scenarioTransferTaxModeNew"><option value="main" selected>Main residence · 2%</option><option value="starter">Starter exemption · verify all conditions</option><option value="other-home">Residential property, not main residence · 8%</option><option value="other-real-estate">Other real estate · 10.4%</option><option value="manual">Manual amount</option></select></div>
         <div class="field hidden" id="scenarioManualTransferTaxFieldNew"><label for="scenarioManualTransferTaxNew">Manual transfer-tax amount</label><input id="scenarioManualTransferTaxNew" type="number" min="0" step="100" value="0"></div>
         <div class="field"><label for="scenarioPurchaseNhgModeNew">NHG treatment</label><select id="scenarioPurchaseNhgModeNew"><option value="none" selected>No NHG</option><option value="standard">Standard NHG</option><option value="energy">NHG with qualifying energy measures</option></select><p class="inline">The simplified rule check uses this scenario's price, appraisal and mortgage amount.</p></div>
+        <div class="field hidden" id="scenarioBindingOfferDateField"><label for="scenarioBindingOfferDateNew">Expected date of the binding mortgage offer (bindend aanbod)</label><input id="scenarioBindingOfferDateNew" type="date"></div>
+        <div class="field"><label for="scenarioBuyingWithNew">Buying alone or with someone?</label><select id="scenarioBuyingWithNew"><option value="alone" selected>Buying alone</option><option value="one">With one other person</option><option value="three">Three or more buyers</option></select><p class="inline">Buying with someone else? Each buyer is checked on their own. The starter exemption only covers the part of the home that a starter buys. The price limit is for the whole home, not for each part.</p></div>
+        <div class="field hidden" id="scenarioJointManualField"><label for="scenarioJointTransferTaxNew">Transfer tax from your notary, €</label><input id="scenarioJointTransferTaxNew" type="number" min="0" step="100" value=""><p class="inline">We can't work out transfer tax for this purchase yet. Please ask your notary for the amount and enter it here.</p></div>
         <div class="field hidden" id="scenarioBuyerAgeFieldNew"><label for="scenarioBuyerAgeNew">Buyer age at acquisition</label><input id="scenarioBuyerAgeNew" type="number" min="0" max="120" step="1" value="35"></div>
       </div>
       <div id="scenarioStarterConditionsNew" class="grid2 hidden">
@@ -565,7 +609,7 @@ startingCard.innerHTML=`<div class="section-head"><div><p class="section-label">
   <div class="field"><label for="scenarioStartPortfolioFresh">Current investment portfolio <span class="scenario-source-tag" data-source-for="scenarioStartPortfolioFresh"></span></label><input id="scenarioStartPortfolioFresh" type="number" min="0" step="100" placeholder="Enter 0 if none"></div>
   <div class="field"><label for="scenarioStartSavingsFresh">Savings and cash <span class="scenario-source-tag" data-source-for="scenarioStartSavingsFresh"></span></label><input id="scenarioStartSavingsFresh" type="number" min="0" step="100" placeholder="Enter 0 if none"></div>
   <div class="field"><label for="scenarioStartDebtFresh">Box 3 debt <span class="scenario-source-tag" data-source-for="scenarioStartDebtFresh"></span></label><input id="scenarioStartDebtFresh" type="number" min="0" step="100" placeholder="Enter 0 if none"></div>
-  <div class="field"><label for="scenarioBox3ModeFresh">Box 3 treatment <span class="scenario-source-tag" data-source-for="scenarioBox3ModeFresh"></span></label><select id="scenarioBox3ModeFresh"><option value="none">Ignore Box 3 tax</option><option value="current" selected>2026 rules throughout</option><option value="transition">2026 to proposed 2028 regime</option><option value="future">Proposed 2028 regime throughout</option></select></div>
+  <div class="field"><label for="scenarioBox3ModeFresh">Box 3 treatment <span class="scenario-source-tag" data-source-for="scenarioBox3ModeFresh"></span></label><select id="scenarioBox3ModeFresh"><option value="none">Ignore Box 3 tax</option><option value="current" selected>2026 rules throughout</option><option value="transition">2026 rules, then proposed new rules (not law)</option><option value="future">Proposed new rules throughout (not law)</option></select></div>
   <div class="field"><label for="scenarioTaxPartnersFresh">Taxpayers / fiscal partners <span class="scenario-source-tag" data-source-for="scenarioTaxPartnersFresh"></span></label><select id="scenarioTaxPartnersFresh"><option value="1" selected>1 person</option><option value="2">2 fiscal partners</option></select></div>
   <div class="field"><label for="scenarioBox3PaySourceFresh">Pay Box 3 tax from <span class="scenario-source-tag" data-source-for="scenarioBox3PaySourceFresh"></span></label><select id="scenarioBox3PaySourceFresh"><option value="savings" selected>Savings / cash</option><option value="portfolio">Investment portfolio</option><option value="external">External cash flow</option></select></div>
   <div class="field"><label for="scenarioSavingsReturnFresh">Expected effective annual savings yield % <span class="scenario-source-tag" data-source-for="scenarioSavingsReturnFresh"></span></label><input id="scenarioSavingsReturnFresh" type="number" min="-10" max="30" step="0.1" value="2"></div>
@@ -595,9 +639,10 @@ startingCard.innerHTML=`<div class="section-head"><div><p class="section-label">
   <div class="field"><label for="scenarioFirstJan1PortfolioFresh">First-year 1 January portfolio</label><input id="scenarioFirstJan1PortfolioFresh" type="number" min="0" step="100" data-optional="true" placeholder="Needed for a mid-year start"></div>
   <div class="field"><label for="scenarioFirstJan1SavingsFresh">First-year 1 January savings</label><input id="scenarioFirstJan1SavingsFresh" type="number" min="0" step="100" data-optional="true" placeholder="Needed for a mid-year start"></div>
   <div class="field"><label for="scenarioFirstJan1DebtFresh">First-year 1 January Box 3 debt</label><input id="scenarioFirstJan1DebtFresh" type="number" min="0" step="100" data-optional="true" placeholder="Needed for a mid-year start"></div>
+  <p class="inline" id="scenarioPeildatumLine">Box 3 uses what you owned and owed on 1 January. A home or investment you buy later in January counts from 1 January next year. One you sell later in January still counts this year. Enter your 1 January values from before the purchase or sale.</p>
   <div class="field"><label for="scenarioDebtRepaymentFresh">Monthly Box 3 debt repayment</label><input id="scenarioDebtRepaymentFresh" type="number" min="0" step="50" value="0"></div>
   <div class="field"><label for="scenarioDebtRepaymentSourceFresh">Debt repayment source</label><select id="scenarioDebtRepaymentSourceFresh"><option value="external" selected>External cash flow</option><option value="savings">Savings</option></select></div>
-  <div class="field"><label for="scenarioFutureStartFresh">Proposed regime start year</label><input id="scenarioFutureStartFresh" type="number" min="2027" max="2100" step="1" value="${F3.startYear}"></div>
+  <div class="field"><label for="scenarioFutureStartFresh">Assumed start year of the proposed rules</label><input id="scenarioFutureStartFresh" type="number" min="2028" max="2100" step="1" value="${F3.startYear}"><p class="inline">Not settled. The version passed by the Tweede Kamer on 12 Nov 2026 starts on 1 January 2029. The Eerste Kamer has not voted. You can change this year.</p></div>
   <div class="field"><label for="scenarioFutureTaxRateFresh">Proposed tax rate %</label><input id="scenarioFutureTaxRateFresh" type="number" min="0" max="100" step="0.1" value="${F3.taxRate*100}"></div>
   <div class="field"><label for="scenarioFutureExemptFresh">Proposed exempt result</label><input id="scenarioFutureExemptFresh" type="number" min="0" step="100" value="${F3.exempt}"></div>
   <div class="field"><label for="scenarioFutureLossFresh">Proposed loss threshold</label><input id="scenarioFutureLossFresh" type="number" min="0" step="100" value="${F3.lossThreshold}"></div>
@@ -644,7 +689,7 @@ function plannerBox3(){
     firstJan1Portfolio:Math.max(0,num('firstJan1Portfolio',0)),firstJan1Savings:optional('firstJan1Savings'),firstJan1Debt:optional('firstJan1Debt'),
     savings:Math.max(0,num('box3Savings',0)),debt:Math.max(0,num('box3Debt',0)),savingsReturnPct:clamp(num('box3SavingsReturn',2),-10,30),debtInterestPct:clamp(num('box3DebtInterest',4),0,30),
     debtMonthlyRepayment:Math.max(0,num('box3DebtMonthlyRepayment',0)),debtRepaymentSource:$('box3DebtRepaymentSource')?.value==='savings'?'savings':'external',
-    futureStart:clamp(num('futureStart',F3.startYear),2027,2100),futureTaxRate:clamp(num('futureTaxRate',F3.taxRate*100),0,100)/100,futureExempt:Math.max(0,num('futureExempt',F3.exempt)),futureLossThreshold:Math.max(0,num('futureLossThreshold',F3.lossThreshold))
+    futureStart:clamp(num('futureStart',F3.startYear),2028,2100),futureTaxRate:clamp(num('futureTaxRate',F3.taxRate*100),0,100)/100,futureExempt:Math.max(0,num('futureExempt',F3.exempt)),futureLossThreshold:Math.max(0,num('futureLossThreshold',F3.lossThreshold))
   };
 }
 
@@ -656,13 +701,14 @@ function scenarioBox3(){
     firstJan1Portfolio:Math.max(0,num('scenarioFirstJan1PortfolioFresh',0)),firstJan1Savings:optional('scenarioFirstJan1SavingsFresh'),firstJan1Debt:optional('scenarioFirstJan1DebtFresh'),
     savings:Math.max(0,num('scenarioStartSavingsFresh',0)),debt:Math.max(0,num('scenarioStartDebtFresh',0)),savingsReturnPct:clamp(num('scenarioSavingsReturnFresh',2),-10,30),debtInterestPct:clamp(num('scenarioDebtInterestFresh',4),0,30),
     debtMonthlyRepayment:Math.max(0,num('scenarioDebtRepaymentFresh',0)),debtRepaymentSource:$('scenarioDebtRepaymentSourceFresh')?.value==='savings'?'savings':'external',
-    futureStart:clamp(num('scenarioFutureStartFresh',F3.startYear),2027,2100),futureTaxRate:clamp(num('scenarioFutureTaxRateFresh',F3.taxRate*100),0,100)/100,futureExempt:Math.max(0,num('scenarioFutureExemptFresh',F3.exempt)),futureLossThreshold:Math.max(0,num('scenarioFutureLossFresh',F3.lossThreshold))
+    futureStart:clamp(num('scenarioFutureStartFresh',F3.startYear),2028,2100),futureTaxRate:clamp(num('scenarioFutureTaxRateFresh',F3.taxRate*100),0,100)/100,futureExempt:Math.max(0,num('scenarioFutureExemptFresh',F3.exempt)),futureLossThreshold:Math.max(0,num('scenarioFutureLossFresh',F3.lossThreshold))
   };
 }
 
 function plannerTaxConfig(){
-  const hra=hraContext(),mode=$('deductionMode')?.value||'auto',income=Math.max(0,num('grossIncome',0));
-  return{enabled:$('mortTaxEnabled')?.checked!==false,calculationMode:mode==='manual'?'manual-rate':'box1-2026',deductionRate:FC.appliedOwnHomeDeductionRate({mode,manualRatePct:num('manualDeduction',DEDUCTION_CAP_PCT),grossIncome:income}),box1IncomeBeforeOwnHome:income,wozValue:Math.max(0,num('wozValue',0)),hraRemainingMonths:hra.hraRemainingMonths,qualifyingInterestFraction:hra.qualifyingInterestFraction};
+  const blocked=$('grossIncome')?.dataset.rulingUnavailable==='1';
+  const hra=hraContext(),mode=$('deductionMode')?.value||'auto',income=blocked?0:Math.max(0,num('grossIncome',0));
+  return{enabled:blocked?false:$('mortTaxEnabled')?.checked!==false,calculationMode:mode==='manual'?'manual-rate':'box1-2026',deductionRate:blocked?0:FC.appliedOwnHomeDeductionRate({mode,manualRatePct:num('manualDeduction',DEDUCTION_CAP_PCT),grossIncome:income}),box1IncomeBeforeOwnHome:income,wozValue:Math.max(0,num('wozValue',0)),hraRemainingMonths:hra.hraRemainingMonths,qualifyingInterestFraction:hra.qualifyingInterestFraction};
 }
 
 function plannerSnapshot(){return{startYear:clamp(num('startYear',2026),2020,2100),startMonth:clamp(num('startMonth',1),1,12),investmentReturnPct:clamp(num('annualReturn',5),-30,30),startPortfolio:Math.max(0,num('startPortfolio',0)),mortgageType:document.querySelector('.compare-card.active[data-mort-type]')?.dataset.mortType||'annuity',mortgage:mainMortgage(),tax:plannerTaxConfig(),box3:plannerBox3()}}
@@ -708,6 +754,8 @@ function purchaseRuleConfig(){
     manualTransferTax:Math.max(0,num('scenarioManualTransferTaxNew',0)),
     appraisedValue:optional('scenarioPurchaseAppraisedValueNew'),
     nhgMode:$('scenarioPurchaseNhgModeNew')?.value||'none',
+    bindingOfferDate:$('scenarioBindingOfferDateNew')?.value||'',
+    buyingWith:$('scenarioBuyingWithNew')?.value||'alone',
     buyerAge:clamp(num('scenarioBuyerAgeNew',35),0,120),
     starterMainResidence:$('scenarioStarterMainResidenceNew')?.checked!==false,
     starterExemptionUnused:$('scenarioStarterUnusedNew')?.checked!==false,
@@ -745,6 +793,8 @@ function visibility(){
   $('scenarioPurchaseBorrowingNotice')?.classList.toggle('hidden',!purchaseMode);
   $('scenarioManualTransferTaxFieldNew')?.classList.toggle('hidden',transferMode!=='manual');
   $('scenarioBuyerAgeFieldNew')?.classList.toggle('hidden',transferMode!=='starter');
+  $('scenarioBindingOfferDateField')?.classList.toggle('hidden',($('scenarioPurchaseNhgModeNew')?.value||'none')==='none');
+  $('scenarioJointManualField')?.classList.toggle('hidden',($('scenarioBuyingWithNew')?.value||'alone')==='alone');
   $('scenarioStarterConditionsNew')?.classList.toggle('hidden',transferMode!=='starter');
   $('scenarioStartingDataCard')?.classList.toggle('hidden',!scenarioSourceMode);
   $('scenarioExistingMortgageFresh')?.classList.toggle('hidden',purchaseMode);

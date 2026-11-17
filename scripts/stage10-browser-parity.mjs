@@ -3,7 +3,9 @@ import path from 'node:path';
 import assert from 'node:assert/strict';
 import {readFile,stat} from 'node:fs/promises';
 import {fileURLToPath} from 'node:url';
-import {chromium} from 'playwright';
+import {chromium, webkit, devices} from 'playwright';
+const browserEngine=process.env.DIMP_BROWSER==='webkit'?webkit:chromium;
+const deviceProfile=process.env.DIMP_DEVICE&&devices[process.env.DIMP_DEVICE]?devices[process.env.DIMP_DEVICE]:null;
 
 const ROOT=path.resolve(path.dirname(fileURLToPath(import.meta.url)),'..');
 const TYPES={'.html':'text/html; charset=utf-8','.js':'text/javascript; charset=utf-8','.css':'text/css; charset=utf-8','.json':'application/json'};
@@ -60,7 +62,10 @@ async function owned(page,d){
     await set(page,'scenarioPurchaseQualifyingDebtPctNew',d.purchaseQual,{allowHidden:d.propertyUse==='non-main'});
     await set(page,'scenarioPurchaseHraYearsNew',d.purchaseHra,{allowHidden:d.propertyUse==='non-main'});
     if(d.propertyUse==='non-main'){
-      await set(page,'scenarioPropertyRentalIncomeNew',d.rentalIncome);await set(page,'scenarioPropertyIncomeGrowthNew',d.rentalGrowth);await set(page,'scenarioPropertyPrivateUseDaysNew',d.privateUseDays);await set(page,'scenarioPropertyPrivateUseWozNew',d.privateUseWoz);await settle(page);
+      await set(page,'scenarioPropertyUsePatternNew','own-holiday');
+      await set(page,'scenarioDaysLetNew',Math.max(0,365-d.privateUseDays));
+      await set(page,'scenarioBuildingDaysNew',0);
+      await set(page,'scenarioPropertyRentalIncomeNew',d.rentalIncome);await set(page,'scenarioPropertyIncomeGrowthNew',d.rentalGrowth);await set(page,'scenarioPropertyPrivateUseDaysNew',d.privateUseDays,{allowHidden:true});await set(page,'scenarioPropertyPrivateUseWozNew',d.privateUseWoz);await settle(page);
     }
   }
   await settle(page);
@@ -87,14 +92,15 @@ async function one(page,d,view){
     if(d.nhg!=='none')assert.equal(imported.cfg.purchaseRules.nhgNonEnergyCostStack,d.nhgStack,`${label}: NHG a-g stack missing`);
     if(d.propertyUse==='non-main'){
       assert.equal(imported.cfg.purchaseRules.grossRentalIncomeAnnual,d.rentalIncome,`${label}: rental income missing`);
-      assert.equal(imported.cfg.purchaseRules.privateUseDays,d.privateUseDays,`${label}: private-use days missing`);
+      assert.equal(imported.cfg.purchaseRules.propertyUsePattern,'own-holiday',`${label}: second-home pattern missing`);
+      assert.equal(imported.cfg.purchaseRules.daysLet,365-d.privateUseDays,`${label}: days let missing`);
       const propertyLedger=imported.ledgers.find(x=>x?.nonMainPropertyBox3)||imported.ledgers[0],propertyBuckets=Object.values(propertyLedger?.yearBuckets||{});
       assert.ok(propertyBuckets.some(x=>(x?.propertyRentalIncome||0)>0),`${label}: rental income absent from property ledger`);
       assert.ok(propertyBuckets.some(x=>(x?.propertyOwnUseAddition||0)>0),`${label}: own-use addition absent from property ledger`);
       assert.equal(imported.canonical.strategies.A.mortTax,0,`${label}: non-main property received Box 1 relief`);
     }
   }
-  const sourceRow=imported.exportRows.find(r=>r[1]==='Calculation source commit');assert.ok(sourceRow,`${label}: export missing calculation source row`);assert.equal(sourceRow[2],imported.identity.calculationSourceSha||'UNFROZEN',`${label}: export release identity differs from runtime identity`);
+  const sourceRow=imported.exportRows.find(r=>r[1]==='Calculation manifest (SHA-256 of 12 files; not a Git commit)');assert.ok(sourceRow,`${label}: export missing calculation manifest row`);assert.equal(sourceRow[2],imported.identity.calculationManifestSha||imported.identity.calculationSourceSha||'UNFROZEN',`${label}: export release identity differs from runtime identity`);
 
   await page.reload({waitUntil:'domcontentloaded'});await page.waitForFunction(()=>window.Stage10Remediation&&window.__DIMP_CANONICAL_COMPARISON?.valid===true);await settle(page);const reloaded=await snap(page);assert.deepEqual(reloaded.cfg,imported.cfg,`${label}: config changed on reload`);assert.deepEqual(reloaded.canonical,imported.canonical,`${label}: result changed on reload`);assert.deepEqual(reloaded.provenance,imported.provenance,`${label}: provenance changed on reload`);
   const frozen=await page.locator('#scenarioStartPortfolioFresh').inputValue();await set(page,'startPortfolio',d.portfolio+9999);await page.locator('.tab[data-tab="scenarios"]').click();assert.equal(await page.locator('#scenarioStartPortfolioFresh').inputValue(),frozen,`${label}: imported snapshot mutated without Refresh`);await page.locator('#scenarioRefreshImport').click();await settle(page);assert.equal(await page.locator('#scenarioStartPortfolioFresh').inputValue(),String(d.portfolio+9999),`${label}: Refresh failed`);await set(page,'startPortfolio',d.portfolio);await page.locator('.tab[data-tab="scenarios"]').click();await page.locator('#scenarioRefreshImport').click();await settle(page);await owned(page,d);const baseline=await snap(page);
@@ -107,17 +113,17 @@ async function targetedBoundaries(page){
   await planner(page,data('buy-rent',0));await page.locator('.tab[data-tab="scenarios"]').click();await page.locator('#scenarioSourceImported').check();await settle(page);
   const d=data('buy-rent',0);await owned(page,d);
   await set(page,'scenarioPurchaseTypeNew','new-build');await settle(page);let s=await snap(page);assert.equal(s.canonical.valid,false,'new-build purchase should be blocked');assert.match(s.canonical.reason,/existing homes only|new-build/i);
-  await set(page,'scenarioPurchaseTypeNew','existing-home');await set(page,'scenarioPropertyUseNew','non-main');await set(page,'scenarioTransferTaxModeNew','manual');await set(page,'scenarioManualTransferTaxNew',18000);await set(page,'scenarioPropertyRentalIncomeNew',0);await set(page,'scenarioPropertyPrivateUseDaysNew',0);await settle(page);s=await snap(page);assert.equal(s.canonical.valid,true,'manual transfer tax + explicit non-main classification should be valid');assert.equal(s.canonical.strategies.A.mortTax,0,'manual transfer tax may not imply Box 1');
+  await set(page,'scenarioPurchaseTypeNew','existing-home');await set(page,'scenarioPropertyUseNew','non-main');await set(page,'scenarioPropertyUsePatternNew','long-term');await set(page,'scenarioTransferTaxModeNew','manual');await set(page,'scenarioManualTransferTaxNew',18000);await set(page,'scenarioPropertyRentalIncomeNew',0);await set(page,'scenarioPropertyPrivateUseDaysNew',0,{allowHidden:true});await settle(page);s=await snap(page);assert.equal(s.canonical.valid,true,'manual transfer tax + explicit non-main classification should be valid');assert.equal(s.canonical.strategies.A.mortTax,0,'manual transfer tax may not imply Box 1');
   await set(page,'scenarioBox3ModeFresh','transition');await settle(page);s=await snap(page);assert.equal(s.canonical.valid,false,'non-main proposed/transition Box 3 should be blocked');assert.match(s.canonical.reason,/real-estate-specific|non-main-property/i);
   await set(page,'scenarioBox3ModeFresh','current');await set(page,'scenarioPropertyUseNew','main-residence');await set(page,'scenarioTransferTaxModeNew','main');await set(page,'scenarioPurchaseNhgModeNew','energy');await set(page,'scenarioNhgNonEnergyCostStackNew',470001);await set(page,'scenarioQualifyingEnergySpendNew',20000);await settle(page);s=await snap(page);assert.equal(s.canonical.valid,false,'NHG a-g stack above €470,000 should be rejected');assert.match(s.canonical.reason,/non-energy cost stack|NHG/i);
   return true;
 }
 
 await new Promise(r=>server.listen(0,'127.0.0.1',r));
-const browser=await chromium.launch({headless:true}),url=`http://127.0.0.1:${server.address().port}/`,results=[],errors=[];
+const browser=await browserEngine.launch({headless:true}),url=`http://127.0.0.1:${server.address().port}/`,results=[],errors=[];
 try{
   for(const [view,opts] of VIEWPORTS){
-    const context=await browser.newContext(opts),page=await context.newPage();page.setDefaultTimeout(25000);page.on('pageerror',e=>errors.push(`${view}: ${String(e?.stack||e)}`));await page.route(/^https:\/\//,r=>r.abort());await page.goto(url,{waitUntil:'domcontentloaded'});
+    const context=await browser.newContext(opts),page=await context.newPage();page.setDefaultTimeout(45000);page.on('pageerror',e=>errors.push(`${view}: ${String(e?.stack||e)}`));await page.route(/^https:\/\//,r=>r.abort());await page.goto(url,{waitUntil:'domcontentloaded'});
     if(view==='desktop')await targetedBoundaries(page);
     for(const mode of MODES)for(let i=0;i<10;i++)results.push(await one(page,data(mode,i),view));await context.close();
   }

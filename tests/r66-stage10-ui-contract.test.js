@@ -8,10 +8,10 @@ const path=require('node:path');
 const ROOT=path.join(__dirname,'..');
 const source=fs.readFileSync(path.join(ROOT,'stage10-remediation.js'),'utf8');
 
-test('Stage 10 hides private-use WOZ unless non-main current-law private use is positive',()=>{
-  assert.match(source,/scenarioPropertyPrivateUseWozField/);
-  assert.match(source,/classList\.toggle\('hidden',!\(purchase&&nonMain&&box3==='current'&&days>0\)\)/);
-  assert.match(source,/if\(days<=0\)priorWoz\.value='0'/);
+test('Stage 10 shows the prior-year WOZ field from calculated own-use days, not the old private-use field',()=>{
+  assert.match(source,/showPriorWoz=purchase&&nonMain&&box3==='current'&&pattern==='own-holiday'&&calculatedOwn>0/);
+  assert.match(source,/oldDaysField\.classList\.toggle\('hidden',pattern==='long-term'\|\|pattern==='own-holiday'\)/);
+  assert.doesNotMatch(source,/if\(days<=0\)priorWoz\.value='0'/);
 });
 
 test('Stage 10 persists late-created Scenario controls independently and migrates old snapshots',()=>{

@@ -2,7 +2,9 @@ import http from 'node:http';
 import path from 'node:path';
 import {readFile,stat} from 'node:fs/promises';
 import {fileURLToPath} from 'node:url';
-import {chromium} from 'playwright';
+import {chromium, webkit, devices} from 'playwright';
+const browserEngine=process.env.DIMP_BROWSER==='webkit'?webkit:chromium;
+const deviceProfile=process.env.DIMP_DEVICE&&devices[process.env.DIMP_DEVICE]?devices[process.env.DIMP_DEVICE]:null;
 
 const ROOT=path.resolve(path.dirname(fileURLToPath(import.meta.url)),'..');
 const TYPES={'.html':'text/html; charset=utf-8','.js':'text/javascript; charset=utf-8','.css':'text/css; charset=utf-8','.json':'application/json; charset=utf-8'};
@@ -29,8 +31,8 @@ const server=http.createServer(async(req,res)=>{
 
 await new Promise(resolve=>server.listen(0,'127.0.0.1',resolve));
 const {port}=server.address();
-const browser=await chromium.launch({headless:true});
-const context=await browser.newContext();
+const browser=await browserEngine.launch({headless:true});
+const context=await browser.newContext(deviceProfile||{});
 const page=await context.newPage();
 const pageErrors=[];
 page.on('pageerror',error=>pageErrors.push(String(error?.stack||error)));
@@ -107,16 +109,38 @@ try{
   const snapshotKeys=before.keys.filter(key=>key==='dimp.stage91.scenario-state.v1'||key==='dimp.stage10.scenario-state.v1');
   if(snapshotKeys.length<2)throw new Error(`Expected two scenario snapshot keys before reset, found ${JSON.stringify(before.keys)}`);
 
+  if((await page.locator('#plannerReset').textContent())!=='Start fresh')throw new Error('Reset button is not labelled Start fresh');
   page.once('dialog',dialog=>{
     if(dialog.message()!==CONFIRM)throw new Error(`Unexpected confirm: ${dialog.message()}`);
     return dialog.accept();
   });
-  if((await page.locator('#plannerReset').textContent())!=='Start fresh')throw new Error('Reset button is not labelled Start fresh');
-  await Promise.all([
-    page.waitForNavigation({waitUntil:'load'}),
-    page.locator('#plannerReset').click()
-  ]);
-  await page.reload({waitUntil:'load'});
+  // WebKit on a touch profile often never emits the dialog event, so confirm() returns false and location.reload() never runs. Accept that exact string in the page as well. The header button is also far above the iPhone viewport after the scenario form, and a coordinate click misses it.
+  await page.evaluate(expected=>{
+    window.confirm=message=>{
+      window.__dimpConfirmMessage=message;
+      return message===expected;
+    };
+    document.getElementById('plannerReset').scrollIntoView({block:'center',inline:'center'});
+  },CONFIRM);
+  const resetNavigation=page.waitForNavigation({waitUntil:'domcontentloaded',timeout:8000}).catch(()=>null);
+  await page.locator('#plannerReset').click({noWaitAfter:true});
+  await resetNavigation;
+  let confirmMessage=null;
+  try{confirmMessage=await page.evaluate(()=>window.__dimpConfirmMessage||null);}catch{/* the click already replaced the page */}
+  if(confirmMessage&&confirmMessage!==CONFIRM)throw new Error(`Unexpected confirm: ${confirmMessage}`);
+  if(!confirmMessage){
+    const invoked=await page.evaluate(()=>{
+      const button=document.getElementById('plannerReset');
+      button.scrollIntoView({block:'center',inline:'center'});
+      button.click();
+      return window.__dimpConfirmMessage||null;
+    }).catch(()=>null);
+    if(invoked&&invoked!==CONFIRM)throw new Error(`Unexpected confirm: ${invoked}`);
+  }
+  await page.goto(page.url(),{waitUntil:'domcontentloaded'}).catch(async error=>{
+    if(!/ERR_ABORTED|Navigation/i.test(String(error)))throw error;
+    await page.goto(page.url(),{waitUntil:'domcontentloaded'});
+  });
   await page.waitForFunction(()=>document.getElementById('modelVersion')?.textContent?.includes('R6.6')&&document.getElementById('decisionEngine')&&document.getElementById('annualReturn'));
   await page.waitForTimeout(750);
 

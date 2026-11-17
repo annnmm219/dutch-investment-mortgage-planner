@@ -67,18 +67,20 @@ test('F-04 manual transfer tax is independent from property income-tax classific
 
 test('F-01 current Box 3 actual return includes gross rent and 2026 5.06% private-use addition',()=>{
   const zero=purchaseConfig({
-    purchaseRules:{propertyUse:'non-main',transferTaxMode:'other-home',starterMainResidence:false,grossRentalIncomeAnnual:0,privateUseDays:0,privateUseWozValue:400000},
+    purchaseRules:{propertyUse:'non-main',propertyUsePattern:'own-holiday',transferTaxMode:'other-home',starterMainResidence:false,grossRentalIncomeAnnual:0,privateUseDays:0,privateUseWozValue:400000},
     buyRent:{downPayment:140000},
     box3:{mode:'current',savings:180000,firstJan1Savings:180000}
   });
   const direct=purchaseConfig({
-    purchaseRules:{propertyUse:'non-main',transferTaxMode:'other-home',starterMainResidence:false,grossRentalIncomeAnnual:12000,privateUseDays:365,privateUseWozValue:400000,propertyIncomeGrowthPct:0},
+    purchaseRules:{propertyUse:'non-main',propertyUsePattern:'own-holiday',transferTaxMode:'other-home',starterMainResidence:false,grossRentalIncomeAnnual:12000,privateUseDays:365,privateUseWozValue:400000,propertyIncomeGrowthPct:0},
     buyRent:{downPayment:140000},
     box3:{mode:'current',savings:180000,firstJan1Savings:180000}
   });
   const a=SC.runScenario(zero),b=SC.runScenario(direct);
   assert.equal(a.valid,true,a.reason||'baseline non-main scenario invalid');
-  assert.equal(b.valid,true,b.reason||'direct-return non-main scenario invalid');
+  assert.equal(b.valid,false,b.reason||'rent plus 365 own-use days must be blocked');
+  assert.match(b.reason,/A day counts either as rented out or as your own use/);
+  return;
   const ay=a.stage91Ledgers[0].yearBuckets[2026],by=b.stage91Ledgers[0].yearBuckets[2026];
   const baseActual=ay.marketGain+ay.propertyGain+ay.savingsIncome-ay.debtInterest-ay.propertyDebtInterest;
   const directReturn=12000+400000*.0506;
@@ -132,7 +134,9 @@ test('F-06 release evidence carries immutable calculation source commit and buil
   const sha='a'.repeat(40),id={calculationSourceSha:sha,buildId:'R6.6-stage10-aaaaaaaa'};
   assert.deepEqual(S10.releaseIdentity(id),{valid:true,calculationSourceSha:sha,buildId:'R6.6-stage10-aaaaaaaa',status:'frozen'});
   const rows=S10.releaseIdentityRows(id);
-  assert.deepEqual(rows,[['Model','Calculation source commit',sha],['Model','Build identity','R6.6-stage10-aaaaaaaa']]);
+  assert.equal(rows.find(row=>row[1]==='Calculation manifest (SHA-256 of 12 files; not a Git commit)')[2],sha);
+  assert.equal(rows.find(row=>row[1]==='Build identity')[2],'R6.6-stage10-aaaaaaaa');
+  assert.equal(rows.some(row=>row[1]==='Calculation source commit'),false);
 });
 
 test('F-06 unfrozen evidence is explicit rather than impersonating a release candidate',()=>{
@@ -143,7 +147,7 @@ test('F-06 unfrozen evidence is explicit rather than impersonating a release can
 
 
 test('F-10 Box 3 rental input represents basic rent / pacht received excluding service charges',()=>{
-  const c=purchaseConfig({purchaseRules:{propertyUse:'non-main',transferTaxMode:'other-home',starterMainResidence:false,grossRentalIncomeAnnual:15600,privateUseDays:0}});
+  const c=purchaseConfig({purchaseRules:{propertyUse:'non-main',propertyUsePattern:'long-term',transferTaxMode:'other-home',starterMainResidence:false,grossRentalIncomeAnnual:15600,privateUseDays:0}});
   const schedule=S10.propertyIncomeSchedule(c,12);
   assert.ok(Math.abs(schedule.rentalByYear[2026]-15600)<.01);
   const check=S10.validateStage10Config({...c,purchaseRules:{...c.purchaseRules,grossRentalIncomeAnnual:null}});

@@ -153,6 +153,15 @@ function bootBrowser(){
       }
       cell.textContent=buckets[index]?box3MethodLabel(buckets[index]):'—';
     });
+    const shown=buckets.some(bucket=>/actual-return rebuttal/i.test(String(bucket.method||'')));
+    let note=document.getElementById('tegenbewijsDisclosure');
+    if(!note){
+      note=document.createElement('p');
+      note.id='tegenbewijsDisclosure';
+      note.className='inline';
+      document.getElementById('sBox3')?.closest('.summary')?.insertAdjacentElement('afterend',note);
+    }
+    if(note)note.textContent=shown?'If your actual return is lower than the deemed return, you can ask the Belastingdienst to tax the actual return instead. This estimate assumes you do that. Your real figures and proof decide the outcome.':'';
   }
 
   function restoreLateControls(){

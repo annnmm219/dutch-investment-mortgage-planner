@@ -152,6 +152,6 @@ test('Stage 10 browser layer exposes independent property classification and rel
   assert.match(stage10,/scenarioNhgNonEnergyCostStackNew/);
   assert.match(stage10,/scenarioPropertyRentalIncomeNew/);
   assert.match(stage10,/scenarioPropertyPrivateUseDaysNew/);
-  assert.match(stage10,/Calculation source commit/);
+  assert.match(stage10,/Calculation manifest \(SHA-256 of 12 files; not a Git commit\)/);
   assert.match(identity,/calculationSourceSha/);
 });

@@ -11,9 +11,11 @@ const RELEASE_META=Object.freeze({
   version:'R6.6',
   ruleYear:2026,
   updated:'2026-11-04',
+  patched:null,
   stateSchema:4,
   releaseName:'Decision Integrity'
 });
+const BOX1_LIMITATION_LINE='Tax credits (heffingskortingen) are not included. With an income between about €30,000 and €78,000, your real tax benefit is usually higher than shown: about 6.4% of your deductions more. Example: €10,000 of deductions can give about €640 more.';
 
 const CANONICAL_KINDS=Object.freeze({
   plan:'dimp.canonical-plan-result.v1',
@@ -57,6 +59,12 @@ function formatPercent(value){
   return number===null?'Unavailable':number.toLocaleString('nl-NL',{maximumFractionDigits:2})+'%';
 }
 
+function releaseStampStatus({patched=null,releaseBuild=false}={}){
+  if(releaseBuild&&(patched==null||patched===''))return{ok:false,reason:'A release build needs a patch date. Run npm run stamp-release -- YYYY-MM-DD before merging.'};
+  if(patched!=null&&patched!==''&&!/^\d{4}-\d{2}-\d{2}$/.test(String(patched)))return{ok:false,reason:'Patch date must be YYYY-MM-DD.'};
+  return{ok:true,patched:patched||null};
+}
+
 function shortDate(iso){
   const date=String(iso||'').split('-');
   const months=['','Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
@@ -64,7 +72,8 @@ function shortDate(iso){
 }
 
 function releaseLabel(meta=RELEASE_META){
-  return `Calculation build ${meta.version} · released ${shortDate(meta.updated)} · ${meta.ruleYear} rules, verified ${shortDate(Policy2026.LAST_VERIFIED_AT)}`;
+  const patch=meta.patched?`patched ${shortDate(meta.patched)}`:'patched not yet deployed';
+  return `Calculation build ${meta.version} · released ${shortDate(meta.updated)} · ${patch} · ${meta.ruleYear} rules verified ${shortDate(Policy2026.LAST_VERIFIED_AT)}`;
 }
 
 function cloneSeries(source={}){
@@ -214,7 +223,8 @@ function planExportRows(canonical){
     ['Results','External outflows at plan horizon (EUR)',formatExportNumber(r.externalCashFlowFutureValue)],
     ['Results','Loss carryforward (EUR)',formatExportNumber(r.lossCarry)],
     ['Results','Mortgage remaining (EUR)',formatExportNumber(r.mortgageRemaining)],
-    ['Results','Total invested (EUR)',formatExportNumber(r.totalInvested)]
+    ['Results','Total invested (EUR)',formatExportNumber(r.totalInvested)],
+    ['Box 1 estimate','Limitation',BOX1_LIMITATION_LINE]
   ];
 }
 
@@ -405,7 +415,8 @@ function nextEuroExportRows(canonical){
     ['Next Euro','Break-even status',canonical.breakEvenStatus],
     ['Next Euro','Break-even effective annual return (%)',formatExportNumber(canonical.breakEvenReturnPct)],
     ['Next Euro','Higher modeled wealth',outcome],
-    ['Next Euro','Modeled terminal difference (EUR)',formatExportNumber(canonical.absoluteDifference)]
+    ['Next Euro','Modeled terminal difference (EUR)',formatExportNumber(canonical.absoluteDifference)],
+    ['Box 1 estimate','Limitation',BOX1_LIMITATION_LINE]
   ];
 }
 
@@ -642,6 +653,7 @@ return{
   formatExportNumber,
   formatPercent,
   releaseLabel,
+  releaseStampStatus,
   canonicalPlanResult,
   unavailablePlanResult,
   withoutBox3,

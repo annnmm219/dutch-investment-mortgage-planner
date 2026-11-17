@@ -109,9 +109,9 @@ function mortgageAuditResult(){
   const months=reportingMonths(startYear,startMonth,termMonths);
   const defaultHraYears=Math.min(setup.years,POLICY.ownHome.maximumQualifyingMortgageMonths/12);
   const tax={
-    enabled:$('mortTaxEnabled')?.checked!==false,
+    enabled:$('grossIncome')?.dataset.rulingUnavailable==='1'?false:$('mortTaxEnabled')?.checked!==false,
     calculationMode:'box1-2026',
-    box1IncomeBeforeOwnHome:Math.max(0,readNumber('grossIncome',0)),
+    box1IncomeBeforeOwnHome:$('grossIncome')?.dataset.rulingUnavailable==='1'?0:Math.max(0,readNumber('grossIncome',0)),
     box1Profile:Box1.PROFILE,
     wozValue:Math.max(0,readNumber('wozValue',0)),
     hraRemainingMonths:Math.max(0,Math.round(readNumber('hraRemainingYears',defaultHraYears)*12+clamp(readNumber('hraRemainingMonths',0),0,11))),
@@ -209,6 +209,10 @@ function renderBridge(){
   }
   if($('mortTaxEnabled')?.checked===false){
     status.innerHTML='<strong>Box 1 own-home effect is switched off.</strong><br><span>Mortgage payments remain gross and no modeled tax effect is allocated.</span>';
+    return;
+  }
+  if($('grossIncome')?.dataset.rulingUnavailable==='1'){
+    status.innerHTML='<strong>unavailable</strong>';
     return;
   }
 

@@ -79,12 +79,20 @@ function ownHomeBox1Tax2026({
   const hillenDeduction=grossOwnHomeBalance>0?grossOwnHomeBalance*relief:0;
   const netOwnHomeIncome=grossOwnHomeBalance-hillenDeduction;
   const taxableIncomeAfterOwnHome=income+netOwnHomeIncome;
-
   if(taxableIncomeAfterOwnHome<0){
     return unsupportedResult('The own-home result creates negative Box 1 income; Box 1 loss treatment is outside this bounded model.',{
       enabled,profile,incomeBeforeOwnHome:income,ewfIncome:ewf,deductibleOwnHomeCosts:deductible,
       grossOwnHomeBalance,hillenRelief:relief,hillenDeduction,netOwnHomeIncome,taxableIncomeAfterOwnHome
     });
+  }
+  const LOW_INCOME_GUARD=29736;
+  const GUARD_LINE='Your income after the mortgage deduction is low, so tax credits may cancel much of the tax benefit. We can\'t estimate this reliably. Enter your own deduction rate, or check with a tax adviser.';
+  if(enabled&&taxableIncomeAfterOwnHome<=LOW_INCOME_GUARD){
+    return{
+      supported:true,available:false,withheld:true,enabled:true,method:'low-income-guard',ruleYear:POLICY.taxYear,profile,
+      incomeBeforeOwnHome:income,ewfIncome:ewf,deductibleOwnHomeCosts:deductible,grossOwnHomeBalance,hillenRelief:relief,hillenDeduction,netOwnHomeIncome,taxableIncomeAfterOwnHome,
+      taxBenefit:null,taxEffect:null,message:GUARD_LINE
+    };
   }
 
   const taxBeforeOwnHome=progressiveBox1Tax2026(income);
@@ -159,6 +167,9 @@ function browserTaxContext(){
   };
   if(document.getElementById('hillenOverrideEnabled')?.checked){
     eligibility.hillenRelief=clamp(browserNumber('hillenOverridePct',POLICY.hillen.relief2026*100)/100,0,1);
+  }
+  if(typeof document!=='undefined'&&document.getElementById('grossIncome')?.dataset?.rulingUnavailable==='1'){
+    return{calculationMode:'box1-2026',box1IncomeBeforeOwnHome:0,box1Profile:PROFILE,...eligibility,hasBox1LossCarry:false,hasOtherRateAdjustedDeductions:false,hasComplexFiscalPartnerAllocation:false,hasTransitionalDebt:false,rulingUnavailable:true};
   }
   if(mode==='manual')return{calculationMode:'manual-rate',...eligibility};
   return{
@@ -251,6 +262,7 @@ function allocateExactTax(rows=[],tax={},core=initialCore){
       hasComplexFiscalPartnerAllocation:Boolean(tax.hasComplexFiscalPartnerAllocation),
       hasTransitionalDebt:Boolean(tax.hasTransitionalDebt)
     });
+    if(trace.withheld){bucket.withheld=true;bucket.message=trace.message;bucket.taxBenefit=null;bucket.box1Trace=trace;return;}
     if(!trace.supported)throw new RangeError(`Box 1 estimate unavailable: ${trace.unsupportedReasons.join(' ')}`);
 
     bucket.hillenRelief=relief;
@@ -296,12 +308,15 @@ function allocateExactTax(rows=[],tax={},core=initialCore){
     });
   });
 
+  const withheld=Object.values(annualBuckets).some(bucket=>bucket.withheld);
   return{
     rows:resultRows,
     annualBuckets,
-    totalTaxBenefit,
-    available:true,
-    method:METHOD,
+    totalTaxBenefit:withheld?null:totalTaxBenefit,
+    available:!withheld,
+    withheld,
+    message:Object.values(annualBuckets).find(bucket=>bucket.message)?.message||'',
+    method:withheld?'low-income-guard':METHOD,
     ruleYear:POLICY.taxYear
   };
 }
@@ -401,6 +416,7 @@ function decorateFinanceCore(core){
       hasComplexFiscalPartnerAllocation:Boolean(tax.hasComplexFiscalPartnerAllocation),
       hasTransitionalDebt:Boolean(tax.hasTransitionalDebt)
     });
+    if(trace.withheld)return null;
     if(!trace.supported)throw new RangeError(`Box 1 estimate unavailable: ${trace.unsupportedReasons.join(' ')}`);
     return trace.taxBenefit;
   };

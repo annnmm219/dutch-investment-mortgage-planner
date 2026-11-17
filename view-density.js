@@ -10,7 +10,7 @@ const BOX3=Policy2026.VALUES.box3;
 const FUTURE_BOX3=Policy2026.VALUES.futureBox3Proposal;
 const policyPct=rate=>rate*100;
 const HEADER_TRUST_LINE='Planning estimates only, not financial, tax or mortgage advice. Your financial inputs are calculated and saved locally in your browser.';
-const HEADER_TRUST_DETAILS='Rules simplified, as of 27 Oct 2026. Your inputs are stored in this browser\'s localStorage and are not sent to us or to any third party. Our web host sees standard request logs (e.g. IP address). "Start fresh" deletes everything this planner saved in this browser.';
+const HEADER_TRUST_DETAILS='Rules simplified, as of 14 Nov 2026. Your inputs are stored only in this browser (localStorage). They are not sent to us or to anyone else. This site is hosted on GitHub Pages. GitHub records the IP address of every visitor for security. See the GitHub Privacy Statement. "Start fresh" deletes everything this planner saved in this browser.';
 
 const DEFAULT_VIEW='single';
 const STANDARD_PHASE_LIMIT=6;
@@ -243,7 +243,7 @@ function bootBrowser(){
   function ensureHeaderTrust(){
     const line=$('headerTrustLine'),panel=$('headerTrustPanel'),button=$('headerTrustInfo');
     if(line)line.textContent=HEADER_TRUST_LINE;
-    if(panel)panel.textContent=HEADER_TRUST_DETAILS;
+    if(panel)panel.innerHTML=HEADER_TRUST_DETAILS.replace('GitHub Privacy Statement','<a href="https://docs.github.com/en/site-policy/privacy-policies/github-general-privacy-statement" target="_blank" rel="noopener">GitHub Privacy Statement</a>');
     if(button)button.dataset.bound='1';
   }
 

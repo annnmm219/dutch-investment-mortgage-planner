@@ -2,7 +2,7 @@ import http from 'node:http';
 import path from 'node:path';
 import { readFile, stat } from 'node:fs/promises';
 import { fileURLToPath } from 'node:url';
-import { chromium } from 'playwright';
+import { chromium, webkit, devices } from 'playwright';
 
 const ROOT=path.resolve(path.dirname(fileURLToPath(import.meta.url)),'..');
 const TYPES={'.html':'text/html; charset=utf-8','.js':'text/javascript; charset=utf-8','.css':'text/css; charset=utf-8','.json':'application/json; charset=utf-8'};
@@ -28,8 +28,12 @@ const server=http.createServer(async(req,res)=>{
 
 await new Promise(resolve=>server.listen(0,'127.0.0.1',resolve));
 const {port}=server.address();
-const browser=await chromium.launch({headless:true});
-const context=await browser.newContext();
+const browserName=process.env.DIMP_BROWSER==='webkit'?'webkit':'chromium';
+const engine=browserName==='webkit'?webkit:chromium;
+const deviceName=process.env.DIMP_DEVICE||'';
+const device=deviceName&&devices[deviceName]?devices[deviceName]:{};
+const browser=await engine.launch({headless:true});
+const context=await browser.newContext({...device});
 
 await context.addInitScript(()=>{
   const NativeMutationObserver=window.MutationObserver;
@@ -86,8 +90,8 @@ async function responsivePing(label){
 }
 
 const HEADER_LINE='Planning estimates only, not financial, tax or mortgage advice. Your financial inputs are calculated and saved locally in your browser.';
-const HEADER_DETAILS='Rules simplified, as of 27 Oct 2026. Your inputs are stored in this browser\'s localStorage and are not sent to us or to any third party. Our web host sees standard request logs (e.g. IP address). "Start fresh" deletes everything this planner saved in this browser.';
-const FOOTER_RULES='2026 rules, verified 27 Oct 2026';
+const HEADER_DETAILS='Rules simplified, as of 14 Nov 2026. Your inputs are stored only in this browser (localStorage). They are not sent to us or to anyone else. This site is hosted on GitHub Pages. GitHub records the IP address of every visitor for security. See the GitHub Privacy Statement. "Start fresh" deletes everything this planner saved in this browser.';
+const FOOTER_RULES='2026 rules verified 14 Nov 2026';
 
 async function assertHeaderVisible(label){
   const result=await page.evaluate(({line,details,footer})=>{
@@ -115,8 +119,8 @@ async function assertHeaderVisible(label){
   },{line:HEADER_LINE,details:HEADER_DETAILS,footer:FOOTER_RULES});
   if(!result.ok)throw new Error(`${label}: header is not visible as approved: ${JSON.stringify(result)}`);
   const snapshot=await page.locator('header').ariaSnapshot();
-  if(!snapshot.includes('Rules simplified, as of 27 Oct 2026.'))throw new Error(`${label}: info text is missing from the accessibility tree: ${snapshot}`);
-  if(!snapshot.includes('not sent to us or to any third party'))throw new Error(`${label}: privacy detail is missing from the accessibility tree: ${snapshot}`);
+  if(!snapshot.includes('Rules simplified, as of 14 Nov 2026.'))throw new Error(`${label}: info text is missing from the accessibility tree: ${snapshot}`);
+  if(!snapshot.includes('not sent to us or to anyone else'))throw new Error(`${label}: privacy detail is missing from the accessibility tree: ${snapshot}`);
 }
 
 async function exerciseHeaderInfo(label){
@@ -276,6 +280,24 @@ try{
   await page.locator('#r65MortgageAdvanced > summary').click();
   await delay(300);
   const mortgage=await responsivePing('mortgage assumptions fold');
+
+  await page.locator('.tab[data-tab="mortgage"]').click();
+  await page.locator('#mortgageMode').selectOption('purchase');
+  await page.locator('#housePrice').fill('580000');
+  await page.locator('#housePrice').dispatchEvent('change');
+  await page.locator('#purchaseCostDetails').evaluate(el=>{el.open=true;});
+  await page.locator('#purchaseTransferTaxMode').selectOption('starter');
+  await page.locator('#purchaseNotaryTransferDate').fill('2026-06-15');
+  await page.locator('#purchaseNotaryTransferDate').dispatchEvent('input');
+  await page.locator('#purchaseNotaryTransferDate').dispatchEvent('change');
+  await page.waitForFunction(()=>Number(document.getElementById('purchaseTransferTax')?.value)>=11600);
+  const beforeTax=await page.locator('#purchaseTransferTax').inputValue();
+  await page.locator('#purchaseNotaryTransferDate').fill('2027-01-15');
+  await page.locator('#purchaseNotaryTransferDate').dispatchEvent('input');
+  await page.locator('#purchaseNotaryTransferDate').dispatchEvent('change');
+  await page.waitForFunction(()=>Number(document.getElementById('purchaseTransferTax')?.value)===0);
+  const afterTax=await page.locator('#purchaseTransferTax').inputValue();
+  if(Number(beforeTax)<11600||Number(afterTax)!==0)throw new Error(`starter transfer-date refresh failed: ${beforeTax} -> ${afterTax}`);
 
   if(pageErrors.length)throw new Error(`Browser page errors:\n${pageErrors.join('\n\n')}`);
   if(externalRequests.length)throw new Error(`Third-party requests:\n${externalRequests.join('\n')}`);
