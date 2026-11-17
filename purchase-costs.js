@@ -39,12 +39,12 @@ details.id='purchaseCostDetails';
 details.innerHTML=`
   <summary>Edit estimated purchase costs and 2026 rules</summary>
   <div class="inner-fold-body">
-    <p class="subsection-copy">Transfer tax and NHG are calculated automatically from the settings below. Other costs remain editable planning inputs.</p>
+    <p class="subsection-copy">Transfer tax is calculated from the settings below. NHG is not checked on this tab. Other costs remain editable planning inputs.</p>
+    <p class="subsection-copy">For 2027, only one confirmed change is included: the €615,000 starter exemption limit (for notary transfers from 1 Jan 2027). Other figures for 2027 and later, including tax and NHG limits, keep their 2026 values. The Hillen deduction follows its planned yearly reduction.</p>
     <div class="grid3 advanced-grid" id="purchaseRuleGrid">
       <div class="field"><label for="purchaseTransferTaxMode">Transfer-tax treatment</label><select id="purchaseTransferTaxMode"><option value="main" selected>Main residence · 2%</option><option value="starter">Starter exemption · 0% if eligible</option><option value="other-home">Residential property, not main residence · 8%</option><option value="other-real-estate">Other real estate · 10.4%</option><option value="manual">Manual amount</option></select><p class="inline">Starter exemption assumes you are 18–34, will use the home as your main residence, have not used the exemption before, and the full home value is ≤ €555,000.</p></div>
       <div class="field"><label for="purchaseAppraisedValue">Estimated market / appraised value</label><input id="purchaseAppraisedValue" type="number" min="0" step="1000" value="350000"><p class="inline">Defaults to house price until you edit it. Used for the LTV planning check and NHG sanity check.</p></div>
       <div class="field"><label for="purchaseNhgMode">NHG</label><select id="purchaseNhgMode"><option value="none" selected>No NHG</option><option value="standard">Standard NHG · 2026 limit €470,000</option><option value="energy">NHG with qualifying energy measures · up to €498,200</option></select><p class="inline">The planner applies the 0.4% NHG fee when the simplified eligibility check passes. R6.6 decision-grade NHG checks stay on the Scenario tab.</p></div>
-      <div class="field hidden" id="purchaseBindingOfferDateField"><label for="purchaseBindingOfferDate">Expected date of the binding mortgage offer (bindend aanbod)</label><input id="purchaseBindingOfferDate" type="date"></div>
       <div class="field"><label for="purchaseGroundLease">Yearly ground rent (canon), €</label><input id="purchaseGroundLease" type="number" min="0" step="50" value="0"></div>
       <div class="field"><label for="purchaseGroundRentBoughtOff">Ground rent bought off?</label><select id="purchaseGroundRentBoughtOff"><option value="no" selected>no</option><option value="yes">yes</option></select></div>
       <div class="field"><label for="purchaseGroundRentPerpetual">Perpetual and not tied to anyone's lifetime?</label><select id="purchaseGroundRentPerpetual"><option value="dont-know" selected>don't know</option><option value="yes">yes</option><option value="no">no</option></select></div>
@@ -119,13 +119,11 @@ function sync(){
     groundRentBoughtOff:document.getElementById('purchaseGroundRentBoughtOff')?.value==='yes',
     groundRentPerpetual:document.getElementById('purchaseGroundRentPerpetual')?.value||'dont-know',
     notaryCapitalisedCanon:notaryCanon,
-    notaryTransferDate:transferDate,
-    bindingOfferDate:document.getElementById('purchaseBindingOfferDate')?.value||''
+    notaryTransferDate:transferDate
   });
 
   const buying=document.getElementById('purchaseBuyingWith')?.value||'alone';
   document.getElementById('purchaseJointBuyers')?.classList.toggle('hidden',buying!=='one');
-  document.getElementById('purchaseBindingOfferDateField')?.classList.toggle('hidden',nhgMode.value==='none');
   const shareRaw=document.getElementById('purchaseBuyerAShare')?.value;
   const shareA=shareRaw===''||shareRaw==null?NaN:Number(shareRaw);
   const readout=document.getElementById('purchaseBuyerBShareReadout');
@@ -200,13 +198,10 @@ function sync(){
     ?`Estimated LTV: <strong>${pct(result.ltv.percentage)}</strong> of entered market value${result.ltv.overStandardLimit?' · above the normal 100% LTV limit.':' · within the normal 100% LTV limit.'}`
     :'Enter an appraised value for an LTV check.';
   let nhgText='NHG not selected.';
-  if(result.nhg.enabled){
-    nhgText=result.nhg.eligible
-      ?`Simplified NHG check passes. Estimated fee: <strong>${fmt(result.nhgFee)}</strong>.${result.nhg.warning?` ${result.nhg.warning}`:''}`
-      :`Simplified NHG check does not pass. ${result.nhg.warning}`;
-  }
+  // PENDING FEMKE WORDING REVIEW
+  if(result.nhg.enabled)nhgText='NHG is unavailable here; use the Scenario purchase-rule section.';
   const proposal=PR.residentialNonMainProposalNote({transferTaxMode:transferMode.value,notaryTransferDate:transferDate,acquisitionYear});
-  status.classList.toggle('warn',Boolean(result.ltv.warning||result.transferTax.warning||(result.nhg.enabled&&!result.nhg.eligible)||proposal||jointText));
+  status.classList.toggle('warn',Boolean(result.ltv.warning||result.transferTax.warning||proposal||jointText));
   status.innerHTML=`<strong>2026 purchase-rule check</strong><br>${transferLabel}<br>${result.transferTax.erfpachtNote?`${result.transferTax.erfpachtNote}<br>`:''}${proposal?`${proposal}<br>`:''}${jointText?`${jointText}<br>`:''}${ltvText}<br>${nhgText}<br><span>This is a planning screen, not an affordability or lender-acceptance decision. NHG also depends on the actual valuation, loan purpose and full NHG conditions.</span>`;
   totalInput.dispatchEvent(new Event('input',{bubbles:true}));
 }
@@ -221,7 +216,7 @@ housePrice?.addEventListener('input',sync);
 housePrice?.addEventListener('change',sync);
 ownSavings?.addEventListener('input',sync);
 ownSavings?.addEventListener('change',sync);
-['startYear','purchaseGroundLease','purchaseGroundRentBoughtOff','purchaseGroundRentPerpetual','purchaseGroundRentNotary','purchaseNotaryTransferDate','purchaseBindingOfferDate','purchaseBuyingWith','purchaseStarterMainResidence','purchaseBuyerAShare','purchaseBuyerAAge','purchaseBuyerAMain','purchaseBuyerAUsed','purchaseBuyerBAge','purchaseBuyerBMain','purchaseBuyerBUsed'].forEach(id=>{
+['startYear','purchaseGroundLease','purchaseGroundRentBoughtOff','purchaseGroundRentPerpetual','purchaseGroundRentNotary','purchaseNotaryTransferDate','purchaseBuyingWith','purchaseStarterMainResidence','purchaseBuyerAShare','purchaseBuyerAAge','purchaseBuyerAMain','purchaseBuyerAUsed','purchaseBuyerBAge','purchaseBuyerBMain','purchaseBuyerBUsed'].forEach(id=>{
   const el=document.getElementById(id);
   el?.addEventListener('input',sync);
   el?.addEventListener('change',sync);

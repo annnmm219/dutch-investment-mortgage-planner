@@ -63,9 +63,8 @@ async function prepareSecondHome(page){
   await show(page,'scenarioPropertyUseNew');
   await setField(page,'comparisonType','buy-rent');
   await setField(page,'scenarioPropertyUseNew','non-main');
-  await page.evaluate(()=>{const box=document.getElementById('scenarioBox3ModeFresh');if(box)box.value='current';});
+  await page.evaluate(()=>{const box=document.getElementById('scenarioBox3ModeFresh');if(box)box.value='current';const oldDays=document.getElementById('scenarioPropertyPrivateUseDaysNew');if(oldDays)oldDays.value='0';});
   await setField(page,'scenarioPropertyUsePatternNew','own-holiday');
-  await setField(page,'scenarioPropertyPrivateUseDaysNew',0);
   await setField(page,'scenarioPropertyRentalIncomeNew',0);
 }
 

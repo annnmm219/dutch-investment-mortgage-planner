@@ -9,6 +9,7 @@ const FC=require('../finance-core.js');
 const PR=require('../purchase-rules.js');
 const State=require('../app-state.js');
 const UI=require('../view-density.js');
+const OI=require('../output-integrity.js');
 
 const ROOT=path.resolve(__dirname,'..');
 const read=file=>fs.readFileSync(path.join(ROOT,file),'utf8');
@@ -134,7 +135,8 @@ test('LICENSE, copyright footer and borrowing notice are present and outside any
   const html=read('index.html');
   const visible=withoutDetails(html);
   assert.match(visible,new RegExp(FOOTER_LINE.replace(/[.*+?^${}()|[\]\\]/g,'\\$&')));
-  assert.match(visible,/Calculation build R6\.6 · released 4 Nov 2026 · patched not yet deployed · 2026 rules verified 14 Nov 2026/);
+  assert.match(visible,new RegExp(OI.releaseLabel().replace(/[.*+?^${}()|[\]\\]/g,'\\$&')));
+  assert.equal(OI.releaseLabel().includes('not yet deployed'),OI.RELEASE_META.patched==null);
   assert.doesNotMatch(html,/3 Sep 2026|2026-09-03/);
   assert.equal([...visible.matchAll(new RegExp(BORROWING_NOTICE.replace(/[.*+?^${}()|[\]\\]/g,'\\$&'),'g'))].length,2);
   assert.match(visible,new RegExp(HEADER_NOTICE.replace(/[.*+?^${}()|[\]\\]/g,'\\$&')));

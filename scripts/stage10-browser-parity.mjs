@@ -65,7 +65,7 @@ async function owned(page,d){
       await set(page,'scenarioPropertyUsePatternNew','own-holiday');
       await set(page,'scenarioDaysLetNew',Math.max(0,365-d.privateUseDays));
       await set(page,'scenarioBuildingDaysNew',0);
-      await set(page,'scenarioPropertyRentalIncomeNew',d.rentalIncome);await set(page,'scenarioPropertyIncomeGrowthNew',d.rentalGrowth);await set(page,'scenarioPropertyPrivateUseDaysNew',d.privateUseDays);await set(page,'scenarioPropertyPrivateUseWozNew',d.privateUseWoz);await settle(page);
+      await set(page,'scenarioPropertyRentalIncomeNew',d.rentalIncome);await set(page,'scenarioPropertyIncomeGrowthNew',d.rentalGrowth);await set(page,'scenarioPropertyPrivateUseDaysNew',d.privateUseDays,{allowHidden:true});await set(page,'scenarioPropertyPrivateUseWozNew',d.privateUseWoz);await settle(page);
     }
   }
   await settle(page);
@@ -112,7 +112,7 @@ async function targetedBoundaries(page){
   await planner(page,data('buy-rent',0));await page.locator('.tab[data-tab="scenarios"]').click();await page.locator('#scenarioSourceImported').check();await settle(page);
   const d=data('buy-rent',0);await owned(page,d);
   await set(page,'scenarioPurchaseTypeNew','new-build');await settle(page);let s=await snap(page);assert.equal(s.canonical.valid,false,'new-build purchase should be blocked');assert.match(s.canonical.reason,/existing homes only|new-build/i);
-  await set(page,'scenarioPurchaseTypeNew','existing-home');await set(page,'scenarioPropertyUseNew','non-main');await set(page,'scenarioPropertyUsePatternNew','long-term');await set(page,'scenarioTransferTaxModeNew','manual');await set(page,'scenarioManualTransferTaxNew',18000);await set(page,'scenarioPropertyRentalIncomeNew',0);await set(page,'scenarioPropertyPrivateUseDaysNew',0);await settle(page);s=await snap(page);assert.equal(s.canonical.valid,true,'manual transfer tax + explicit non-main classification should be valid');assert.equal(s.canonical.strategies.A.mortTax,0,'manual transfer tax may not imply Box 1');
+  await set(page,'scenarioPurchaseTypeNew','existing-home');await set(page,'scenarioPropertyUseNew','non-main');await set(page,'scenarioPropertyUsePatternNew','long-term');await set(page,'scenarioTransferTaxModeNew','manual');await set(page,'scenarioManualTransferTaxNew',18000);await set(page,'scenarioPropertyRentalIncomeNew',0);await set(page,'scenarioPropertyPrivateUseDaysNew',0,{allowHidden:true});await settle(page);s=await snap(page);assert.equal(s.canonical.valid,true,'manual transfer tax + explicit non-main classification should be valid');assert.equal(s.canonical.strategies.A.mortTax,0,'manual transfer tax may not imply Box 1');
   await set(page,'scenarioBox3ModeFresh','transition');await settle(page);s=await snap(page);assert.equal(s.canonical.valid,false,'non-main proposed/transition Box 3 should be blocked');assert.match(s.canonical.reason,/real-estate-specific|non-main-property/i);
   await set(page,'scenarioBox3ModeFresh','current');await set(page,'scenarioPropertyUseNew','main-residence');await set(page,'scenarioTransferTaxModeNew','main');await set(page,'scenarioPurchaseNhgModeNew','energy');await set(page,'scenarioNhgNonEnergyCostStackNew',470001);await set(page,'scenarioQualifyingEnergySpendNew',20000);await settle(page);s=await snap(page);assert.equal(s.canonical.valid,false,'NHG a-g stack above €470,000 should be rejected');assert.match(s.canonical.reason,/non-energy cost stack|NHG/i);
   return true;
