@@ -133,8 +133,12 @@ function calculatePurchase2026({
   const base=nonNegative(baseCosts);
   const acquired=taxableAcquisitionValue({price,appraisal,yearlyCanon,boughtOff:groundRentBoughtOff===true||boughtOff===true,perpetual:groundRentPerpetual||perpetual,notaryAmount:notaryCapitalisedCanon??notaryAmount,unencumberedValue,notaryTransferDate,acquisitionYear});
   const transferTaxBase=transferTaxMode==='manual'?Math.max(price,appraisal):acquired.transferTaxBase;
-  const transfer=transferTax2026({propertyValue:transferTaxBase,mode:transferTaxMode,manualAmount:manualTransferTax,acquisitionYear:acquired.acquisitionYear});
+  const effectiveMode=acquired.undetermined&&transferTaxMode==='starter'?'main':transferTaxMode;
+  const transfer=transferTax2026({propertyValue:transferTaxBase,mode:effectiveMode,manualAmount:manualTransferTax,acquisitionYear:acquired.acquisitionYear});
+  transfer.requestedMode=transferTaxMode;
+  transfer.effectiveMode=effectiveMode;
   transfer.erfpachtNote=acquired.undetermined&&transferTaxMode==='starter'?acquired.note:'';
+  if(acquired.undetermined&&transferTaxMode==='starter'){transfer.starterEligible=false;transfer.warning=acquired.note||ERFPACHT_STARTER_UNDETERMINED_NOTE;}
   transfer.taxableAcquisition=acquired;
 
   let nhgFee=0;
@@ -382,34 +386,70 @@ function jointPartLine(parts){
   return `Your part: ${a.share}% · Tax on your part: ${formatJointEuro(a.amount)}. Your co-buyer's part: ${c.share}% · Tax on their part: ${formatJointEuro(c.amount)}.`;
 }
 
-function jointBuyerRate(buyer,value,year){
+function ageIsBlank(age){return age==null||(typeof age==='string'&&age.trim()==='')||!Number.isFinite(Number(age));}
+function shareIsInvalid(share){const n=Number(share);return !Number.isFinite(n)||n<0||n>100;}
+
+function jointBuyerRate(buyer,value,year,undetermined){
   const main=buyer.mainHome!==false&&buyer.mainResidence!==false;
   if(!main)return{rate:RULES_2026.otherResidenceTransferTaxRate,eligible:false,mainHome:false};
   const limit=starterLimitForAcquisitionYear(year);
   const age=Number(buyer.age);
   const used=buyer.usedBefore===true||buyer.exemptionUnused===false;
   const ageOk=Number.isFinite(age)&&age>=18&&age<=34;
-  const eligible=value>0&&value<=limit&&ageOk&&!used;
+  const eligible=!undetermined&&value>0&&value<=limit&&ageOk&&!used;
   return{rate:eligible?0:RULES_2026.mainResidenceTransferTaxRate,eligible,mainHome:true};
 }
 
-function jointAcquisitionTax({propertyValue=0,buyers=null,buyerCount=null,notaryTransferDate,acquisitionYear,sharesUnknown=false}={}){
+const JOINT_MANUAL_LABEL='Transfer tax from your notary, €';
+const JOINT_SHARE_RANGE='Enter a share from 0% to 100%.';
+const JOINT_SHARE_SUM='The two shares must add up to 100%.';
+const JOINT_AGE_REQUIRED='Enter an age to check the starter exemption.';
+
+function jointUnavailable(year,value,line,reason){
+  return{available:false,automatic:false,manual:true,amount:null,label:JOINT_MANUAL_LABEL,line,intro:JOINT_INTRO,reason,acquisitionYear:year,wholeValue:value};
+}
+
+function jointAcquisitionTax({propertyValue=0,buyers=null,buyerCount=null,notaryTransferDate,acquisitionYear,sharesUnknown=false,undetermined=false}={}){
   const year=transferYear({notaryTransferDate,acquisitionYear});
   const value=nonNegative(propertyValue);
   const count=buyerCount==null?(Array.isArray(buyers)?buyers.length:1):Number(buyerCount);
   if(count>=3||sharesUnknown||!Array.isArray(buyers)||buyers.length!==2){
-    return{available:false,automatic:false,amount:null,line:JOINT_UNAVAILABLE,intro:JOINT_INTRO,acquisitionYear:year,wholeValue:value};
+    return jointUnavailable(year,value,JOINT_UNAVAILABLE,'buyers');
   }
-  const shareSum=buyers.reduce((sum,buyer)=>sum+Number(buyer.share||0),0);
-  if(Math.abs(shareSum-100)>.05)return{available:false,automatic:false,amount:null,line:JOINT_UNAVAILABLE,intro:JOINT_INTRO,reason:'shares',acquisitionYear:year,wholeValue:value};
+  if(buyers.some(buyer=>shareIsInvalid(buyer.share)))return jointUnavailable(year,value,JOINT_SHARE_RANGE,'share-range');
+  const shareSum=buyers.reduce((sum,buyer)=>sum+Number(buyer.share),0);
+  if(Math.abs(shareSum-100)>.05)return jointUnavailable(year,value,JOINT_SHARE_SUM,'shares');
+  if(buyers.some(buyer=>ageIsBlank(buyer.age)))return jointUnavailable(year,value,JOINT_AGE_REQUIRED,'age');
   const parts=buyers.map(buyer=>{
-    const rated=jointBuyerRate(buyer,value,year);
+    const rated=jointBuyerRate(buyer,value,year,undetermined===true);
     const share=Number(buyer.share);
     return{share,rate:rated.rate,eligible:rated.eligible,mainHome:rated.mainHome,amount:value*(share/100)*rated.rate};
   });
   const amount=parts.reduce((sum,part)=>sum+part.amount,0);
   const nonMain=parts.some(part=>!part.mainHome);
-  return{available:true,automatic:true,amount,parts,line:jointPartLine(parts),intro:JOINT_INTRO,acquisitionYear:year,starterLimit:starterLimitForAcquisitionYear(year),wholeValue:value,proposalNote:nonMain&&year>=2027?TRANSFER_2027_NOTE:''};
+  const note=undetermined?ERFPACHT_STARTER_UNDETERMINED_NOTE:'';
+  const line=`${jointPartLine(parts)}${note?` ${note}`:''}`;
+  return{available:true,automatic:true,manual:false,amount,parts,line,intro:JOINT_INTRO,note,acquisitionYear:year,starterLimit:starterLimitForAcquisitionYear(year),wholeValue:value,proposalNote:nonMain&&year>=2027?TRANSFER_2027_NOTE:''};
+}
+
+function mortgageTabTransfer(input={}){
+  const buying=input.buying||'alone';
+  const mode=['main','starter','other-home','other-real-estate','manual'].includes(input.transferTaxMode)?input.transferTaxMode:'main';
+  const jointModes=mode==='main'||mode==='starter'||mode==='other-home';
+  if(mode==='manual'&&buying==='alone'){
+    return{automatic:false,manual:true,amount:nonNegative(input.manualTransferTax),label:'Transfer tax',line:'',transferTaxBase:Math.max(nonNegative(input.housePrice),nonNegative(input.appraisedValue))};
+  }
+  if(buying==='three'||(buying==='one'&&!jointModes)){
+    return{automatic:false,manual:true,amount:null,label:JOINT_MANUAL_LABEL,line:JOINT_UNAVAILABLE,intro:JOINT_INTRO};
+  }
+  const acquired=taxableAcquisitionValue({price:input.housePrice,appraisal:input.appraisedValue,yearlyCanon:input.yearlyCanon,boughtOff:input.groundRentBoughtOff===true,perpetual:input.groundRentPerpetual||'dont-know',notaryAmount:input.notaryCapitalisedCanon,notaryTransferDate:input.notaryTransferDate,acquisitionYear:input.acquisitionYear});
+  if(buying==='one'){
+    const joint=jointAcquisitionTax({propertyValue:acquired.transferTaxBase,buyers:input.buyers,notaryTransferDate:input.notaryTransferDate,acquisitionYear:acquired.acquisitionYear,undetermined:acquired.undetermined&&mode==='starter'});
+    if(!joint.available)return{automatic:false,manual:true,amount:null,label:JOINT_MANUAL_LABEL,line:joint.line,intro:joint.intro};
+    return{automatic:true,manual:false,amount:joint.amount,label:'Transfer tax',line:`${joint.intro} ${joint.line}${joint.proposalNote?` ${joint.proposalNote}`:''}`,note:joint.note,proposalNote:joint.proposalNote,joint};
+  }
+  const purchase=calculatePurchase2026(input);
+  return{automatic:!input.manualHold,manual:false,amount:purchase.transferTax.amount,label:'Transfer tax',line:purchase.transferTax.erfpachtNote||'',note:purchase.transferTax.erfpachtNote,purchase};
 }
 
 function residentialNonMainProposalNote({transferTaxMode,notaryTransferDate,acquisitionYear,mainHome=true}={}){
@@ -418,5 +458,5 @@ function residentialNonMainProposalNote({transferTaxMode,notaryTransferDate,acqu
   return eightPercent&&year>=2027?TRANSFER_2027_NOTE:'';
 }
 
-return{RULES_2026,starterAcquisitionYear,starterLimitForAcquisitionYear,transferYear,resolveErfpachtCanon,starterPropertyValue,taxableAcquisitionValue,applyStarterWithErfpacht,jointAcquisitionTax,residentialNonMainProposalNote,JOINT_INTRO,JOINT_UNAVAILABLE,TRANSFER_2027_NOTE,ERFPACHT_CANON_MULTIPLE,ERFPACHT_STARTER_UNDETERMINED_NOTE,ERFPACHT_INCLUDED_NOTE_2026,ERFPACHT_INCLUDED_NOTE_FROM_2027,ERFPACHT_ABOVE_STARTER_LIMIT_NOTE,ERFPACHT_NOTARY_INCLUDED_NOTE_2026,ERFPACHT_NOTARY_INCLUDED_NOTE_FROM_2027,ERFPACHT_NOTARY_ABOVE_STARTER_LIMIT_NOTE,transferTax2026,nhg2026,ltv2026,calculatePurchase2026,starterEligibility2026,calculateScenarioPurchase2026};
+return{RULES_2026,starterAcquisitionYear,starterLimitForAcquisitionYear,transferYear,resolveErfpachtCanon,starterPropertyValue,taxableAcquisitionValue,applyStarterWithErfpacht,jointAcquisitionTax,mortgageTabTransfer,residentialNonMainProposalNote,JOINT_INTRO,JOINT_UNAVAILABLE,JOINT_MANUAL_LABEL,JOINT_SHARE_RANGE,JOINT_SHARE_SUM,JOINT_AGE_REQUIRED,TRANSFER_2027_NOTE,ERFPACHT_CANON_MULTIPLE,ERFPACHT_STARTER_UNDETERMINED_NOTE,ERFPACHT_INCLUDED_NOTE_2026,ERFPACHT_INCLUDED_NOTE_FROM_2027,ERFPACHT_ABOVE_STARTER_LIMIT_NOTE,ERFPACHT_NOTARY_INCLUDED_NOTE_2026,ERFPACHT_NOTARY_INCLUDED_NOTE_FROM_2027,ERFPACHT_NOTARY_ABOVE_STARTER_LIMIT_NOTE,transferTax2026,nhg2026,ltv2026,calculatePurchase2026,starterEligibility2026,calculateScenarioPurchase2026};
 });

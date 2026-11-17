@@ -253,6 +253,10 @@ function normalize(config={}){
     daysLet:rawPurchaseRules.daysLet,
     buildingDays:rawPurchaseRules.buildingDays,
     fixedTermLease:rawPurchaseRules.fixedTermLease===true,
+    relatedPartyRent:rawPurchaseRules.relatedPartyRent===true,
+    partOfBuilding:rawPurchaseRules.partOfBuilding===true,
+    buyingWith:['alone','one','three'].includes(rawPurchaseRules.buyingWith)?rawPurchaseRules.buyingWith:'alone',
+    jointManual:rawPurchaseRules.jointManual===true,
     ownedAllCalendarYear:rawPurchaseRules.ownedAllCalendarYear,
     boughtDuringYear:rawPurchaseRules.boughtDuringYear===true,
     soldDuringYear:rawPurchaseRules.soldDuringYear===true
@@ -566,6 +570,9 @@ engine.innerHTML=`
         <div class="field"><label for="scenarioTransferTaxModeNew">Transfer-tax treatment</label><select id="scenarioTransferTaxModeNew"><option value="main" selected>Main residence · 2%</option><option value="starter">Starter exemption · verify all conditions</option><option value="other-home">Residential property, not main residence · 8%</option><option value="other-real-estate">Other real estate · 10.4%</option><option value="manual">Manual amount</option></select></div>
         <div class="field hidden" id="scenarioManualTransferTaxFieldNew"><label for="scenarioManualTransferTaxNew">Manual transfer-tax amount</label><input id="scenarioManualTransferTaxNew" type="number" min="0" step="100" value="0"></div>
         <div class="field"><label for="scenarioPurchaseNhgModeNew">NHG treatment</label><select id="scenarioPurchaseNhgModeNew"><option value="none" selected>No NHG</option><option value="standard">Standard NHG</option><option value="energy">NHG with qualifying energy measures</option></select><p class="inline">The simplified rule check uses this scenario's price, appraisal and mortgage amount.</p></div>
+        <div class="field hidden" id="scenarioBindingOfferDateField"><label for="scenarioBindingOfferDateNew">Expected date of the binding mortgage offer (bindend aanbod)</label><input id="scenarioBindingOfferDateNew" type="date"></div>
+        <div class="field"><label for="scenarioBuyingWithNew">Buying alone or with someone?</label><select id="scenarioBuyingWithNew"><option value="alone" selected>Buying alone</option><option value="one">With one other person</option><option value="three">Three or more buyers</option></select><p class="inline">Buying with someone else? Each buyer is checked on their own. The starter exemption only covers the part of the home that a starter buys. The price limit is for the whole home, not for each part.</p></div>
+        <div class="field hidden" id="scenarioJointManualField"><label for="scenarioJointTransferTaxNew">Transfer tax from your notary, €</label><input id="scenarioJointTransferTaxNew" type="number" min="0" step="100" value=""><p class="inline">We can't work out transfer tax for this purchase yet. Please ask your notary for the amount and enter it here.</p></div>
         <div class="field hidden" id="scenarioBuyerAgeFieldNew"><label for="scenarioBuyerAgeNew">Buyer age at acquisition</label><input id="scenarioBuyerAgeNew" type="number" min="0" max="120" step="1" value="35"></div>
       </div>
       <div id="scenarioStarterConditionsNew" class="grid2 hidden">
@@ -632,6 +639,7 @@ startingCard.innerHTML=`<div class="section-head"><div><p class="section-label">
   <div class="field"><label for="scenarioFirstJan1PortfolioFresh">First-year 1 January portfolio</label><input id="scenarioFirstJan1PortfolioFresh" type="number" min="0" step="100" data-optional="true" placeholder="Needed for a mid-year start"></div>
   <div class="field"><label for="scenarioFirstJan1SavingsFresh">First-year 1 January savings</label><input id="scenarioFirstJan1SavingsFresh" type="number" min="0" step="100" data-optional="true" placeholder="Needed for a mid-year start"></div>
   <div class="field"><label for="scenarioFirstJan1DebtFresh">First-year 1 January Box 3 debt</label><input id="scenarioFirstJan1DebtFresh" type="number" min="0" step="100" data-optional="true" placeholder="Needed for a mid-year start"></div>
+  <p class="inline" id="scenarioPeildatumLine">Box 3 uses what you owned and owed on 1 January. A home or investment you buy later in January counts from 1 January next year. One you sell later in January still counts this year. Enter your 1 January values from before the purchase or sale.</p>
   <div class="field"><label for="scenarioDebtRepaymentFresh">Monthly Box 3 debt repayment</label><input id="scenarioDebtRepaymentFresh" type="number" min="0" step="50" value="0"></div>
   <div class="field"><label for="scenarioDebtRepaymentSourceFresh">Debt repayment source</label><select id="scenarioDebtRepaymentSourceFresh"><option value="external" selected>External cash flow</option><option value="savings">Savings</option></select></div>
   <div class="field"><label for="scenarioFutureStartFresh">Assumed start year of the proposed rules</label><input id="scenarioFutureStartFresh" type="number" min="2028" max="2100" step="1" value="${F3.startYear}"><p class="inline">Not settled. The version passed by the Tweede Kamer on 12 Nov 2026 starts on 1 January 2029. The Eerste Kamer has not voted. You can change this year.</p></div>
@@ -745,6 +753,8 @@ function purchaseRuleConfig(){
     manualTransferTax:Math.max(0,num('scenarioManualTransferTaxNew',0)),
     appraisedValue:optional('scenarioPurchaseAppraisedValueNew'),
     nhgMode:$('scenarioPurchaseNhgModeNew')?.value||'none',
+    bindingOfferDate:$('scenarioBindingOfferDateNew')?.value||'',
+    buyingWith:$('scenarioBuyingWithNew')?.value||'alone',
     buyerAge:clamp(num('scenarioBuyerAgeNew',35),0,120),
     starterMainResidence:$('scenarioStarterMainResidenceNew')?.checked!==false,
     starterExemptionUnused:$('scenarioStarterUnusedNew')?.checked!==false,
@@ -782,6 +792,8 @@ function visibility(){
   $('scenarioPurchaseBorrowingNotice')?.classList.toggle('hidden',!purchaseMode);
   $('scenarioManualTransferTaxFieldNew')?.classList.toggle('hidden',transferMode!=='manual');
   $('scenarioBuyerAgeFieldNew')?.classList.toggle('hidden',transferMode!=='starter');
+  $('scenarioBindingOfferDateField')?.classList.toggle('hidden',($('scenarioPurchaseNhgModeNew')?.value||'none')==='none');
+  $('scenarioJointManualField')?.classList.toggle('hidden',($('scenarioBuyingWithNew')?.value||'alone')==='alone');
   $('scenarioStarterConditionsNew')?.classList.toggle('hidden',transferMode!=='starter');
   $('scenarioStartingDataCard')?.classList.toggle('hidden',!scenarioSourceMode);
   $('scenarioExistingMortgageFresh')?.classList.toggle('hidden',purchaseMode);

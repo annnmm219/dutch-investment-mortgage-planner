@@ -44,23 +44,24 @@ details.innerHTML=`
       <div class="field"><label for="purchaseTransferTaxMode">Transfer-tax treatment</label><select id="purchaseTransferTaxMode"><option value="main" selected>Main residence · 2%</option><option value="starter">Starter exemption · 0% if eligible</option><option value="other-home">Residential property, not main residence · 8%</option><option value="other-real-estate">Other real estate · 10.4%</option><option value="manual">Manual amount</option></select><p class="inline">Starter exemption assumes you are 18–34, will use the home as your main residence, have not used the exemption before, and the full home value is ≤ €555,000.</p></div>
       <div class="field"><label for="purchaseAppraisedValue">Estimated market / appraised value</label><input id="purchaseAppraisedValue" type="number" min="0" step="1000" value="350000"><p class="inline">Defaults to house price until you edit it. Used for the LTV planning check and NHG sanity check.</p></div>
       <div class="field"><label for="purchaseNhgMode">NHG</label><select id="purchaseNhgMode"><option value="none" selected>No NHG</option><option value="standard">Standard NHG · 2026 limit €470,000</option><option value="energy">NHG with qualifying energy measures · up to €498,200</option></select><p class="inline">The planner applies the 0.4% NHG fee when the simplified eligibility check passes. R6.6 decision-grade NHG checks stay on the Scenario tab.</p></div>
+      <div class="field hidden" id="purchaseBindingOfferDateField"><label for="purchaseBindingOfferDate">Expected date of the binding mortgage offer (bindend aanbod)</label><input id="purchaseBindingOfferDate" type="date"></div>
       <div class="field"><label for="purchaseGroundLease">Yearly ground rent (canon), €</label><input id="purchaseGroundLease" type="number" min="0" step="50" value="0"></div>
       <div class="field"><label for="purchaseGroundRentBoughtOff">Ground rent bought off?</label><select id="purchaseGroundRentBoughtOff"><option value="no" selected>no</option><option value="yes">yes</option></select></div>
       <div class="field"><label for="purchaseGroundRentPerpetual">Perpetual and not tied to anyone's lifetime?</label><select id="purchaseGroundRentPerpetual"><option value="dont-know" selected>don't know</option><option value="yes">yes</option><option value="no">no</option></select></div>
       <div class="field"><label for="purchaseGroundRentNotary">Capitalised ground rent from your notary, €</label><input id="purchaseGroundRentNotary" type="number" min="0" step="100" value="" data-optional="true"></div>
       <div class="field"><label for="purchaseNotaryTransferDate">Expected notary transfer date (levering)</label><input id="purchaseNotaryTransferDate" type="date"></div>
       <div class="field"><label for="purchaseBuyingWith">Buying alone or with someone?</label><select id="purchaseBuyingWith"><option value="alone" selected>Buying alone</option><option value="one">With one other person</option><option value="three">Three or more buyers</option></select><p class="inline">Buying with someone else? Each buyer is checked on their own. The starter exemption only covers the part of the home that a starter buys. The price limit is for the whole home, not for each part.</p></div>
-      <!-- PENDING FEMKE WORDING REVIEW: joint-buyer field labels below are not in the rulings file -->
-      <div id="purchaseJointBuyers" class="grid3 hidden">
-        <div class="field"><label for="purchaseBuyerAShare">Your share of ownership %</label><input id="purchaseBuyerAShare" type="number" min="0" max="100" step="1" value="50"></div>
-        <div class="field"><label for="purchaseBuyerAAge">Your age at the notary date</label><input id="purchaseBuyerAAge" type="number" min="0" max="120" step="1" value="30"></div>
-        <div class="toggle"><input id="purchaseBuyerAMain" type="checkbox" checked><label for="purchaseBuyerAMain">You will live there as your main home</label></div>
-        <div class="toggle"><input id="purchaseBuyerAUsed" type="checkbox"><label for="purchaseBuyerAUsed">You have used the starter exemption before</label></div>
-        <div class="field"><label for="purchaseBuyerBAge">Co-buyer age at the notary date</label><input id="purchaseBuyerBAge" type="number" min="0" max="120" step="1" value="40"></div>
-        <div class="toggle"><input id="purchaseBuyerBMain" type="checkbox" checked><label for="purchaseBuyerBMain">Your co-buyer will live there as their main home</label></div>
-        <div class="toggle"><input id="purchaseBuyerBUsed" type="checkbox"><label for="purchaseBuyerBUsed">Your co-buyer has used the starter exemption before</label></div>
+      <div id="purchaseJointBuyers" class="grid3 hidden" aria-label="Details for each buyer">
+        <div class="field"><label for="purchaseBuyerAShare">Your share of the home (%)</label><input id="purchaseBuyerAShare" type="number" min="0" max="100" step="1" value=""><p class="inline" id="purchaseBuyerAShareHelp">Your co-buyer's share is the rest: —%.</p><p class="inline" id="purchaseBuyerAShareError"></p></div>
+        <div class="field"><label for="purchaseBuyerBShareReadout">Co-buyer's share of the home (%)</label><input id="purchaseBuyerBShareReadout" type="text" readonly value=""></div>
+        <div class="field"><label for="purchaseBuyerAAge">Your age on the notary transfer date</label><input id="purchaseBuyerAAge" type="number" min="0" max="120" step="1" value="" aria-describedby="purchaseBuyerAAgeHelp"><p class="inline" id="purchaseBuyerAAgeHelp">The starter exemption is for buyers aged 18 to 34 on the notary transfer date.</p><p class="inline" id="purchaseBuyerAAgeError"></p></div>
+        <div class="toggle"><input id="purchaseBuyerAMain" type="checkbox" checked><label for="purchaseBuyerAMain">You will live in the home as your main residence</label></div>
+        <div class="toggle"><input id="purchaseBuyerAUsed" type="checkbox" aria-describedby="purchaseBuyerAUsedHelp"><label for="purchaseBuyerAUsed">You have used the starter exemption before</label><p class="inline" id="purchaseBuyerAUsedHelp">Each person can use the starter exemption only once.</p></div>
+        <div class="field"><label for="purchaseBuyerBAge">Co-buyer's age on the notary transfer date</label><input id="purchaseBuyerBAge" type="number" min="0" max="120" step="1" value="" aria-describedby="purchaseBuyerBAgeHelp"><p class="inline" id="purchaseBuyerBAgeHelp">The starter exemption is for buyers aged 18 to 34 on the notary transfer date.</p><p class="inline" id="purchaseBuyerBAgeError"></p></div>
+        <div class="toggle"><input id="purchaseBuyerBMain" type="checkbox" checked><label for="purchaseBuyerBMain">Your co-buyer will live in the home as their main residence</label></div>
+        <div class="toggle"><input id="purchaseBuyerBUsed" type="checkbox" aria-describedby="purchaseBuyerBUsedHelp"><label for="purchaseBuyerBUsed">Your co-buyer has used the starter exemption before</label><p class="inline" id="purchaseBuyerBUsedHelp">Each person can use the starter exemption only once.</p></div>
       </div>
-      <div class="toggle"><input id="purchaseStarterMainResidence" type="checkbox" checked><label for="purchaseStarterMainResidence">I will use the property as my main residence</label><p class="inline">Choose "main residence" if you will live in the home as your main home, including if you will move in within 3 years. Choose "not my main residence" for a second home, holiday home or a home you rent out.</p></div>
+      <div class="toggle"><input id="purchaseStarterMainResidence" type="checkbox" checked><label for="purchaseStarterMainResidence">I will use the property as my main residence</label><p class="inline">Choose "Main residence · 2%" if you will live in the home as your main home, including if you will move in within 3 years. Choose "Residential property, not main residence · 8%" for a second home, holiday home or a home you rent out.</p></div>
     </div>
     <div class="grid3 advanced-grid" id="purchaseCostGrid"></div>
     <div class="callout"><strong>Total estimated purchase costs: <span id="purchaseCostsBreakdownTotal">—</span></strong><br><span>All non-tax fee amounts are illustrative and editable.</span></div>
@@ -121,11 +122,63 @@ function sync(){
     notaryTransferDate:transferDate
   });
 
-  if(!manual)transferInput.value=String(Math.round(result.transferTax.amount*100)/100);
+  const buying=document.getElementById('purchaseBuyingWith')?.value||'alone';
+  document.getElementById('purchaseJointBuyers')?.classList.toggle('hidden',buying!=='one');
+  document.getElementById('purchaseBindingOfferDateField')?.classList.toggle('hidden',nhgMode.value==='none');
+  const shareRaw=document.getElementById('purchaseBuyerAShare')?.value;
+  const shareA=shareRaw===''||shareRaw==null?NaN:Number(shareRaw);
+  const readout=document.getElementById('purchaseBuyerBShareReadout');
+  const shareHelp=document.getElementById('purchaseBuyerAShareHelp');
+  const shareError=document.getElementById('purchaseBuyerAShareError');
+  if(Number.isFinite(shareA)){
+    if(readout)readout.value=String(Math.round((100-shareA)*1000)/1000);
+    if(shareHelp)shareHelp.textContent=`Your co-buyer's share is the rest: ${100-shareA}%.`;
+    if(shareError)shareError.textContent=shareA<0||shareA>100?'Enter a share from 0% to 100%.':'';
+  }else{
+    if(readout)readout.value='';
+    if(shareHelp)shareHelp.textContent='Your co-buyer\'s share is the rest: —%.';
+    if(shareError)shareError.textContent=buying==='one'?'Enter a share from 0% to 100%.':'';
+  }
+  const ageA=document.getElementById('purchaseBuyerAAge')?.value??'';
+  const ageB=document.getElementById('purchaseBuyerBAge')?.value??'';
+  const ageError=id=>document.getElementById(id);
+  if(ageError('purchaseBuyerAAgeError'))ageError('purchaseBuyerAAgeError').textContent=buying==='one'&&String(ageA).trim()===''?'Enter an age to check the starter exemption.':'';
+  if(ageError('purchaseBuyerBAgeError'))ageError('purchaseBuyerBAgeError').textContent=buying==='one'&&String(ageB).trim()===''?'Enter an age to check the starter exemption.':'';
+  const tab=PR.mortgageTabTransfer({
+    housePrice:price,ownSavings:Math.max(0,Number(ownSavings?.value)||0),baseCosts:baseCosts(),transferTaxMode:transferMode.value,
+    manualTransferTax:Math.max(0,Number(transferInput.value)||0),appraisedValue:Math.max(0,Number(appraisal.value)||0),nhgMode:nhgMode.value,acquisitionYear,
+    yearlyCanon:document.getElementById('purchaseGroundLease')?.value,groundRentBoughtOff:document.getElementById('purchaseGroundRentBoughtOff')?.value==='yes',
+    groundRentPerpetual:document.getElementById('purchaseGroundRentPerpetual')?.value||'dont-know',notaryCapitalisedCanon:notaryCanon,notaryTransferDate:transferDate,buying,
+    buyers:[{share:shareA,age:ageA,usedBefore:document.getElementById('purchaseBuyerAUsed')?.checked===true,mainHome:document.getElementById('purchaseBuyerAMain')?.checked!==false},{share:Number.isFinite(shareA)?100-shareA:NaN,age:ageB,usedBefore:document.getElementById('purchaseBuyerBUsed')?.checked===true,mainHome:document.getElementById('purchaseBuyerBMain')?.checked!==false}]
+  });
+  const transferFieldLabel=document.querySelector('label[for="purchaseTransferTax"]');
+  const jointModes=transferMode.value==='main'||transferMode.value==='starter'||transferMode.value==='other-home';
+  let transferAmount=result.transferTax.amount;
+  let jointText='';
+  if(buying!=='alone'&&(jointModes||buying==='three')){
+    if(transferFieldLabel)transferFieldLabel.textContent=tab.manual?'Transfer tax from your notary, €':tab.label;
+    jointText=tab.line||'';
+    if(!tab.automatic){
+      transferInput.disabled=false;
+      if(transferInput.dataset.jointManual!=='1'){transferInput.value='';transferInput.dataset.jointManual='1';}
+      transferAmount=Math.max(0,Number(transferInput.value)||0);
+    }else{
+      delete transferInput.dataset.jointManual;
+      transferInput.disabled=true;
+      transferInput.value=String(Math.round(tab.amount*100)/100);
+      transferAmount=tab.amount;
+    }
+  }else{
+    delete transferInput.dataset.jointManual;
+    if(transferFieldLabel)transferFieldLabel.textContent='Transfer tax';
+    transferInput.disabled=!manual;
+    if(!manual)transferInput.value=String(Math.round(result.transferTax.amount*100)/100);
+  }
+  const totalCosts=result.totalCosts+(transferAmount-result.transferTax.amount);
   nhgInput.value=String(Math.round(result.nhgFee*100)/100);
-  totalInput.value=String(Math.round(result.totalCosts*100)/100);
-  document.getElementById('purchaseCostsDisplay').textContent=fmt(result.totalCosts);
-  document.getElementById('purchaseCostsBreakdownTotal').textContent=fmt(result.totalCosts);
+  totalInput.value=String(Math.round(totalCosts*100)/100);
+  document.getElementById('purchaseCostsDisplay').textContent=fmt(totalCosts);
+  document.getElementById('purchaseCostsBreakdownTotal').textContent=fmt(totalCosts);
 
   const status=document.getElementById('purchaseRuleStatus');
   const starterYear=result.transferTax.acquisitionYear||PR.starterAcquisitionYear(acquisitionYear);
@@ -151,20 +204,7 @@ function sync(){
       ?`Simplified NHG check passes. Estimated fee: <strong>${fmt(result.nhgFee)}</strong>.${result.nhg.warning?` ${result.nhg.warning}`:''}`
       :`Simplified NHG check does not pass. ${result.nhg.warning}`;
   }
-  document.getElementById('purchaseJointBuyers')?.classList.toggle('hidden',(document.getElementById('purchaseBuyingWith')?.value||'alone')!=='one');
   const proposal=PR.residentialNonMainProposalNote({transferTaxMode:transferMode.value,notaryTransferDate:transferDate,acquisitionYear});
-  const buying=document.getElementById('purchaseBuyingWith')?.value||'alone';
-  let jointText='';
-  if(buying==='three')jointText=PR.JOINT_UNAVAILABLE;
-  else if(buying==='one'){
-    const shareA=Number(document.getElementById('purchaseBuyerAShare')?.value)||50;
-    const joint=PR.jointAcquisitionTax({propertyValue:result.transferTaxBase,notaryTransferDate:transferDate,acquisitionYear,buyers:[
-      {share:shareA,age:Number(document.getElementById('purchaseBuyerAAge')?.value)||30,usedBefore:document.getElementById('purchaseBuyerAUsed')?.checked===true,mainHome:document.getElementById('purchaseBuyerAMain')?.checked!==false},
-      {share:100-shareA,age:Number(document.getElementById('purchaseBuyerBAge')?.value)||40,usedBefore:document.getElementById('purchaseBuyerBUsed')?.checked===true,mainHome:document.getElementById('purchaseBuyerBMain')?.checked!==false}
-    ]});
-    if(joint.automatic){transferInput.value=String(Math.round(joint.amount*100)/100);jointText=`${joint.intro} ${joint.line}${joint.proposalNote?` ${joint.proposalNote}`:''}`;}
-    else jointText=joint.line;
-  }
   status.classList.toggle('warn',Boolean(result.ltv.warning||result.transferTax.warning||(result.nhg.enabled&&!result.nhg.eligible)||proposal||jointText));
   status.innerHTML=`<strong>2026 purchase-rule check</strong><br>${transferLabel}<br>${result.transferTax.erfpachtNote?`${result.transferTax.erfpachtNote}<br>`:''}${proposal?`${proposal}<br>`:''}${jointText?`${jointText}<br>`:''}${ltvText}<br>${nhgText}<br><span>This is a planning screen, not an affordability or lender-acceptance decision. NHG also depends on the actual valuation, loan purpose and full NHG conditions.</span>`;
   totalInput.dispatchEvent(new Event('input',{bubbles:true}));
@@ -180,7 +220,7 @@ housePrice?.addEventListener('input',sync);
 housePrice?.addEventListener('change',sync);
 ownSavings?.addEventListener('input',sync);
 ownSavings?.addEventListener('change',sync);
-['startYear','purchaseGroundLease','purchaseGroundRentBoughtOff','purchaseGroundRentPerpetual','purchaseGroundRentNotary','purchaseNotaryTransferDate','purchaseBuyingWith','purchaseStarterMainResidence','purchaseBuyerAShare','purchaseBuyerAAge','purchaseBuyerAMain','purchaseBuyerAUsed','purchaseBuyerBAge','purchaseBuyerBMain','purchaseBuyerBUsed'].forEach(id=>{
+['startYear','purchaseGroundLease','purchaseGroundRentBoughtOff','purchaseGroundRentPerpetual','purchaseGroundRentNotary','purchaseNotaryTransferDate','purchaseBindingOfferDate','purchaseBuyingWith','purchaseStarterMainResidence','purchaseBuyerAShare','purchaseBuyerAAge','purchaseBuyerAMain','purchaseBuyerAUsed','purchaseBuyerBAge','purchaseBuyerBMain','purchaseBuyerBUsed'].forEach(id=>{
   const el=document.getElementById(id);
   el?.addEventListener('input',sync);
   el?.addEventListener('change',sync);

@@ -11,7 +11,7 @@ const RELEASE_META=Object.freeze({
   version:'R6.6',
   ruleYear:2026,
   updated:'2026-11-04',
-  patched:'2026-11-14',
+  patched:null,
   stateSchema:4,
   releaseName:'Decision Integrity'
 });
@@ -66,7 +66,7 @@ function shortDate(iso){
 }
 
 function releaseLabel(meta=RELEASE_META){
-  const patch=meta.patched?`patched ${shortDate(meta.patched)}`:'not patched since release';
+  const patch=meta.patched?`patched ${shortDate(meta.patched)}`:'patched not yet deployed';
   return `Calculation build ${meta.version} · released ${shortDate(meta.updated)} · ${patch} · ${meta.ruleYear} rules verified ${shortDate(Policy2026.LAST_VERIFIED_AT)}`;
 }
 

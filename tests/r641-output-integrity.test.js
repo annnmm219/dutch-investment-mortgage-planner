@@ -44,7 +44,7 @@ test('R6.6 is the single final output release identity',()=>{
   assert.equal(OI.RELEASE_META.version,'R6.6');
   assert.equal(OI.RELEASE_META.ruleYear,2026);
   assert.equal(OI.RELEASE_META.updated,'2026-11-04');
-  assert.equal(OI.releaseLabel(),'Calculation build R6.6 · released 4 Nov 2026 · patched 14 Nov 2026 · 2026 rules verified 14 Nov 2026');
+  assert.equal(OI.releaseLabel(),'Calculation build R6.6 · released 4 Nov 2026 · patched not yet deployed · 2026 rules verified 14 Nov 2026');
 });
 
 test('money formatting never converts null or undefined into €0',()=>{

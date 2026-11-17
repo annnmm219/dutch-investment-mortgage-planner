@@ -11,7 +11,7 @@ const read=file=>fs.readFileSync(path.join(ROOT,file),'utf8');
 
 test('the static footer matches the JavaScript release label',()=>{
   const label=OI.releaseLabel();
-  assert.equal(label,'Calculation build R6.6 · released 4 Nov 2026 · patched 14 Nov 2026 · 2026 rules verified 14 Nov 2026');
+  assert.equal(label,'Calculation build R6.6 · released 4 Nov 2026 · patched not yet deployed · 2026 rules verified 14 Nov 2026');
   assert.ok(read('index.html').includes(label));
   assert.equal(read('index.html').includes('<actual merge/deploy date>'),false);
 });

@@ -49,9 +49,9 @@ function monthCountFromPlan(config={}){
   return 0;
 }
 
-function regimeForYear(mode,year,futureStart=2028){
+function regimeForYear(mode,year,futureStart=2029){
   if(mode==='future')return'future';
-  if(mode==='transition')return Number(year)>=Number(futureStart||2028)?'future':'current';
+  if(mode==='transition')return Number(year)>=Number(futureStart||2029)?'future':'current';
   if(mode==='current')return'current';
   return'none';
 }
@@ -79,7 +79,7 @@ function box3Config(config={}){
   const domDebt=browser?domOptional('firstJan1Debt'):undefined;
   return{
     mode:config.box3Mode??nested.mode??'none',
-    futureStart:config.futureStart??nested.futureStart??2028,
+    futureStart:config.futureStart??nested.futureStart??2029,
     firstJan1Portfolio:browser&&document.getElementById('firstJan1Portfolio')?domPortfolio:(config.firstJan1Portfolio??nested.firstJan1Portfolio),
     firstJan1Savings:browser&&document.getElementById('firstJan1Savings')?domSavings:(config.firstJan1Savings??nested.firstJan1Savings),
     firstJan1Debt:browser&&document.getElementById('firstJan1Debt')?domDebt:(config.firstJan1Debt??nested.firstJan1Debt),
@@ -411,7 +411,7 @@ function browserBox3Config(){
   const readOptional=id=>optionalNumber(document.getElementById(id)?.value);
   return{
     box3Mode:document.getElementById('box3Mode')?.value||'none',
-    futureStart:readNumber('futureStart',2028),
+    futureStart:readNumber('futureStart',2029),
     startYear:readNumber('startYear',2026),
     startMonth:readNumber('startMonth',1),
     firstJan1Portfolio:readOptional('firstJan1Portfolio'),

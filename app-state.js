@@ -97,6 +97,17 @@ function estimateTaxableIncome2026({grossIncome=0,use30Ruling=false,under30WithM
   if(taxable<=floor)return floor+1;
   return Math.max(0,taxable);
 }
+function rulingPayState({startYear=2026,use30Ruling=false,grossIncome=0,under30WithMasters=false,taxablePay=null,confirmed=false,saved=false}={}){
+  const year=Math.round(Number(startYear)||2026);
+  const ruling=use30Ruling===true||saved===true;
+  const entered=taxablePay==null||taxablePay===''?null:Number(taxablePay);
+  if(ruling&&year>=2027){
+    if(confirmed===true&&Number.isFinite(entered))return{available:true,taxable:entered,line:RULING_LATER_YEARS_LINE,inputLabel:'Taxable yearly pay',showLater:true};
+    return{available:false,taxable:null,line:RULING_2027_LINE,inputLabel:'Taxable yearly pay',showLater:true};
+  }
+  const taxable=estimateTaxableIncome2026({grossIncome,use30Ruling:ruling&&year<2027,under30WithMasters,startYear:year});
+  return{available:true,taxable,line:'',inputLabel:'Gross annual Box 1 income',showLater:Boolean(ruling)};
+}
 function manualDeductionPercent(rawManual){
   const parsed=parseFlexibleNumber(rawManual);
   return Number.isFinite(parsed)?parsed:Policy2026.VALUES.box1.ownHomeDeductionMaxRate*100;
@@ -147,7 +158,7 @@ function bootBrowser(){
   const modelBody=modelDetails?.querySelector('.fold-body');
   if(modelBody&&!$('r6Methodology')){
     const privacy=document.createElement('div');privacy.id='r6DataHandling';privacy.className='callout r6-methodology';
-    privacy.innerHTML=`<strong>Data handling.</strong> There is no account and no planner server. Your inputs are stored only in this browser's localStorage so they survive a refresh, and they are never uploaded. "Start fresh" deletes everything this planner saved in this browser and restores the example values. You can also clear site data in your browser. All code, including the chart library, is served from this site. No third-party requests, analytics or tracking cookies. This site is hosted on GitHub Pages. When you visit, GitHub records your IP address for security, as GitHub's documentation says. GitHub handles this under its own privacy statement: https://docs.github.com/en/site-policy/privacy-policies/github-general-privacy-statement`;
+    privacy.innerHTML=`<strong>Data handling.</strong> There is no account and no planner server. Your inputs are stored only in this browser's localStorage so they survive a refresh, and they are never uploaded. "Start fresh" deletes everything this planner saved in this browser and restores the example values. You can also clear site data in your browser. All code, including the chart library, is served from this site. No third-party requests, analytics or tracking cookies. This site is hosted on GitHub Pages. When you visit, GitHub records your IP address for security, as GitHub's documentation says. GitHub handles this under its own privacy statement: <a href="https://docs.github.com/en/site-policy/privacy-policies/github-general-privacy-statement">https://docs.github.com/en/site-policy/privacy-policies/github-general-privacy-statement</a>`;
     modelBody.appendChild(privacy);
   }
 
@@ -231,17 +242,23 @@ function bootBrowser(){
 
   function syncIncome(){
     const visible=$('grossAnnualIncome'),use=$('use30Ruling'),calc=$('grossIncome'),used=$('taxableIncomeUsed');if(!visible||!use||!calc)return;
-    const startYear=Math.round(parseFlexibleNumber($('startYear')?.value)||2026),laterYear=startYear>=2027;
-    if(laterYear){use.checked=false;use.disabled=true;}else use.disabled=false;
-    const gross=Math.max(0,parseFlexibleNumber(visible.value)||0),taxable=estimateTaxableIncome2026({grossIncome:gross,use30Ruling:use.checked,under30WithMasters:$('under30Masters')?.checked===true,startYear});
-    let later=$('rulingLaterYearsNote');if(!later&&used){later=document.createElement('p');later.id='rulingLaterYearsNote';later.className='inline';used.insertAdjacentElement('afterend',later);}if(later)later.textContent=RULING_LATER_YEARS_LINE;
-    if(taxable&&typeof taxable==='object'&&taxable.available===false){if(used)used.textContent=taxable.line;calc.dataset.rulingUnavailable='1';return;}
+    const startYear=Math.round(parseFlexibleNumber($('startYear')?.value)||2026);
+    if(use.checked)use.dataset.rulingRequested='1';
+    const rulingWanted=use.checked||use.dataset.rulingRequested==='1';
+    use.disabled=startYear>=2027;
+    const confirmed=calc.dataset.userTaxable==='1'&&String(calc.value).trim()!=='';
+    const state=rulingPayState({startYear,use30Ruling:rulingWanted,grossIncome:Math.max(0,parseFlexibleNumber(visible.value)||0),under30WithMasters:$('under30Masters')?.checked===true,taxablePay:confirmed?calc.value:null,confirmed});
+    const incomeLabel=document.querySelector('label[for="grossAnnualIncome"]');if(incomeLabel)incomeLabel.textContent=state.inputLabel;
+    let later=$('rulingLaterYearsNote');if(!later&&used){later=document.createElement('p');later.id='rulingLaterYearsNote';later.className='inline';used.insertAdjacentElement('afterend',later);}if(later)later.textContent=state.showLater?RULING_LATER_YEARS_LINE:'';
+    if(!state.available){if(used)used.textContent=state.line;calc.dataset.rulingUnavailable='1';return;}
     delete calc.dataset.rulingUnavailable;
-    if(used)used.innerHTML=use.checked?`Estimated taxable Box 1 employment income used for HRA: <strong>${fmt(taxable)}</strong>.`: `Taxable Box 1 employment income used for HRA: <strong>${fmt(taxable)}</strong>.`;
+    const taxable=state.taxable;
+    if(used)used.innerHTML=rulingWanted&&startYear<2027?`Estimated taxable Box 1 employment income used for HRA: <strong>${fmt(taxable)}</strong>.`:`Taxable Box 1 employment income used for HRA: <strong>${fmt(taxable)}</strong>.`;
     if(syncingIncome)return;
     const current=parseFlexibleNumber(calc.value);
     if(!Number.isFinite(current)||Math.abs(current-taxable)>.005){syncingIncome=true;calc.value=String(taxable);dispatch(calc);syncingIncome=false;}
   }
+  $('grossIncome')?.addEventListener('input',()=>{if(!syncingIncome&&$('grossIncome'))$('grossIncome').dataset.userTaxable='1';});
   function explainIncomeAndDeduction(){
     syncIncome();
     const mode=$('deductionMode'),manual=$('manualDeduction');if(!mode||!manual)return;
@@ -370,7 +387,7 @@ function bootBrowser(){
   observeUxTargets();
 }
 
-return{STORAGE_KEY,PLANNER_STORAGE_KEY_PATTERN,clearPlannerStorage,STATE_KIND,SCHEMA_VERSION,controlKey,isPersistable,captureControls,validControlKey,normalizeControls,migrateV1,normalizePayload,applyEntry,normalizeDecimalString,parseFlexibleNumber,clampFlexibleValue,estimateTaxableIncome2026,manualDeductionPercent,RULING_2027_LINE,RULING_LATER_YEARS_LINE,monthlyEquivalentExtra,mortgageReportingMonths,bootBrowser};
+return{STORAGE_KEY,PLANNER_STORAGE_KEY_PATTERN,clearPlannerStorage,STATE_KIND,SCHEMA_VERSION,controlKey,isPersistable,captureControls,validControlKey,normalizeControls,migrateV1,normalizePayload,applyEntry,normalizeDecimalString,parseFlexibleNumber,clampFlexibleValue,estimateTaxableIncome2026,rulingPayState,manualDeductionPercent,RULING_2027_LINE,RULING_LATER_YEARS_LINE,monthlyEquivalentExtra,mortgageReportingMonths,bootBrowser};
 });
 
 if(typeof window!=='undefined'&&window.document)window.PlannerState.bootBrowser();
